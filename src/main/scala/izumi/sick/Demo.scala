@@ -18,10 +18,16 @@ object RefKind {
   case object TNul extends RefKind
   case object TBit extends RefKind
   case object TStr extends RefKind
-  case object TInt extends RefKind
-  case object TLng extends RefKind
   case object TArr extends RefKind
   case object TObj extends RefKind
+
+  case object TInt extends RefKind
+  case object TLng extends RefKind
+  case object TDbl extends RefKind
+  case object TFlt extends RefKind
+  case object TBigDec extends RefKind
+  case object TBigInt extends RefKind
+
 }
 
 case class Ref(kind: RefKind, ref: RefVal) {
@@ -33,12 +39,40 @@ case class Obj(values: Vector[(Ref, Ref)])
 object Index {
   type RefVal = Long
 }
+
+
+class Bijection[V]() {
+  private val data = mutable.HashMap.empty[RefVal, V]
+  private val reverse = mutable.HashMap.empty[V, RefVal]
+
+  def add(v: V): RefVal = {
+    reverse.get(v) match {
+      case Some(value) =>
+        value
+      case None =>
+        val k = data.size : RefVal
+        data.put(k, v)
+        reverse.put(v, k)
+        k
+    }
+  }
+
+  def apply(k: RefVal): V = data(k)
+}
+
 class Index() {
-  val strings = mutable.HashMap.empty[RefVal, String]
-  val longs = mutable.HashMap.empty[RefVal, Long]
-  val doubles = mutable.HashMap.empty[RefVal, Double]
-  val arrs = mutable.HashMap.empty[RefVal, Arr]
-  val objs = mutable.HashMap.empty[RefVal, Obj]
+  val strings = new Bijection[String]
+
+  val ints = new Bijection[Int]
+  val longs = new Bijection[Long]
+  val bigints = new Bijection[BigInt]
+
+  val floats = new Bijection[Float]
+  val doubles = new Bijection[Double]
+  val bigDecimals = new Bijection[BigDecimal]
+
+  val arrs = new Bijection[Arr]
+  val objs = new Bijection[Obj]
 
 
   override def toString: String = {
@@ -67,10 +101,21 @@ class Index() {
         Json.fromBoolean(ref.ref == 1)
       case RefKind.TStr =>
         Json.fromString(strings(ref.ref))
+
       case RefKind.TInt =>
-        Json.fromLong(longs(ref.ref))
+        Json.fromInt(ints(ref.ref))
       case RefKind.TLng =>
         Json.fromLong(longs(ref.ref))
+      case RefKind.TBigInt =>
+        Json.fromBigInt(bigints(ref.ref))
+
+      case RefKind.TFlt =>
+        Json.fromFloat(floats(ref.ref)).get
+      case RefKind.TDbl =>
+        Json.fromDouble(doubles(ref.ref)).get
+      case RefKind.TBigDec =>
+        Json.fromBigDecimal(bigDecimals(ref.ref))
+
       case RefKind.TArr =>
         val a = arrs(ref.ref)
         Json.fromValues(a.values.map(reconstruct) )
@@ -89,14 +134,23 @@ class Index() {
       Ref(RefKind.TNul, 0),
       b => Ref(RefKind.TBit, if (b) {1} else {0}),
       n => {
-        println((n.toBigInt, n.toBigDecimal))
-        n.toBigInt match {
-          case Some(value) =>
-            // TODO: handle better
-            addLong(value.longValue)
+        n.toBigDecimal match {
+          case Some(value) if value.isWhole && value.isValidInt  =>
+            addInt(value.toIntExact)
+          case Some(value) if value.isWhole && value.isValidLong  =>
+            addLong(value.toLongExact)
+          case Some(value) if value.isWhole  =>
+            addBigInt(value.toBigIntExact.getOrElse(???))
+          case Some(value) if value.isExactFloat  =>
+            addFloat(value.floatValue)
+          case Some(value) if value.isExactDouble  =>
+            addDouble(value.doubleValue)
+          case Some(value)  =>
+            addBigDec(value)
           case None =>
             ???
-        }},
+        }
+      },
       s =>  addString(s),
       arr => addArr(Arr(
         arr.map(traverse)
@@ -110,53 +164,19 @@ class Index() {
     )
   }
 
-  def addString(s: String): Ref = {
-    val reverse = strings.map { case (k, v) => (v, k)}.toMap
-    reverse.get(s) match {
-      case Some(value) =>
-        Ref(RefKind.TStr, value)
-      case None =>
-        val idx = strings.size
-        strings.put(idx, s)
-        Ref(RefKind.TStr, idx)
-    }
-  }
+  def addString(s: String): Ref = Ref(RefKind.TStr, strings.add(s))
 
-  def addLong(s: Long): Ref = {
-    val reverse = longs.map { case (k, v) => (v, k)}.toMap
-    reverse.get(s) match {
-      case Some(value) =>
-        Ref(RefKind.TLng, value)
-      case None =>
-        val idx = longs.size
-        longs.put(idx, s)
-        Ref(RefKind.TLng, idx)
-    }
-  }
+  def addLong(s: Long): Ref = Ref(RefKind.TLng, longs.add(s))
+  def addInt(s: Int): Ref = Ref(RefKind.TInt, ints.add(s))
+  def addBigInt(s: BigInt): Ref = Ref(RefKind.TBigInt, bigints.add(s))
 
-  def addArr(s: Arr): Ref = {
-    val reverse = arrs.map { case (k, v) => (v, k)}.toMap
-    reverse.get(s) match {
-      case Some(value) =>
-        Ref(RefKind.TArr, value)
-      case None =>
-        val idx = arrs.size
-        arrs.put(idx, s)
-        Ref(RefKind.TArr, idx)
-    }
-  }
+  def addFloat(s: Float): Ref = Ref(RefKind.TFlt, floats.add(s))
+  def addDouble(s: Double): Ref = Ref(RefKind.TDbl, doubles.add(s))
+  def addBigDec(s: BigDecimal): Ref = Ref(RefKind.TBigDec, bigDecimals.add(s))
 
-  def addObj(s: Obj): Ref = {
-    val reverse = objs.map { case (k, v) => (v, k)}.toMap
-    reverse.get(s) match {
-      case Some(value) =>
-        Ref(RefKind.TObj, value)
-      case None =>
-        val idx = objs.size
-        objs.put(idx, s)
-        Ref(RefKind.TObj, idx)
-    }
-  }
+  def addArr(s: Arr): Ref = Ref(RefKind.TArr, arrs.add(s))
+
+  def addObj(s: Obj): Ref = Ref(RefKind.TObj, objs.add(s))
 }
 
 
@@ -173,6 +193,10 @@ object Demo {
 
 
   def main(args: Array[String]): Unit = {
+//    val n = JsonNumber.fromDecimalStringUnsafe("1000000000000000000000000000000000000000000000000000000000000000000000000000")
+//    println(1L << 18)
+//    println((n, n.toBigDecimal, n.toBigInt))
+
     implicit def BarCodec: Codec.AsObject[Bar] = io.circe.generic.semiauto.deriveCodec
     implicit def QuxCodec: Codec.AsObject[Qux] = io.circe.generic.semiauto.deriveCodec
     implicit def FooCodec: Codec.AsObject[Foo] = io.circe.generic.semiauto.deriveCodec
@@ -187,7 +211,9 @@ object Demo {
     println("ROOT:"+ root)
     println(index)
     val rec = index.reconstruct(root)
+    val restored = rec.as[List[Foo]]
+    println("RECONSTRUCTED:"+restored)
 
-    assert(rec.as[List[Foo]] == Right(foo))
+    assert(restored == Right(foo))
   }
 }
