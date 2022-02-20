@@ -41,7 +41,7 @@ object Index {
 }
 
 
-class Bijection[V]() {
+class Bijection[V](val name: String) {
   private val data = mutable.HashMap.empty[RefVal, V]
   private val reverse = mutable.HashMap.empty[V, RefVal]
 
@@ -58,39 +58,33 @@ class Bijection[V]() {
   }
 
   def apply(k: RefVal): V = data(k)
+
+  def isEmpty: Boolean = data.isEmpty
+
+  override def toString: String = {
+
+    s"""$name:
+       |${data.map { case (k, v) => s"$k --> $v" }.mkString("\n")}""".stripMargin
+  }
 }
 
 class Index() {
-  val strings = new Bijection[String]
+  val strings = new Bijection[String]("Strings")
 
-  val ints = new Bijection[Int]
-  val longs = new Bijection[Long]
-  val bigints = new Bijection[BigInt]
+  val ints = new Bijection[Int]("Integers")
+  val longs = new Bijection[Long]("Longs")
+  val bigints = new Bijection[BigInt]("Bigints")
 
-  val floats = new Bijection[Float]
-  val doubles = new Bijection[Double]
-  val bigDecimals = new Bijection[BigDecimal]
+  val floats = new Bijection[Float]("Floats")
+  val doubles = new Bijection[Double]("Doubles")
+  val bigDecimals = new Bijection[BigDecimal]("BigDecs")
 
-  val arrs = new Bijection[Arr]
-  val objs = new Bijection[Obj]
+  val arrs = new Bijection[Arr]("Arrays")
+  val objs = new Bijection[Obj]("Objects")
 
 
   override def toString: String = {
-    s"""Strings:
-       |${strings}
-       |
-       |Longs:
-       |${longs}
-       |
-       |Doubles
-       |${doubles}
-       |
-       |Arrays:
-       |${arrs}
-       |
-       |Objects:
-       |${objs}
-       |""".stripMargin
+    Seq(strings, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs).filterNot(_.isEmpty).mkString("\n\n")
   }
 
   def reconstruct(ref: Ref): Json = {
@@ -141,11 +135,12 @@ class Index() {
             addLong(value.toLongExact)
           case Some(value) if value.isWhole  =>
             addBigInt(value.toBigIntExact.getOrElse(???))
-          case Some(value) if value.isExactFloat  =>
+          case Some(value) if value.isDecimalFloat  =>
             addFloat(value.floatValue)
-          case Some(value) if value.isExactDouble  =>
+          case Some(value) if value.isDecimalDouble  =>
             addDouble(value.doubleValue)
           case Some(value)  =>
+            println((value, value.isDecimalDouble, value.isDecimalFloat, value.isBinaryFloat))
             addBigDec(value)
           case None =>
             ???
@@ -186,8 +181,8 @@ object Demo {
       Bar(Vector("a")),
       Bar(Vector("b")),
       Qux(13, Some(14.0)),
-      Qux(42, Some(42.0)),
-      Qux(42, Some(42.0)),
+      Qux(42, Some(42.1)),
+      Qux(42, Some(42.1)),
     )
 
 
