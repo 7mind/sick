@@ -13,8 +13,18 @@ case class Bar(xs: Vector[String]) extends Foo
 case class Qux(i: Long, d: Option[Double]) extends Foo
 
 
+object StrTool {
+  implicit class StringExt(s: String) {
+    def padLeft(p: Int, fill: Char): String = {
+      s.reverse.padTo(p, fill).reverse
+    }
+  }
+}
+
+import StrTool._
+
 case class Val(value: Int, pad: Int = 8) {
-  override def toString: String = s"{0x${value.toHexString.reverse.padTo(pad, '0').reverse}=${value.toString.reverse.padTo(pad+2, '0').reverse}}"
+  override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad+2, ' ')}}"
 }
 
 object Demo {
@@ -49,22 +59,24 @@ object Demo {
 
     println("="*80)
     assert(roIndex.parts.size == packed.offsets.size)
-    println("Offsets:")
+    val szInt = implicitly[ToBytesFixed[Int]].blobSize
+
+    println(s"Header: ${packed.headerLen} bytes, ${packed.headerLen / Integer.BYTES} integers, [version:int == ${packed.version}][collection_count:int == ${packed.offsets.size}][collection_offsets: int * ${packed.offsets.size}]")
+    println(s"Offsets (${packed.offsets.size}):")
     roIndex.parts.zip(packed.offsets).foreach {
       case (p, o) =>
         val sz = p._1.data.size
-        val szInt = implicitly[ToBytesFixed[Int]].blobSize
 
         val info = p._2 match {
           case c: ToBytesFixed[_] =>
             Some(s"[value:${c.blobSize} bytes]")
           case c: ToBytesFixedArray[_] =>
-            Some(s"[count:int == $sz][element: $sz X ${c.elementSize} bytes]")
+            Some(s"[count:int == ${Val(sz, 4)}][element: {${c.elementSize} bytes} * ${sz.toString.padLeft(7, '0')}]")
           case _: ToBytesVar[_] =>
             Some(s"[length:int][value:varbytes]")
           case _: ToBytesVarArray[_] =>
             val dataOffset = o + szInt + sz*szInt + szInt
-            Some(s"data offset = ${Val(dataOffset)} [count:int == ${Val(sz, 4)}][relative_element_offset: ${sz.toString.reverse.padTo(7, '0').reverse} X $szInt bytes][count:int == ${Val(sz, 4)}][element: ${sz.toString.reverse.padTo(7, '0').reverse} X varbytes] ")
+            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: ${sz.toString.padLeft(7, ' ')} X varbytes] data offset = ${Val(dataOffset)}")
         }
 
         val tpe = p._2 match {
@@ -92,17 +104,18 @@ object Demo {
 
   private def packBlobs(collections: Seq[ByteString]): Packed = {
     import ToBytes._
+    val version = 0
     val headerLen = (2 + collections.length) * Integer.BYTES
 
     val offsets = computeOffsets(collections, headerLen)
     assert(offsets.size == collections.size)
 
-    val everything = Seq((Seq(0, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ collections
+    val everything = Seq((Seq(version, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ collections
     val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
-    Packed(offsets, blob)
+    Packed(version, headerLen, offsets, blob)
   }
 
 
 }
 
-case class Packed(offsets: Seq[Int], data: ByteString)
+case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)
