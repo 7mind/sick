@@ -73,10 +73,10 @@ object Demo {
           case c: ToBytesFixedArray[_] =>
             Some(s"[count:int == ${Val(sz, 4)}][element: {${c.elementSize} bytes} * ${sz.toString.padLeft(7, '0')}]")
           case _: ToBytesVar[_] =>
-            Some(s"[length:int][value:varbytes]")
+            Some(s"[length:int][value:BYTESTR]")
           case _: ToBytesVarArray[_] =>
             val dataOffset = o + szInt + sz*szInt + szInt
-            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: ${sz.toString.padLeft(7, ' ')} X varbytes] data_offset = ${Val(dataOffset)}")
+            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: BYTESTR * ${sz.toString.padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}")
         }
 
         val tpe = p._2 match {
