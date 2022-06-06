@@ -13,6 +13,10 @@ case class Bar(xs: Vector[String]) extends Foo
 case class Qux(i: Long, d: Option[Double]) extends Foo
 
 
+case class Val(value: Int, pad: Int = 8) {
+  override def toString: String = s"{0x${value.toHexString.reverse.padTo(pad, '0').reverse}=${value.toString.reverse.padTo(pad+2, '0').reverse}}"
+}
+
 object Demo {
     val foo: Seq[Foo] = List(
       Bar(Vector("a")),
@@ -44,11 +48,13 @@ object Demo {
     val compressed = Zstd.compress(raw, level)
 
     println("="*80)
-    assert(roIndex.parts.size + 1 == packed.offsets.size)
+    assert(roIndex.parts.size == packed.offsets.size)
     println("Offsets:")
-    (roIndex.parts ++ List((new Reftable[Any]("END", Map.empty), null))).zip(packed.offsets).foreach {
+    roIndex.parts.zip(packed.offsets).foreach {
       case (p, o) =>
         val sz = p._1.data.size
+        val szInt = implicitly[ToBytesFixed[Int]].blobSize
+
         val info = p._2 match {
           case c: ToBytesFixed[_] =>
             Some(s"[value:${c.blobSize} bytes]")
@@ -57,12 +63,25 @@ object Demo {
           case _: ToBytesVar[_] =>
             Some(s"[length:int][value:varbytes]")
           case _: ToBytesVarArray[_] =>
-            Some(s"[count:int == $sz][element_length: $sz X ${implicitly[ToBytesFixed[Int]].blobSize} bytes][count:int == $sz][element: $sz X varbytes]")
-          case _ => None
+            val dataOffset = o + szInt + sz*szInt + szInt
+            Some(s"data offset = ${Val(dataOffset)} [count:int == ${Val(sz, 4)}][relative_element_offset: ${sz.toString.reverse.padTo(7, '0').reverse} X $szInt bytes][count:int == ${Val(sz, 4)}][element: ${sz.toString.reverse.padTo(7, '0').reverse} X varbytes] ")
         }
-        println(f"  ${p._1.name}%10s -> $o%8d ${info.map(i => s"( $i )").getOrElse("")}")
+
+        val tpe = p._2 match {
+          case fixed: ToBytesFixed[_] =>
+            s"Byte<${fixed.blobSize}>"
+          case fixed: ToBytesFixedArray[_] =>
+            s"Arr[Byte<${fixed.elementSize}>]"
+          case _: ToBytesVar[_] =>
+            "BYTESTR"
+          case _: ToBytesVarArray[_] =>
+            "Arr[BYTESTR]"
+        }
+        println(f"  ${p._1.name}%10s -> ${Val(o)}; $tpe%10s ${info.map(i => s"; $i").getOrElse("")}")
     }
     println(s"Offsets: ${packed.offsets.mkString(", ")}")
+    println("NOTE: relative element offsets should use corresponding data offsets as their base")
+    println("NOTE: data offsets should be computed the following way: (structure_start (from header)) + (int_size (of array_length)) + (int_size * array_length * int_size) + (int_size (of array_length))")
     println(s"Raw size: ${raw.length} == ${raw.length / 1024} kB")
     println(s"Compressed size: ${compressed.length} == ${compressed.length / 1024} kB (zstd level=$level)")
 
@@ -75,15 +94,15 @@ object Demo {
     import ToBytes._
     val headerLen = (2 + collections.length) * Integer.BYTES
 
-    val offsets = collections.map(_.length).foldLeft(Vector(headerLen)) {
-      case (offsets, currentSize) =>
-        offsets :+ (offsets.last + currentSize)
-    }
-    assert(offsets.size == collections.size + 1)
-    val everything = Seq((Seq(0, collections.length) ++ offsets).bytes) ++ collections
+    val offsets = computeOffsets(collections, headerLen)
+    assert(offsets.size == collections.size)
+
+    val everything = Seq((Seq(0, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ collections
     val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
     Packed(offsets, blob)
   }
+
+
 }
 
-case class Packed(offsets: Vector[Int], data: ByteString)
+case class Packed(offsets: Seq[Int], data: ByteString)

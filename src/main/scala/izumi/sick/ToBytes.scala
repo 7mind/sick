@@ -4,7 +4,7 @@ import akka.util.ByteString
 import izumi.sick.Ref.RefVal
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
+import java.nio.charset.{Charset, StandardCharsets}
 
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
@@ -22,6 +22,17 @@ sealed trait ToBytesVarArray[T] extends ToBytes[T]
 
 
 object ToBytes {
+  def computeOffsets(collections: Seq[ByteString], initial: Int): Seq[Int] = {
+    val out =collections
+      .map(_.length)
+      .foldLeft(Vector(initial)) {
+      case (offsets, currentSize) =>
+        offsets :+ (offsets.last + currentSize)
+    }
+      .init
+    assert(out.size == collections.size)
+    out
+  }
   implicit class AsBytes[T : ToBytes](value: T) {
     def bytes: ByteString = implicitly[ToBytes[T]].bytes(value)
   }
@@ -126,7 +137,8 @@ object ToBytes {
   implicit def toBytesVarSize[T: ToBytesVar]:  ToBytesVarArray[Seq[T]]  = new ToBytesVarArray[Seq[T]] {
     override def bytes(value: Seq[T]): ByteString = {
       val arrays = value.map(_.bytes)
-      val header = arrays.map(_.length.bytes).foldLeft(value.length.bytes)(_ ++ _)
+      val offsets = computeOffsets(arrays, 0)
+      val header = offsets.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
       val data = arrays.foldLeft(value.length.bytes)(_ ++ _)
       header ++ data
     }
