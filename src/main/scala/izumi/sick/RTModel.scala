@@ -11,8 +11,11 @@ object RefKind {
   case object TArr extends RefKind
   case object TObj extends RefKind
 
+  case object TByte extends RefKind
+  case object TShort extends RefKind
   case object TInt extends RefKind
   case object TLng extends RefKind
+
   case object TDbl extends RefKind
   case object TFlt extends RefKind
   case object TBigDec extends RefKind
@@ -23,15 +26,21 @@ object RefKind {
     def index: Int = kind match {
       case TNul => 0
       case TBit => 1
-      case TStr => 2
-      case TArr => 3
-      case TObj => 4
-      case TInt => 5
-      case TLng => 6
+
+      case TByte => 2
+      case TShort => 3
+      case TInt => 4
+      case TLng => 5
+      case TBigInt => 6
+
       case TDbl => 7
       case TFlt => 8
       case TBigDec => 9
-      case TBigInt => 10
+
+
+      case TStr => 13
+      case TArr => 14
+      case TObj => 15
     }
   }
 }
