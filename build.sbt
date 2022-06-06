@@ -16,3 +16,5 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic-extras",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
+
+libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3"
