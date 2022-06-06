@@ -76,7 +76,7 @@ object Demo {
             Some(s"[length:int][value:varbytes]")
           case _: ToBytesVarArray[_] =>
             val dataOffset = o + szInt + sz*szInt + szInt
-            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: ${sz.toString.padLeft(7, ' ')} X varbytes] data offset = ${Val(dataOffset)}")
+            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: ${sz.toString.padLeft(7, ' ')} X varbytes] data_offset = ${Val(dataOffset)}")
         }
 
         val tpe = p._2 match {
