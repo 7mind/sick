@@ -63,9 +63,8 @@ class Reftable[V](val name: String, val data: Map[RefVal, V]) {
   }
 
   override def toString: String = {
-
     s"""$name:
-       |${data.map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
+       |${data.toSeq.sortBy(_._1).map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
   }
 }
 class Bijection[V](val name: String) {

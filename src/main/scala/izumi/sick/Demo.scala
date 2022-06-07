@@ -61,6 +61,7 @@ object Demo {
     assert(roIndex.parts.size == packed.offsets.size)
     val szInt = implicitly[ToBytesFixed[Int]].blobSize
 
+
     println(s"Header: ${packed.headerLen} bytes, ${packed.headerLen / Integer.BYTES} integers, [version:int == ${packed.version}][collection_count:int == ${packed.offsets.size}][collection_offsets: int * ${packed.offsets.size}]")
     println(s"Offsets (${packed.offsets.size}):")
     roIndex.parts.zip(packed.offsets).foreach {
@@ -76,7 +77,7 @@ object Demo {
             Some(s"[length:int][value:BYTESTR]")
           case _: ToBytesVarArray[_] =>
             val dataOffset = o + szInt + sz*szInt + szInt
-            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][count:int == ${Val(sz, 4)}][element: BYTESTR * ${sz.toString.padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}")
+            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][relative_end_offset:int][element: BYTESTR * ${sz.toString.padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}")
         }
 
         val tpe = p._2 match {

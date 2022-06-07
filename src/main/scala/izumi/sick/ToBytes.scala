@@ -33,6 +33,7 @@ object ToBytes {
     assert(out.size == collections.size)
     out
   }
+
   implicit class AsBytes[T : ToBytes](value: T) {
     def bytes: ByteString = implicitly[ToBytes[T]].bytes(value)
   }
@@ -139,10 +140,26 @@ object ToBytes {
       val arrays = value.map(_.bytes)
       val offsets = computeOffsets(arrays, 0)
       val header = offsets.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
-      val data = arrays.foldLeft(value.length.bytes)(_ ++ _)
+      val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
       header ++ data
     }
   }
+
+  implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]:  ToBytesVarArray[Seq[T]]  = new ToBytesVarArray[Seq[T]] {
+    override def bytes(value: Seq[T]): ByteString = {
+      val arrays = value.map(_.bytes)
+      val offsets = computeOffsets(arrays, 0)
+      val header = offsets.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
+      val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
+      header ++ data
+    }
+  }
+
+//  implicit def toBytesVarSize[T: ToBytesFixedArray]:ToBytesVar[T]  = new ToBytesVar[T] {
+//    override def bytes(value: T): ByteString = {
+//      implicitly[ToBytesFixedArray[T]].bytes(value)
+//    }
+//  }
 
   implicit object StringToBytes extends ToBytesVar[String] {
     override def bytes(value: String): ByteString = {
@@ -158,18 +175,23 @@ object ToBytes {
 
   implicit object BigDecimalToBytes extends ToBytesVar[BigDecimal] {
     override def bytes(value: BigDecimal): ByteString = {
-      ByteString(value.underlying().unscaledValue().toByteArray)
+
+      value.underlying().signum().bytes ++ value.underlying().precision().bytes ++ value.underlying().scale().bytes ++ ByteString(value.underlying().unscaledValue().toByteArray)
     }
   }
 
 
-  implicit object ArrToBytes extends ToBytesVar[Arr] {
+  implicit object ArrToBytes extends ToBytesFixedArray[Arr] {
+    override def elementSize: RefVal = implicitly[ToBytesFixed[Ref]].blobSize
+
     override def bytes(value: Arr): ByteString = {
       (value.values.toSeq:Seq[Ref]).bytes
     }
   }
 
-  implicit object ObjToBytes extends ToBytesVar[Obj] {
+  implicit object ObjToBytes extends ToBytesFixedArray[Obj] {
+    override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
+
     override def bytes(value: Obj): ByteString = {
       (value.values.toSeq:Seq[(RefVal, Ref)]).bytes
     }
