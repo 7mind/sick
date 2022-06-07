@@ -57,6 +57,7 @@ object Demo {
     val raw = packed.data.toArray
     val compressed = Zstd.compress(raw, level)
 
+    println(roIndex.arrs.data(0))
     println("="*80)
     assert(roIndex.parts.size == packed.offsets.size)
     val szInt = implicitly[ToBytesFixed[Int]].blobSize

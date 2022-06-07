@@ -47,7 +47,7 @@ object ToBytes {
   }
 
   implicit object ArrayEntryBytes extends ToBytesFixed[Ref] {
-    override def blobSize: Int = Integer.BYTES * 2
+    override def blobSize: Int = 1 + Integer.BYTES
 
     override def bytes(value: Ref): ByteString = {
       val out = value.kind.bytes ++ value.ref.bytes
@@ -57,7 +57,7 @@ object ToBytes {
   }
 
   implicit object ObjectEntryBytes extends ToBytesFixed[(RefVal, Ref)] {
-    override def blobSize: Int = Integer.BYTES*3
+    override def blobSize: Int = Integer.BYTES*2 + 1
 
     override def bytes(value: (RefVal, Ref)): ByteString = {
       val out = value._1.bytes ++ value._2.bytes

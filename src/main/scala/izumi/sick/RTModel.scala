@@ -23,7 +23,7 @@ object RefKind {
 
 
   implicit class RefKindExt(kind: RefKind) {
-    def index: Int = kind match {
+    def index: Byte = kind match {
       case TNul => 0
       case TBit => 1
 
@@ -45,9 +45,7 @@ object RefKind {
   }
 }
 
-case class Ref(kind: RefKind, ref: RefVal) {
-  override def toString: String = s"$ref:${kind.index}"
-}
+case class Ref(kind: RefKind, ref: RefVal)
 object Ref {
   type RefVal = Int
 
