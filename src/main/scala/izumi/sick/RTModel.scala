@@ -21,6 +21,8 @@ object RefKind {
   case object TBigDec extends RefKind
   case object TBigInt extends RefKind
 
+  case object TRoot extends RefKind
+
 
   implicit class RefKindExt(kind: RefKind) {
     def index: Byte = kind match {
@@ -38,9 +40,10 @@ object RefKind {
       case TBigDec => 9
 
 
-      case TStr => 13
-      case TArr => 14
-      case TObj => 15
+      case TStr => 10
+      case TArr => 11
+      case TObj => 12
+      case TRoot => 15
     }
   }
 }
@@ -51,9 +54,8 @@ object Ref {
 
 }
 
-case class Arr(values: Vector[Ref]) {
-  override def toString: String = values.mkString(";")
-}
-case class Obj(values: Vector[(RefVal, Ref)]) {
-  override def toString: String = values.map(v => s"${v._1},${v._2}").mkString(";")
-}
+case class Arr(values: Vector[Ref])
+case class Obj(values: Vector[(RefVal, Ref)])
+
+case class Root(id: RefVal, ref: Ref)
+

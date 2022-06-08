@@ -4,7 +4,7 @@ import akka.util.ByteString
 import izumi.sick.Ref.RefVal
 
 import java.nio.ByteBuffer
-import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.charset.StandardCharsets
 
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
@@ -115,7 +115,7 @@ object ToBytes {
   }
 
   implicit object DoubleToBytes extends ToBytesFixed[Double] {
-    override def blobSize: Int =java.lang.Double.BYTES
+    override def blobSize: Int = java.lang.Double.BYTES
 
     override def bytes(value: Double): ByteString = {
       val bb = ByteBuffer.allocate(blobSize)
@@ -155,12 +155,6 @@ object ToBytes {
     }
   }
 
-//  implicit def toBytesVarSize[T: ToBytesFixedArray]:ToBytesVar[T]  = new ToBytesVar[T] {
-//    override def bytes(value: T): ByteString = {
-//      implicitly[ToBytesFixedArray[T]].bytes(value)
-//    }
-//  }
-
   implicit object StringToBytes extends ToBytesVar[String] {
     override def bytes(value: String): ByteString = {
       ByteString(value.getBytes(StandardCharsets.UTF_8))
@@ -194,6 +188,14 @@ object ToBytes {
 
     override def bytes(value: Obj): ByteString = {
       (value.values.toSeq:Seq[(RefVal, Ref)]).bytes
+    }
+  }
+
+  implicit object RootToBytes extends ToBytesFixed[Root] {
+    override def blobSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
+
+    override def bytes(value: Root): ByteString = {
+      (value.id, value.ref).bytes
     }
   }
 }

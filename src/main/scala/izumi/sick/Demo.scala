@@ -44,9 +44,13 @@ object Demo {
     val json = Files.readAllBytes(Paths.get(file))
     val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).right.get
     val index = new Index()
-    val root = index.traverse(parsed)
+    val root = index.traverse("config.json", parsed)
     val roIndex = index.freeze()
-    println("ROOT:"+ root)
+
+    roIndex.roots.data.foreach {
+      case (k, v) =>
+        println(s"ROOT ${roIndex.strings.data(k)}: $k->$v")
+    }
     println(roIndex.summary)
 
 

@@ -1,101 +1,6 @@
 package izumi.sick
 
-import akka.util.ByteString
 import io.circe.Json
-import izumi.sick.Ref.RefVal
-
-import scala.collection.mutable
-
-class ROIndex(
-
-               val bytes: Reftable[Byte],
-               val shorts: Reftable[Short],
-               val ints: Reftable[Int],
-               val longs: Reftable[Long],
-
-               val bigints: Reftable[BigInt],
-               val floats: Reftable[Float],
-               val doubles: Reftable[Double],
-               val bigDecimals: Reftable[BigDecimal],
-
-               val strings: Reftable[String],
-               val arrs: Reftable[Arr],
-               val objs: Reftable[Obj],
-             ) {
-  def parts: Seq[(Reftable[Any], ToBytes[Seq[Any]])] = {
-    import ToBytes._
-    Seq((bytes, implicitly[ToBytes[Seq[Byte]]]),
-      (shorts, implicitly[ToBytes[Seq[Short]]]),
-      (ints, implicitly[ToBytes[Seq[Int]]]),
-      (longs, implicitly[ToBytes[Seq[Long]]]),
-      (bigints, implicitly[ToBytes[Seq[BigInt]]]),
-      (floats, implicitly[ToBytes[Seq[Float]]]),
-      (doubles, implicitly[ToBytes[Seq[Double]]]),
-      (bigDecimals, implicitly[ToBytes[Seq[BigDecimal]]]),
-      (strings, implicitly[ToBytes[Seq[String]]]),
-      (arrs, implicitly[ToBytes[Seq[Arr]]]),
-      (objs, implicitly[ToBytes[Seq[Obj]]]),
-    ).map {case (c, codec) => (c.asInstanceOf[Reftable[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]])}
-  }
-
-  def  blobs: Seq[ByteString] = parts.map {
-    case (p, codec) =>
-      codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq)
-  }
-
-  def summary: String =
-    s"""Index summary:
-       |${parts.map(_._1).map(p => s"${p.name}: ${p.data.size}").mkString("\n")}""".stripMargin
-
-  override def toString: String = {
-    parts.map(_._1).filterNot(_.isEmpty).mkString("\n\n")
-  }
-
-}
-
-class Reftable[V](val name: String, val data: Map[RefVal, V]) {
-  def apply(k: RefVal): V = data(k)
-
-  def isEmpty: Boolean = data.isEmpty
-
-  def asSeq: Seq[V] = {
-    (0 until data.size).map(data)
-  }
-
-  override def toString: String = {
-    s"""$name:
-       |${data.toSeq.sortBy(_._1).map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
-  }
-}
-class Bijection[V](val name: String) {
-  private val data = mutable.HashMap.empty[RefVal, V]
-  def freeze() = new Reftable[V](name, data.toMap)
-  private val reverse = mutable.HashMap.empty[V, RefVal]
-
-  def add(v: V): RefVal = {
-    reverse.get(v) match {
-      case Some(value) =>
-        value
-      case None =>
-        val k = data.size : RefVal
-        data.put(k, v)
-        reverse.put(v, k)
-        k
-    }
-  }
-
-  def apply(k: RefVal): V = data(k)
-
-  def isEmpty: Boolean = data.isEmpty
-
-  def size: Int = data.size
-
-  override def toString: String = {
-
-    s"""$name:
-       |${data.map { case (k, v) => s"$k --> $v" }.mkString("\n")}""".stripMargin
-  }
-}
 
 class Index() {
   val strings = new Bijection[String]("Strings")
@@ -112,6 +17,7 @@ class Index() {
 
   val arrs = new Bijection[Arr]("Arrays")
   val objs = new Bijection[Obj]("Objects")
+  val roots = new Bijection[Root]("Roots")
 
   def freeze() = {
     new ROIndex(
@@ -128,11 +34,12 @@ class Index() {
       strings.freeze(),
       arrs.freeze(),
       objs.freeze(),
+      roots.freeze(),
     )
   }
 
   override def toString: String = {
-    Seq(strings, bytes, shorts, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs).filterNot(_.isEmpty).mkString("\n\n")
+    Seq(strings, bytes, shorts, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs, roots).filterNot(_.isEmpty).mkString("\n\n")
   }
 
   def reconstruct(ref: Ref): Json = {
@@ -170,13 +77,19 @@ class Index() {
         val o = objs(ref.ref)
         Json.fromFields(o.values.map {
           case (k, v) =>
-            //assert(k.kind == RefKind.TStr)
             (strings(k), reconstruct(v))
         } )
     }
   }
 
+  def traverse(id: String, j: Json): Ref = {
+    val idRef = addString(id)
+    val root = traverse(j)
+    addRoot(Root(idRef.ref, root))
+    root
+  }
   def traverse(j: Json): Ref = {
+
     j.fold(
       Ref(RefKind.TNul, 0),
       b => Ref(RefKind.TBit, if (b) {1} else {0}),
@@ -195,7 +108,7 @@ class Index() {
           case Some(value) if value.isWhole && value.isValidLong  =>
             addLong(value.toLongExact)
           case Some(value) if value.isWhole  =>
-            addBigInt(value.toBigIntExact.getOrElse(???))
+            addBigInt(value.toBigIntExact.getOrElse(throw new IllegalStateException(s"Cannot decode BigInt $n")))
           case Some(value) if value.isDecimalFloat  =>
             addFloat(value.floatValue)
           case Some(value) if value.isDecimalDouble  =>
@@ -203,7 +116,7 @@ class Index() {
           case Some(value)  =>
             addBigDec(value)
           case None =>
-            ???
+            throw new IllegalStateException(s"Cannot decode number $n")
         }
       },
       s =>  addString(s),
@@ -236,4 +149,13 @@ class Index() {
   def addArr(s: Arr): Ref = Ref(RefKind.TArr, arrs.add(s))
 
   def addObj(s: Obj): Ref = Ref(RefKind.TObj, objs.add(s))
+
+  def addRoot(s: Root): Ref = {
+    roots.revGet(s) match {
+      case Some(value) =>
+        throw new IllegalStateException(s"Root $s already exists with ref $value")
+      case None =>
+        Ref(RefKind.TRoot, roots.add(s))
+    }
+  }
 }
