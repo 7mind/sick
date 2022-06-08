@@ -41,10 +41,19 @@ object Demo {
     val file = args.headOption.getOrElse("config.json")
     val json = Files.readAllBytes(Paths.get(file))
     val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).right.get
-    val index = new RWIndex()
-    val root = index.traverse("config.json", parsed)
-    val roIndex = index.freeze()
+    val rwIndex = RWIndex()
+    val root = rwIndex.append("config.json", parsed)
 
+    val rwIndexSorted = rwIndex.rebuild()
+
+    val newRoot = rwIndexSorted.findRoot("config.json").get.ref
+    assert(rwIndexSorted.reconstruct(newRoot) == rwIndex.reconstruct(root))
+
+    val roIndex = rwIndexSorted.freeze()
+
+    println(s"Original root: $root -> $newRoot")
+
+    println("Frozen:")
     roIndex.roots.data.foreach {
       case (k, v) =>
         println(s"ROOT ${roIndex.strings.data(k)}: $k->$v")

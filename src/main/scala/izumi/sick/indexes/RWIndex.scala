@@ -5,24 +5,59 @@ import izumi.sick.model
 import izumi.sick.model._
 import izumi.sick.tables.Bijection
 
-class RWIndex() {
-  val strings = new Bijection[String]("Strings")
+object RWIndex {
+  def apply(): RWIndex = {
+    val strings = Bijection[String]("Strings")
 
-  val bytes = new Bijection[Byte]("Bytes")
-  val shorts = new Bijection[Short]("Shorts")
-  val ints = new Bijection[Int]("Integers")
-  val longs = new Bijection[Long]("Longs")
-  val bigints = new Bijection[BigInt]("Bigints")
+    val bytes = Bijection[Byte]("Bytes")
+    val shorts = Bijection[Short]("Shorts")
+    val ints = Bijection[Int]("Integers")
+    val longs = Bijection[Long]("Longs")
+    val bigints = Bijection[BigInt]("Bigints")
 
-  val floats = new Bijection[Float]("Floats")
-  val doubles = new Bijection[Double]("Doubles")
-  val bigDecimals = new Bijection[BigDecimal]("BigDecs")
+    val floats = Bijection[Float]("Floats")
+    val doubles = Bijection[Double]("Doubles")
+    val bigDecimals = Bijection[BigDecimal]("BigDecs")
 
-  val arrs = new Bijection[Arr]("Arrays")
-  val objs = new Bijection[Obj]("Objects")
-  val roots = new Bijection[Root]("Roots")
+    val arrs = Bijection[Arr]("Arrays")
+    val objs = Bijection[Obj]("Objects")
+    val roots = Bijection[Root]("Roots")
+    new RWIndex(
+      strings,
+      bytes,
+      shorts,
+      ints,
+      longs,
+      bigints,
+      floats,
+      doubles,
+      bigDecimals,
+      arrs,
+      objs,
+      roots,
+    )
+  }
+}
+class RWIndex private (
+  strings: Bijection[String],
+  bytes: Bijection[Byte],
+  shorts: Bijection[Short],
+  ints: Bijection[Int],
+  longs: Bijection[Long],
+  bigints: Bijection[BigInt],
+  floats: Bijection[Float],
+  doubles: Bijection[Double],
+  bigDecimals: Bijection[BigDecimal],
+  arrs: Bijection[Arr],
+  objs: Bijection[Obj],
+  roots: Bijection[Root],
+) {
+  def findRoot(str: String): Option[Root] = {
+    println(strings.revGet(str))
+    strings.revGet(str).flatMap(si => roots.all().find(_._2._1.id == si).map(_._2._1))
+  }
 
-  def freeze() = {
+  def freeze(): ROIndex = {
     new ROIndex(
       bytes.freeze(),
       shorts.freeze(),
@@ -80,17 +115,67 @@ class RWIndex() {
           case (k, v) =>
             (strings(k), reconstruct(v))
         })
+      case RefKind.TRoot =>
+        // this shouldn't actually happen
+        reconstruct(roots(ref.ref).ref)
     }
   }
 
-  def traverse(id: String, j: Json): Ref = {
+  def rebuild(): RWIndex = {
+    def rebuildSimpleTable[V](table: Bijection[V], tpe: RefKind) = {
+      val data = table.all().toSeq.sortBy(_._2._2)(Ordering.Int.reverse).zipWithIndex.map {
+        case ((originalRef, (target, freq)), newRef) =>
+          (originalRef, (newRef, target, freq))
+      }
+      val updated = Bijection.fromMonotonic(bytes.name, data.map(_._2))
+      (updated, data.map { case (origRef, (newRef, _, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
+    }
+
+    val (newBytes, byteMap) = rebuildSimpleTable(bytes, RefKind.TByte)
+    val (newShorts, shortMap) = rebuildSimpleTable(shorts, RefKind.TShort)
+    val (newInts, intmapMap) = rebuildSimpleTable(ints, RefKind.TInt)
+    val (newLongs, longMap) = rebuildSimpleTable(longs, RefKind.TLng)
+    val (newBigints, bigintMap) = rebuildSimpleTable(bigints, RefKind.TBigInt)
+    val (newFloats, floatMap) = rebuildSimpleTable(floats, RefKind.TFlt)
+    val (newDoubles, doubleMap) = rebuildSimpleTable(doubles, RefKind.TDbl)
+    val (newBigdecs, bigdecMap) = rebuildSimpleTable(bigDecimals, RefKind.TBigDec)
+    val (newStrs, stringMap) = rebuildSimpleTable(strings, RefKind.TStr)
+    val (newArrs, arrMap) = rebuildSimpleTable(arrs, RefKind.TArr)
+    val (newObjs, objMap) = rebuildSimpleTable(objs, RefKind.TObj)
+    val (newRoots, rootMap) = rebuildSimpleTable(roots, RefKind.TRoot)
+
+    val inplace = Map(
+      Ref(RefKind.TNul, 0) -> Ref(RefKind.TNul, 0),
+      Ref(RefKind.TBit, 0) -> Ref(RefKind.TBit, 0),
+      Ref(RefKind.TBit, 1) -> Ref(RefKind.TBit, 1),
+    )
+    val fullMap = Seq(inplace, byteMap, shortMap, intmapMap, longMap, bigintMap, floatMap, doubleMap, bigdecMap, stringMap, arrMap, objMap, rootMap).flatten.toMap
+
+    new RWIndex(
+      newStrs,
+      newBytes,
+      newShorts,
+      newInts,
+      newLongs,
+      newBigints,
+      newFloats,
+      newDoubles,
+      newBigdecs,
+      newArrs.remap(fullMap),
+      newObjs.remap(fullMap),
+      newRoots.remap(fullMap),
+    )
+
+  }
+
+  def append(id: String, j: Json): Ref = {
     val idRef = addString(id)
     val root = traverse(j)
     addRoot(Root(idRef.ref, root))
     root
   }
-  def traverse(j: Json): Ref = {
 
+  private def traverse(j: Json): Ref = {
     j.fold(
       Ref(RefKind.TNul, 0),
       b =>
@@ -144,25 +229,18 @@ class RWIndex() {
     )
   }
 
-  def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.add(s))
-
-  def addByte(s: Byte): Ref = {
-    Ref(RefKind.TByte, bytes.add(s))
-  }
-  def addShort(s: Short): Ref = model.Ref(RefKind.TShort, shorts.add(s))
-  def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.add(s))
-  def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.add(s))
-  def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.add(s))
-
-  def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.add(s))
-  def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.add(s))
-  def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.add(s))
-
-  def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.add(s))
-
-  def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.add(s))
-
-  def addRoot(s: Root): Ref = {
+  private def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.add(s))
+  private def addByte(s: Byte): Ref = Ref(RefKind.TByte, bytes.add(s))
+  private def addShort(s: Short): Ref = model.Ref(RefKind.TShort, shorts.add(s))
+  private def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.add(s))
+  private def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.add(s))
+  private def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.add(s))
+  private def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.add(s))
+  private def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.add(s))
+  private def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.add(s))
+  private def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.add(s))
+  private def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.add(s))
+  private def addRoot(s: Root): Ref = {
     roots.revGet(s) match {
       case Some(value) =>
         throw new IllegalStateException(s"Root $s already exists with ref $value")
@@ -170,4 +248,5 @@ class RWIndex() {
         model.Ref(RefKind.TRoot, roots.add(s))
     }
   }
+
 }

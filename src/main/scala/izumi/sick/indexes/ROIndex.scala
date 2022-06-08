@@ -48,5 +48,4 @@ final class ROIndex(
   override def toString: String = {
     parts.map(_._1).filterNot(_.isEmpty).mkString("\n\n")
   }
-
 }

@@ -1,6 +1,7 @@
 package izumi.sick.model
 
 import izumi.sick.model.Ref.RefVal
+import izumi.sick.tables.Bijection.RefMappable
 
 sealed trait RefKind
 object RefKind {
@@ -52,6 +53,28 @@ object Ref {
 }
 
 case class Arr(values: Vector[Ref])
-case class Obj(values: Vector[(RefVal, Ref)])
+object Arr {
+  implicit object ArrMap extends RefMappable[Arr] {
+    override def remap(value: Arr, mapping: Map[Ref, Ref]): Arr = {
+      Arr(value.values.map(mapping.apply))
+    }
+  }
+}
+
+case class Obj(values: Vector[(RefVal, Ref)]) {}
+object Obj {
+  implicit object ObjMap extends RefMappable[Obj] {
+    override def remap(value: Obj, mapping: Map[Ref, Ref]): Obj = {
+      Obj(value.values.map { case (k, v) => (mapping(Ref(RefKind.TStr, k)).ref, mapping(v)) })
+    }
+  }
+}
 
 case class Root(id: RefVal, ref: Ref)
+object Root {
+  implicit object RootMap extends RefMappable[Root] {
+    override def remap(value: Root, mapping: Map[Ref, Ref]): Root = {
+      Root(mapping(Ref(RefKind.TStr, value.id)).ref, mapping(value.ref))
+    }
+  }
+}
