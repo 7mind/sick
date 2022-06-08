@@ -1,9 +1,10 @@
 package izumi.sick
 
-
 import akka.util.ByteString
 import com.github.luben.zstd.Zstd
 import io.circe._
+import izumi.sick.indexes.RWIndex
+import izumi.sick.model.{ToBytesFixed, ToBytesFixedArray, ToBytesVar, ToBytesVarArray}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -11,7 +12,6 @@ import java.nio.file.{Files, Paths}
 sealed trait Foo
 case class Bar(xs: Vector[String]) extends Foo
 case class Qux(i: Long, d: Option[Double]) extends Foo
-
 
 object StrTool {
   implicit class StringExt(s: String) {
@@ -21,29 +21,27 @@ object StrTool {
   }
 }
 
-import StrTool._
+import izumi.sick.StrTool._
 
 case class Val(value: Int, pad: Int = 8) {
-  override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad+2, ' ')}}"
+  override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad + 2, ' ')}}"
 }
 
 object Demo {
-    val foo: Seq[Foo] = List(
-      Bar(Vector("a")),
-      Bar(Vector("a")),
-      Bar(Vector("b")),
-      Qux(13, Some(14.0)),
-      Qux(42, Some(42.1)),
-      Qux(42, Some(42.1)),
-    )
-
-
+  val foo: Seq[Foo] = List(
+    Bar(Vector("a")),
+    Bar(Vector("a")),
+    Bar(Vector("b")),
+    Qux(13, Some(14.0)),
+    Qux(42, Some(42.1)),
+    Qux(42, Some(42.1)),
+  )
 
   def main(args: Array[String]): Unit = {
     val file = args.headOption.getOrElse("config.json")
     val json = Files.readAllBytes(Paths.get(file))
     val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).right.get
-    val index = new Index()
+    val index = new RWIndex()
     val root = index.traverse("config.json", parsed)
     val roIndex = index.freeze()
 
@@ -53,9 +51,7 @@ object Demo {
     }
     println(roIndex.summary)
 
-
-
-    val  packed = packBlobs(roIndex.blobs)
+    val packed = packBlobs(roIndex.blobs)
 
     val level = 20
     val raw = packed.data.toArray
@@ -63,12 +59,13 @@ object Demo {
 
 //    println(roIndex.arrs.data(0))
 //    println(roIndex.objs.data(0))
-    println("="*80)
+    println("=" * 80)
     assert(roIndex.parts.size == packed.offsets.size)
     val szInt = implicitly[ToBytesFixed[Int]].blobSize
 
-
-    println(s"Header: ${packed.headerLen} bytes, ${packed.headerLen / Integer.BYTES} integers, [version:int == ${packed.version}][collection_count:int == ${packed.offsets.size}][collection_offsets: int * ${packed.offsets.size}]")
+    println(
+      s"Header: ${packed.headerLen} bytes, ${packed.headerLen / Integer.BYTES} integers, [version:int == ${packed.version}][collection_count:int == ${packed.offsets.size}][collection_offsets: int * ${packed.offsets.size}]"
+    )
     println(s"Offsets (${packed.offsets.size}):")
     roIndex.parts.zip(packed.offsets).foreach {
       case (p, o) =>
@@ -82,8 +79,9 @@ object Demo {
           case _: ToBytesVar[_] =>
             Some(s"[length:int][value:BYTESTR]")
           case _: ToBytesVarArray[_] =>
-            val dataOffset = o + szInt + sz*szInt + szInt
-            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][relative_end_offset:int][element: BYTESTR * ${sz.toString.padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}")
+            val dataOffset = o + szInt + sz * szInt + szInt
+            Some(s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][relative_end_offset:int][element: BYTESTR * ${sz.toString
+                .padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}")
         }
 
         val tpe = p._2 match {
@@ -100,7 +98,9 @@ object Demo {
     }
     println(s"Offsets: ${packed.offsets.mkString(", ")}")
     println("NOTE: relative element offsets should use corresponding data offsets as their base")
-    println("NOTE: data offsets should be computed the following way: (structure_start (from header)) + (int_size (of array_length)) + (int_size * array_length * int_size) + (int_size (of array_length))")
+    println(
+      "NOTE: data offsets should be computed the following way: (structure_start (from header)) + (int_size (of array_length)) + (int_size * array_length * int_size) + (int_size (of array_length))"
+    )
     println(s"Raw size: ${raw.length} == ${raw.length / 1024} kB")
     println(s"Compressed size: ${compressed.length} == ${compressed.length / 1024} kB (zstd level=$level)")
 
@@ -110,7 +110,7 @@ object Demo {
   }
 
   private def packBlobs(collections: Seq[ByteString]): Packed = {
-    import ToBytes._
+    import izumi.sick.model.ToBytes._
     val version = 0
     val headerLen = (2 + collections.length) * Integer.BYTES
 
@@ -121,7 +121,6 @@ object Demo {
     val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
     Packed(version, headerLen, offsets, blob)
   }
-
 
 }
 

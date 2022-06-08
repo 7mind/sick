@@ -1,7 +1,7 @@
-package izumi.sick
+package izumi.sick.model
 
 import akka.util.ByteString
-import izumi.sick.Ref.RefVal
+import izumi.sick.model.Ref.RefVal
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -20,21 +20,20 @@ sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
 sealed trait ToBytesVar[T] extends ToBytes[T]
 sealed trait ToBytesVarArray[T] extends ToBytes[T]
 
-
 object ToBytes {
   def computeOffsets(collections: Seq[ByteString], initial: Int): Seq[Int] = {
-    val out =collections
+    val out = collections
       .map(_.length)
       .foldLeft(Vector(initial)) {
-      case (offsets, currentSize) =>
-        offsets :+ (offsets.last + currentSize)
-    }
+        case (offsets, currentSize) =>
+          offsets :+ (offsets.last + currentSize)
+      }
       .init
     assert(out.size == collections.size)
     out
   }
 
-  implicit class AsBytes[T : ToBytes](value: T) {
+  implicit class AsBytes[T: ToBytes](value: T) {
     def bytes: ByteString = implicitly[ToBytes[T]].bytes(value)
   }
 
@@ -57,7 +56,7 @@ object ToBytes {
   }
 
   implicit object ObjectEntryBytes extends ToBytesFixed[(RefVal, Ref)] {
-    override def blobSize: Int = Integer.BYTES*2 + 1
+    override def blobSize: Int = Integer.BYTES * 2 + 1
 
     override def bytes(value: (RefVal, Ref)): ByteString = {
       val out = value._1.bytes ++ value._2.bytes
@@ -67,7 +66,7 @@ object ToBytes {
   }
 
   implicit object LongToBytes extends ToBytesFixed[Long] {
-    override def blobSize: Int =java.lang.Long.BYTES
+    override def blobSize: Int = java.lang.Long.BYTES
 
     override def bytes(value: Long): ByteString = {
       val bb = ByteBuffer.allocate(blobSize)
@@ -77,7 +76,7 @@ object ToBytes {
   }
 
   implicit object IntToBytes extends ToBytesFixed[Int] {
-    override def blobSize: Int =java.lang.Integer.BYTES
+    override def blobSize: Int = java.lang.Integer.BYTES
 
     override def bytes(value: Int): ByteString = {
       val bb = ByteBuffer.allocate(blobSize)
@@ -87,7 +86,7 @@ object ToBytes {
   }
 
   implicit object ShortToBytes extends ToBytesFixed[Short] {
-    override def blobSize: Int =java.lang.Short.BYTES
+    override def blobSize: Int = java.lang.Short.BYTES
 
     override def bytes(value: Short): ByteString = {
       val bb = ByteBuffer.allocate(blobSize)
@@ -97,7 +96,7 @@ object ToBytes {
   }
 
   implicit object ByteToBytes extends ToBytesFixed[Byte] {
-    override def blobSize: Int =1
+    override def blobSize: Int = 1
 
     override def bytes(value: Byte): ByteString = {
       ByteString(value)
@@ -105,7 +104,7 @@ object ToBytes {
   }
 
   implicit object FloatToBytes extends ToBytesFixed[Float] {
-    override def blobSize: Int =java.lang.Float.BYTES
+    override def blobSize: Int = java.lang.Float.BYTES
 
     override def bytes(value: Float): ByteString = {
       val bb = ByteBuffer.allocate(blobSize)
@@ -124,9 +123,7 @@ object ToBytes {
     }
   }
 
-
-
-  implicit def toBytesFixedSize[T: ToBytesFixed]:  ToBytesFixedArray[Seq[T]]  = new ToBytesFixedArray[Seq[T]] {
+  implicit def toBytesFixedSize[T: ToBytesFixed]: ToBytesFixedArray[Seq[T]] = new ToBytesFixedArray[Seq[T]] {
     override def elementSize: Int = implicitly[ToBytesFixed[T]].blobSize
 
     override def bytes(value: Seq[T]): ByteString = {
@@ -134,8 +131,7 @@ object ToBytes {
     }
   }
 
-
-  implicit def toBytesVarSize[T: ToBytesVar]:  ToBytesVarArray[Seq[T]]  = new ToBytesVarArray[Seq[T]] {
+  implicit def toBytesVarSize[T: ToBytesVar]: ToBytesVarArray[Seq[T]] = new ToBytesVarArray[Seq[T]] {
     override def bytes(value: Seq[T]): ByteString = {
       val arrays = value.map(_.bytes)
       val offsets = computeOffsets(arrays, 0)
@@ -145,7 +141,7 @@ object ToBytes {
     }
   }
 
-  implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]:  ToBytesVarArray[Seq[T]]  = new ToBytesVarArray[Seq[T]] {
+  implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]: ToBytesVarArray[Seq[T]] = new ToBytesVarArray[Seq[T]] {
     override def bytes(value: Seq[T]): ByteString = {
       val arrays = value.map(_.bytes)
       val offsets = computeOffsets(arrays, 0)
@@ -170,16 +166,17 @@ object ToBytes {
   implicit object BigDecimalToBytes extends ToBytesVar[BigDecimal] {
     override def bytes(value: BigDecimal): ByteString = {
 
-      value.underlying().signum().bytes ++ value.underlying().precision().bytes ++ value.underlying().scale().bytes ++ ByteString(value.underlying().unscaledValue().toByteArray)
+      value.underlying().signum().bytes ++ value.underlying().precision().bytes ++ value.underlying().scale().bytes ++ ByteString(
+        value.underlying().unscaledValue().toByteArray
+      )
     }
   }
-
 
   implicit object ArrToBytes extends ToBytesFixedArray[Arr] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[Ref]].blobSize
 
     override def bytes(value: Arr): ByteString = {
-      (value.values.toSeq:Seq[Ref]).bytes
+      (value.values.toSeq: Seq[Ref]).bytes
     }
   }
 
@@ -187,7 +184,7 @@ object ToBytes {
     override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
 
     override def bytes(value: Obj): ByteString = {
-      (value.values.toSeq:Seq[(RefVal, Ref)]).bytes
+      (value.values.toSeq: Seq[(RefVal, Ref)]).bytes
     }
   }
 

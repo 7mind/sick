@@ -1,7 +1,6 @@
-package izumi.sick
+package izumi.sick.model
 
-import izumi.sick.Ref.RefVal
-
+import izumi.sick.model.Ref.RefVal
 
 sealed trait RefKind
 object RefKind {
@@ -23,7 +22,6 @@ object RefKind {
 
   case object TRoot extends RefKind
 
-
   implicit class RefKindExt(kind: RefKind) {
     def index: Byte = kind match {
       case TNul => 0
@@ -38,7 +36,6 @@ object RefKind {
       case TDbl => 7
       case TFlt => 8
       case TBigDec => 9
-
 
       case TStr => 10
       case TArr => 11
@@ -58,4 +55,3 @@ case class Arr(values: Vector[Ref])
 case class Obj(values: Vector[(RefVal, Ref)])
 
 case class Root(id: RefVal, ref: Ref)
-

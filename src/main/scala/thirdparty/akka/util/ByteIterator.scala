@@ -4,15 +4,13 @@
 
 package akka.util
 
-import java.nio.{ ByteBuffer, ByteOrder }
-import scala.annotation.tailrec
-import scala.collection.BufferedIterator
-import scala.collection.LinearSeq
-import scala.collection.mutable.ListBuffer
-import scala.reflect.ClassTag
 import akka.util.Collections.EmptyImmutableSeq
 
-import scala.annotation.nowarn
+import java.nio.{ByteBuffer, ByteOrder}
+import scala.annotation.{nowarn, tailrec}
+import scala.collection.{BufferedIterator, LinearSeq}
+import scala.collection.mutable.ListBuffer
+import scala.reflect.ClassTag
 
 object ByteIterator {
   object ByteArrayIterator {
@@ -26,9 +24,7 @@ object ByteIterator {
     val empty: ByteArrayIterator = apply(Array.emptyByteArray)
   }
 
-  class ByteArrayIterator private (private var array: Array[Byte], private var from: Int, private var until: Int)
-    extends ByteIterator {
-    iterator =>
+  class ByteArrayIterator private (private var array: Array[Byte], private var from: Int, private var until: Int) extends ByteIterator { iterator =>
 
     @inline final def len: Int = until - from
 
@@ -64,7 +60,7 @@ object ByteIterator {
                 result
               }
             case mbai: MultiByteArrayIterator => this ++: mbai
-            case bi                           => super.++(bi)
+            case bi => super.++(bi)
           }
       case io => super.++(io)
     }
@@ -165,7 +161,7 @@ object ByteIterator {
     def asInputStream: java.io.InputStream = new java.io.InputStream {
       override def available: Int = iterator.len
 
-      def read: Int = if (hasNext) (next().toInt & 0xff) else -1
+      def read: Int = if (hasNext) (next().toInt & 0xFF) else -1
 
       override def read(b: Array[Byte], off: Int, len: Int): Int = {
         if ((off < 0) || (len < 0) || (off + len > b.length)) throw new IndexOutOfBoundsException
@@ -223,7 +219,7 @@ object ByteIterator {
       result
     }
 
-    final override def len: Int = iterators.foldLeft(0) { _ + _.len }
+    final override def len: Int = iterators.foldLeft(0)(_ + _.len)
 
     final override def size: Int = {
       val result = len
@@ -327,21 +323,27 @@ object ByteIterator {
     }
 
     override def foreach[@specialized U](f: Byte => U): Unit = {
-      iterators.foreach { _.foreach(f) }
+      iterators.foreach(_.foreach(f))
       clear()
     }
 
     final override def toByteString: ByteString = {
       if (iterators.tail.isEmpty) iterators.head.toByteString
       else {
-        val result = iterators.foldLeft(ByteString.empty) { _ ++ _.toByteString }
+        val result = iterators.foldLeft(ByteString.empty)(_ ++ _.toByteString)
         clear()
         result
       }
     }
 
-    @tailrec protected final def getToArray[A](xs: Array[A], offset: Int, n: Int, elemSize: Int)(getSingle: => A)(
-      getMult: (Array[A], Int, Int) => Unit): this.type =
+    @tailrec protected final def getToArray[A](
+      xs: Array[A],
+      offset: Int,
+      n: Int,
+      elemSize: Int,
+    )(getSingle: => A
+    )(getMult: (Array[A], Int, Int) => Unit
+    ): this.type =
       if (n <= 0) this
       else {
         if (isEmpty) EmptyImmutableSeq.iterator.next()
@@ -358,27 +360,27 @@ object ByteIterator {
       }
 
     def getBytes(xs: Array[Byte], offset: Int, n: Int): this.type =
-      getToArray(xs, offset, n, 1) { getByte } { current.getBytes(_, _, _) }
+      getToArray(xs, offset, n, 1)(getByte)(current.getBytes(_, _, _))
 
     def getShorts(xs: Array[Short], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type =
-      getToArray(xs, offset, n, 2) { getShort(byteOrder) } { current.getShorts(_, _, _)(byteOrder) }
+      getToArray(xs, offset, n, 2)(getShort(byteOrder))(current.getShorts(_, _, _)(byteOrder))
 
     def getInts(xs: Array[Int], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type =
-      getToArray(xs, offset, n, 4) { getInt(byteOrder) } { current.getInts(_, _, _)(byteOrder) }
+      getToArray(xs, offset, n, 4)(getInt(byteOrder))(current.getInts(_, _, _)(byteOrder))
 
     def getLongs(xs: Array[Long], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type =
-      getToArray(xs, offset, n, 8) { getLong(byteOrder) } { current.getLongs(_, _, _)(byteOrder) }
+      getToArray(xs, offset, n, 8)(getLong(byteOrder))(current.getLongs(_, _, _)(byteOrder))
 
     def getFloats(xs: Array[Float], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type =
-      getToArray(xs, offset, n, 8) { getFloat(byteOrder) } { current.getFloats(_, _, _)(byteOrder) }
+      getToArray(xs, offset, n, 8)(getFloat(byteOrder))(current.getFloats(_, _, _)(byteOrder))
 
     def getDoubles(xs: Array[Double], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type =
-      getToArray(xs, offset, n, 8) { getDouble(byteOrder) } { current.getDoubles(_, _, _)(byteOrder) }
+      getToArray(xs, offset, n, 8)(getDouble(byteOrder))(current.getDoubles(_, _, _)(byteOrder))
 
     /** For performance sensitive code, call copyToBuffer() directly on ByteString (it's optimised there) */
     override def copyToBuffer(buffer: ByteBuffer): Int = {
       // the fold here is better than indexing into the LinearSeq
-      val n = iterators.foldLeft(0) { _ + _.copyToBuffer(buffer) }
+      val n = iterators.foldLeft(0)(_ + _.copyToBuffer(buffer))
       normalize()
       n
     }
@@ -386,7 +388,7 @@ object ByteIterator {
     def asInputStream: java.io.InputStream = new java.io.InputStream {
       override def available: Int = current.len
 
-      def read: Int = if (hasNext) (next().toInt & 0xff) else -1
+      def read: Int = if (hasNext) (next().toInt & 0xFF) else -1
 
       override def read(b: Array[Byte], off: Int, len: Int): Int = {
         val nRead = current.asInputStream.read(b, off, len)
@@ -414,8 +416,8 @@ object ByteIterator {
 }
 
 /**
- * An iterator over a ByteString.
- */
+  * An iterator over a ByteString.
+  */
 abstract class ByteIterator extends BufferedIterator[Byte] {
   def len: Int
 
@@ -505,8 +507,9 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
 
   override def foldLeft[@specialized B](z: B)(op: (B, Byte) => B): B = {
     var acc = z
-    foreach { byte =>
-      acc = op(acc, byte)
+    foreach {
+      byte =>
+        acc = op(acc, byte)
     }
     acc
   }
@@ -518,75 +521,75 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
   }
 
   /**
-   * Get a single Byte from this iterator. Identical to next().
-   */
+    * Get a single Byte from this iterator. Identical to next().
+    */
   def getByte: Byte = next()
 
   /**
-   * Get a single Short from this iterator.
-   */
+    * Get a single Short from this iterator.
+    */
   def getShort(implicit byteOrder: ByteOrder): Short = {
     if (byteOrder == ByteOrder.BIG_ENDIAN)
-      ((next() & 0xff) << 8 | (next() & 0xff) << 0).toShort
+      ((next() & 0xFF) << 8 | (next() & 0xFF) << 0).toShort
     else if (byteOrder == ByteOrder.LITTLE_ENDIAN)
-      ((next() & 0xff) << 0 | (next() & 0xff) << 8).toShort
+      ((next() & 0xFF) << 0 | (next() & 0xFF) << 8).toShort
     else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
 
   /**
-   * Get a single Int from this iterator.
-   */
+    * Get a single Int from this iterator.
+    */
   def getInt(implicit byteOrder: ByteOrder): Int = {
     if (byteOrder == ByteOrder.BIG_ENDIAN)
-      ((next() & 0xff) << 24
-        | (next() & 0xff) << 16
-        | (next() & 0xff) << 8
-        | (next() & 0xff) << 0)
+      ((next() & 0xFF) << 24
+      | (next() & 0xFF) << 16
+      | (next() & 0xFF) << 8
+      | (next() & 0xFF) << 0)
     else if (byteOrder == ByteOrder.LITTLE_ENDIAN)
-      ((next() & 0xff) << 0
-        | (next() & 0xff) << 8
-        | (next() & 0xff) << 16
-        | (next() & 0xff) << 24)
+      ((next() & 0xFF) << 0
+      | (next() & 0xFF) << 8
+      | (next() & 0xFF) << 16
+      | (next() & 0xFF) << 24)
     else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
 
   /**
-   * Get a single Long from this iterator.
-   */
+    * Get a single Long from this iterator.
+    */
   def getLong(implicit byteOrder: ByteOrder): Long = {
     if (byteOrder == ByteOrder.BIG_ENDIAN)
-      ((next().toLong & 0xff) << 56
-        | (next().toLong & 0xff) << 48
-        | (next().toLong & 0xff) << 40
-        | (next().toLong & 0xff) << 32
-        | (next().toLong & 0xff) << 24
-        | (next().toLong & 0xff) << 16
-        | (next().toLong & 0xff) << 8
-        | (next().toLong & 0xff) << 0)
+      ((next().toLong & 0xFF) << 56
+      | (next().toLong & 0xFF) << 48
+      | (next().toLong & 0xFF) << 40
+      | (next().toLong & 0xFF) << 32
+      | (next().toLong & 0xFF) << 24
+      | (next().toLong & 0xFF) << 16
+      | (next().toLong & 0xFF) << 8
+      | (next().toLong & 0xFF) << 0)
     else if (byteOrder == ByteOrder.LITTLE_ENDIAN)
-      ((next().toLong & 0xff) << 0
-        | (next().toLong & 0xff) << 8
-        | (next().toLong & 0xff) << 16
-        | (next().toLong & 0xff) << 24
-        | (next().toLong & 0xff) << 32
-        | (next().toLong & 0xff) << 40
-        | (next().toLong & 0xff) << 48
-        | (next().toLong & 0xff) << 56)
+      ((next().toLong & 0xFF) << 0
+      | (next().toLong & 0xFF) << 8
+      | (next().toLong & 0xFF) << 16
+      | (next().toLong & 0xFF) << 24
+      | (next().toLong & 0xFF) << 32
+      | (next().toLong & 0xFF) << 40
+      | (next().toLong & 0xFF) << 48
+      | (next().toLong & 0xFF) << 56)
     else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
 
   /**
-   * Get a Long from this iterator where only the least significant `n`
-   * bytes were encoded.
-   */
+    * Get a Long from this iterator where only the least significant `n`
+    * bytes were encoded.
+    */
   def getLongPart(n: Int)(implicit byteOrder: ByteOrder): Long = {
     if (byteOrder == ByteOrder.BIG_ENDIAN) {
       var x = 0L
-      (1 to n).foreach(_ => x = (x << 8) | (next() & 0xff))
+      (1 to n).foreach(_ => x = (x << 8) | (next() & 0xFF))
       x
     } else if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
       var x = 0L
-      (0 until n).foreach(i => x |= (next() & 0xff) << 8 * i)
+      (0 until n).foreach(i => x |= (next() & 0xFF) << 8 * i)
       x
     } else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
@@ -598,21 +601,21 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
     java.lang.Double.longBitsToDouble(getLong(byteOrder))
 
   /**
-   * Get a specific number of Bytes from this iterator. In contrast to
-   * copyToArray, this method will fail if this.len &lt; xs.length.
-   */
+    * Get a specific number of Bytes from this iterator. In contrast to
+    * copyToArray, this method will fail if this.len &lt; xs.length.
+    */
   def getBytes(xs: Array[Byte]): this.type = getBytes(xs, 0, xs.length)
 
   /**
-   * Get a specific number of Bytes from this iterator. In contrast to
-   * copyToArray, this method will fail if length &lt; n or if (xs.length - offset) &lt; n.
-   */
+    * Get a specific number of Bytes from this iterator. In contrast to
+    * copyToArray, this method will fail if length &lt; n or if (xs.length - offset) &lt; n.
+    */
   def getBytes(xs: Array[Byte], offset: Int, n: Int): this.type
 
   /**
-   * Get a specific number of Bytes from this iterator. In contrast to
-   * copyToArray, this method will fail if this.len &lt; n.
-   */
+    * Get a specific number of Bytes from this iterator. In contrast to
+    * copyToArray, this method will fail if this.len &lt; n.
+    */
   def getBytes(n: Int): Array[Byte] = {
     val bytes = new Array[Byte](n)
     getBytes(bytes, 0, n)
@@ -620,9 +623,9 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
   }
 
   /**
-   * Get a ByteString with specific number of Bytes from this iterator. In contrast to
-   * copyToArray, this method will fail if this.len &lt; n.
-   */
+    * Get a ByteString with specific number of Bytes from this iterator. In contrast to
+    * copyToArray, this method will fail if this.len &lt; n.
+    */
   def getByteString(n: Int): ByteString = {
     val bs = clone.take(n).toByteString
     drop(n)
@@ -630,74 +633,74 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
   }
 
   /**
-   * Get a number of Shorts from this iterator.
-   */
+    * Get a number of Shorts from this iterator.
+    */
   def getShorts(xs: Array[Short])(implicit byteOrder: ByteOrder): this.type =
     getShorts(xs, 0, xs.length)(byteOrder)
 
   /**
-   * Get a number of Shorts from this iterator.
-   */
+    * Get a number of Shorts from this iterator.
+    */
   def getShorts(xs: Array[Short], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type
 
   /**
-   * Get a number of Ints from this iterator.
-   */
+    * Get a number of Ints from this iterator.
+    */
   def getInts(xs: Array[Int])(implicit byteOrder: ByteOrder): this.type =
     getInts(xs, 0, xs.length)(byteOrder)
 
   /**
-   * Get a number of Ints from this iterator.
-   */
+    * Get a number of Ints from this iterator.
+    */
   def getInts(xs: Array[Int], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type
 
   /**
-   * Get a number of Longs from this iterator.
-   */
+    * Get a number of Longs from this iterator.
+    */
   def getLongs(xs: Array[Long])(implicit byteOrder: ByteOrder): this.type =
     getLongs(xs, 0, xs.length)(byteOrder)
 
   /**
-   * Get a number of Longs from this iterator.
-   */
+    * Get a number of Longs from this iterator.
+    */
   def getLongs(xs: Array[Long], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type
 
   /**
-   * Get a number of Floats from this iterator.
-   */
+    * Get a number of Floats from this iterator.
+    */
   def getFloats(xs: Array[Float])(implicit byteOrder: ByteOrder): this.type =
     getFloats(xs, 0, xs.length)(byteOrder)
 
   /**
-   * Get a number of Floats from this iterator.
-   */
+    * Get a number of Floats from this iterator.
+    */
   def getFloats(xs: Array[Float], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type
 
   /**
-   * Get a number of Doubles from this iterator.
-   */
+    * Get a number of Doubles from this iterator.
+    */
   def getDoubles(xs: Array[Double])(implicit byteOrder: ByteOrder): this.type =
     getDoubles(xs, 0, xs.length)(byteOrder)
 
   /**
-   * Get a number of Doubles from this iterator.
-   */
+    * Get a number of Doubles from this iterator.
+    */
   def getDoubles(xs: Array[Double], offset: Int, n: Int)(implicit byteOrder: ByteOrder): this.type
 
   /**
-   * Copy as many bytes as possible to a ByteBuffer, starting from it's
-   * current position. This method will not overflow the buffer.
-   *
-   * @param buffer a ByteBuffer to copy bytes to
-   * @return the number of bytes actually copied
-   */
+    * Copy as many bytes as possible to a ByteBuffer, starting from it's
+    * current position. This method will not overflow the buffer.
+    *
+    * @param buffer a ByteBuffer to copy bytes to
+    * @return the number of bytes actually copied
+    */
   /** For performance sensitive code, call take() directly on ByteString (it's optimised there) */
   def copyToBuffer(buffer: ByteBuffer): Int
 
   /**
-   * Directly wraps this ByteIterator in an InputStream without copying.
-   * Read and skip operations on the stream will advance the iterator
-   * accordingly.
-   */
+    * Directly wraps this ByteIterator in an InputStream without copying.
+    * Read and skip operations on the stream will advance the iterator
+    * accordingly.
+    */
   def asInputStream: java.io.InputStream
 }

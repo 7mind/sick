@@ -1,8 +1,11 @@
-package izumi.sick
+package izumi.sick.indexes
 
 import io.circe.Json
+import izumi.sick.model
+import izumi.sick.model._
+import izumi.sick.tables.Bijection
 
-class Index() {
+class RWIndex() {
   val strings = new Bijection[String]("Strings")
 
   val bytes = new Bijection[Byte]("Bytes")
@@ -26,11 +29,9 @@ class Index() {
       ints.freeze(),
       longs.freeze(),
       bigints.freeze(),
-
       floats.freeze(),
       doubles.freeze(),
       bigDecimals.freeze(),
-
       strings.freeze(),
       arrs.freeze(),
       objs.freeze(),
@@ -72,13 +73,13 @@ class Index() {
 
       case RefKind.TArr =>
         val a = arrs(ref.ref)
-        Json.fromValues(a.values.map(reconstruct) )
+        Json.fromValues(a.values.map(reconstruct))
       case RefKind.TObj =>
         val o = objs(ref.ref)
         Json.fromFields(o.values.map {
           case (k, v) =>
             (strings(k), reconstruct(v))
-        } )
+        })
     }
   }
 
@@ -92,10 +93,15 @@ class Index() {
 
     j.fold(
       Ref(RefKind.TNul, 0),
-      b => Ref(RefKind.TBit, if (b) {1} else {0}),
+      b =>
+        Ref(
+          RefKind.TBit,
+          if (b) { 1 }
+          else { 0 },
+        ),
       n => {
         n.toBigDecimal match {
-          case Some(value) if value.isWhole && value.isValidInt  =>
+          case Some(value) if value.isWhole && value.isValidInt =>
             val intValue = value.toIntExact
             if (intValue <= java.lang.Byte.MAX_VALUE) {
               addByte(intValue.byteValue())
@@ -105,57 +111,63 @@ class Index() {
             } else {
               addInt(intValue)
             }
-          case Some(value) if value.isWhole && value.isValidLong  =>
+          case Some(value) if value.isWhole && value.isValidLong =>
             addLong(value.toLongExact)
-          case Some(value) if value.isWhole  =>
+          case Some(value) if value.isWhole =>
             addBigInt(value.toBigIntExact.getOrElse(throw new IllegalStateException(s"Cannot decode BigInt $n")))
-          case Some(value) if value.isDecimalFloat  =>
+          case Some(value) if value.isDecimalFloat =>
             addFloat(value.floatValue)
-          case Some(value) if value.isDecimalDouble  =>
+          case Some(value) if value.isDecimalDouble =>
             addDouble(value.doubleValue)
-          case Some(value)  =>
+          case Some(value) =>
             addBigDec(value)
           case None =>
             throw new IllegalStateException(s"Cannot decode number $n")
         }
       },
-      s =>  addString(s),
-      arr => addArr(Arr(
-        arr.map(traverse)
-      )),
-      obj => addObj(Obj(
-        obj.toMap.toVector.map {
-          case (k, v) =>
-            (addString(k).ref, traverse(v))
-        }
-      ))
+      s => addString(s),
+      arr =>
+        addArr(
+          Arr(
+            arr.map(traverse)
+          )
+        ),
+      obj =>
+        addObj(
+          Obj(
+            obj.toMap.toVector.map {
+              case (k, v) =>
+                (addString(k).ref, traverse(v))
+            }
+          )
+        ),
     )
   }
 
-  def addString(s: String): Ref = Ref(RefKind.TStr, strings.add(s))
+  def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.add(s))
 
   def addByte(s: Byte): Ref = {
     Ref(RefKind.TByte, bytes.add(s))
   }
-  def addShort(s: Short): Ref = Ref(RefKind.TShort, shorts.add(s))
-  def addInt(s: Int): Ref = Ref(RefKind.TInt, ints.add(s))
-  def addLong(s: Long): Ref = Ref(RefKind.TLng, longs.add(s))
-  def addBigInt(s: BigInt): Ref = Ref(RefKind.TBigInt, bigints.add(s))
+  def addShort(s: Short): Ref = model.Ref(RefKind.TShort, shorts.add(s))
+  def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.add(s))
+  def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.add(s))
+  def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.add(s))
 
-  def addFloat(s: Float): Ref = Ref(RefKind.TFlt, floats.add(s))
-  def addDouble(s: Double): Ref = Ref(RefKind.TDbl, doubles.add(s))
-  def addBigDec(s: BigDecimal): Ref = Ref(RefKind.TBigDec, bigDecimals.add(s))
+  def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.add(s))
+  def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.add(s))
+  def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.add(s))
 
-  def addArr(s: Arr): Ref = Ref(RefKind.TArr, arrs.add(s))
+  def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.add(s))
 
-  def addObj(s: Obj): Ref = Ref(RefKind.TObj, objs.add(s))
+  def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.add(s))
 
   def addRoot(s: Root): Ref = {
     roots.revGet(s) match {
       case Some(value) =>
         throw new IllegalStateException(s"Root $s already exists with ref $value")
       case None =>
-        Ref(RefKind.TRoot, roots.add(s))
+        model.Ref(RefKind.TRoot, roots.add(s))
     }
   }
 }

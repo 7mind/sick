@@ -1,6 +1,6 @@
-package izumi.sick
+package izumi.sick.tables
 
-import izumi.sick.Ref.RefVal
+import izumi.sick.model.Ref.RefVal
 
 class Reftable[V](val name: String, val data: Map[RefVal, V]) {
   def apply(k: RefVal): V = data(k)

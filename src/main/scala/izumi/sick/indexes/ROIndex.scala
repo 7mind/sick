@@ -1,27 +1,27 @@
-package izumi.sick
+package izumi.sick.indexes
 
 import akka.util.ByteString
+import izumi.sick.model.{Arr, Obj, Root, ToBytes}
+import izumi.sick.tables.Reftable
 
 final class ROIndex(
-
-               val bytes: Reftable[Byte],
-               val shorts: Reftable[Short],
-               val ints: Reftable[Int],
-               val longs: Reftable[Long],
-
-               val bigints: Reftable[BigInt],
-               val floats: Reftable[Float],
-               val doubles: Reftable[Double],
-               val bigDecimals: Reftable[BigDecimal],
-
-               val strings: Reftable[String],
-               val arrs: Reftable[Arr],
-               val objs: Reftable[Obj],
-               val roots: Reftable[Root],
-             ) {
+  val bytes: Reftable[Byte],
+  val shorts: Reftable[Short],
+  val ints: Reftable[Int],
+  val longs: Reftable[Long],
+  val bigints: Reftable[BigInt],
+  val floats: Reftable[Float],
+  val doubles: Reftable[Double],
+  val bigDecimals: Reftable[BigDecimal],
+  val strings: Reftable[String],
+  val arrs: Reftable[Arr],
+  val objs: Reftable[Obj],
+  val roots: Reftable[Root],
+) {
   def parts: Seq[(Reftable[Any], ToBytes[Seq[Any]])] = {
-    import ToBytes._
-    Seq((bytes, implicitly[ToBytes[Seq[Byte]]]),
+    import izumi.sick.model.ToBytes._
+    Seq(
+      (bytes, implicitly[ToBytes[Seq[Byte]]]),
       (shorts, implicitly[ToBytes[Seq[Short]]]),
       (ints, implicitly[ToBytes[Seq[Int]]]),
       (longs, implicitly[ToBytes[Seq[Long]]]),
@@ -33,10 +33,10 @@ final class ROIndex(
       (arrs, implicitly[ToBytes[Seq[Arr]]]),
       (objs, implicitly[ToBytes[Seq[Obj]]]),
       (roots, implicitly[ToBytes[Seq[Root]]]),
-    ).map {case (c, codec) => (c.asInstanceOf[Reftable[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]])}
+    ).map { case (c, codec) => (c.asInstanceOf[Reftable[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]]) }
   }
 
-  def  blobs: Seq[ByteString] = parts.map {
+  def blobs: Seq[ByteString] = parts.map {
     case (p, codec) =>
       codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq)
   }
