@@ -37,34 +37,6 @@ object ToBytes {
     def bytes: ByteString = implicitly[ToBytes[T]].bytes(value)
   }
 
-  implicit object RefKindBytes extends ToBytesFixed[RefKind] {
-    override def blobSize: Int = 1
-
-    override def bytes(value: RefKind): ByteString = {
-      value.index.bytes
-    }
-  }
-
-  implicit object ArrayEntryBytes extends ToBytesFixed[Ref] {
-    override def blobSize: Int = 1 + Integer.BYTES
-
-    override def bytes(value: Ref): ByteString = {
-      val out = value.kind.bytes ++ value.ref.bytes
-      assert(out.size == blobSize)
-      out
-    }
-  }
-
-  implicit object ObjectEntryBytes extends ToBytesFixed[(RefVal, Ref)] {
-    override def blobSize: Int = Integer.BYTES * 2 + 1
-
-    override def bytes(value: (RefVal, Ref)): ByteString = {
-      val out = value._1.bytes ++ value._2.bytes
-      assert(out.size == blobSize)
-      out
-    }
-  }
-
   implicit object LongToBytes extends ToBytesFixed[Long] {
     override def blobSize: Int = java.lang.Long.BYTES
 
@@ -120,6 +92,34 @@ object ToBytes {
       val bb = ByteBuffer.allocate(blobSize)
       bb.putDouble(value)
       ByteString(bb.array())
+    }
+  }
+
+  implicit object RefKindBytes extends ToBytesFixed[RefKind] {
+    override def blobSize: Int = 1
+
+    override def bytes(value: RefKind): ByteString = {
+      value.index.bytes
+    }
+  }
+
+  implicit object ArrayEntryBytes extends ToBytesFixed[Ref] {
+    override def blobSize: Int = 1 + Integer.BYTES
+
+    override def bytes(value: Ref): ByteString = {
+      val out = value.kind.bytes ++ value.ref.bytes
+      assert(out.size == blobSize)
+      out
+    }
+  }
+
+  implicit object ObjectEntryBytes extends ToBytesFixed[(RefVal, Ref)] {
+    override def blobSize: Int = Integer.BYTES * 2 + 1
+
+    override def bytes(value: (RefVal, Ref)): ByteString = {
+      val out = value._1.bytes ++ value._2.bytes
+      assert(out.size == blobSize)
+      out
     }
   }
 
