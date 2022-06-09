@@ -3,7 +3,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    internal class ArrTable : BasicVarTable<OneArrTable>
+    public class ArrTable : BasicVarTable<OneArrTable>
     {
         public ArrTable(Stream stream, int offset) : base(stream, offset)
         {

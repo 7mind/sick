@@ -8,7 +8,7 @@ namespace SickSharp.Format.Tables
 {
     public record BigDecimal(BigInteger Unscaled, int Scale, int Precision, int Signum);
 
-    internal class BigDecTable : VarTable<BigDecimal>
+    public class BigDecTable : VarTable<BigDecimal>
     {
         public BigDecTable(Stream stream, int offset) : base(stream, offset)
         {

@@ -1,17 +1,16 @@
 ﻿#nullable enable
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
 
-namespace SickSharp.Tables
+namespace SickSharp
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        public  static void Main(string[] args)
         {
             var path = "../../../../json-sick-scala/output.bin";
             using (var stream = File.Open(path, FileMode.Open))

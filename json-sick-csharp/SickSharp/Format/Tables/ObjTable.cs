@@ -4,7 +4,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    internal class ObjTable : BasicVarTable<OneObjTable>
+    public class ObjTable : BasicVarTable<OneObjTable>
     {
         private readonly StringTable _strings;
 

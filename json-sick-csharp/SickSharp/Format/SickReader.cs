@@ -24,7 +24,7 @@ namespace SickSharp.Format
     ///     </list>
     /// </summary>
     /// <threadsafety instance="false" />
-    internal class SickReader
+    public class SickReader
     {
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly Stream _stream;

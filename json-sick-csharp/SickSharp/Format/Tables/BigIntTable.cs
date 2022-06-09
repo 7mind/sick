@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace SickSharp.Format.Tables
 {
-    internal class BigIntTable : VarTable<BigInteger>
+    public class BigIntTable : VarTable<BigInteger>
     {
         public BigIntTable(Stream stream, int offset) : base(stream, offset)
         {

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace SickSharp.Format.Tables
 {
-    internal class ByteTable : FixedTable<byte>
+    public class ByteTable : FixedTable<byte>
     {
         public ByteTable(Stream stream, int offset) : base(stream, offset)
         {

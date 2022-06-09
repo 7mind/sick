@@ -3,7 +3,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    internal class RootTable : FixedTable<Root>
+    public class RootTable : FixedTable<Root>
     {
         public RootTable(Stream stream, int offset) : base(stream, offset)
         {
