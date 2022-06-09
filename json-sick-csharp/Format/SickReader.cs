@@ -172,7 +172,7 @@ namespace SickSharp.Format
                 case RefKind.Dbl:
                     return new JDouble(Doubles.Read(reference.Value));
                 case RefKind.BigDec:
-                    return new JBigDecimal();
+                    return new JBigDecimal(BigDecimals.Read(reference.Value));
                 case RefKind.Str:
                     return new JStr(Strings.Read(reference.Value));
                 case RefKind.Arr:

@@ -51,7 +51,7 @@ namespace SickSharp.Format.Tables
             return null;
         }
 
-        public virtual T? OnBigDecimal()
+        public virtual T? OnBigDecimal(BigDecimal value)
         {
             return null;
         }
@@ -89,7 +89,7 @@ namespace SickSharp.Format.Tables
             Func<BigInteger, T> onBigInt,
             Func<float, T> onFloat,
             Func<double, T> onDouble,
-            Func<T> onBigDecimal,
+            Func<BigDecimal, T> onBigDecimal,
             Func<string, T> onString,
             Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj,
@@ -103,7 +103,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onNull();
@@ -119,7 +119,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onBool(Value);
@@ -135,7 +135,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onByte(Value);
@@ -151,7 +151,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onShort(Value);
@@ -167,7 +167,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onInt(Value);
@@ -183,7 +183,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onLong(Value);
@@ -199,7 +199,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onBigInt(Value);
@@ -215,7 +215,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onFloat(Value);
@@ -231,7 +231,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onDouble(Value);
@@ -243,19 +243,19 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public sealed record JBigDecimal : IJsonVal
+    public sealed record JBigDecimal(BigDecimal Value) : IJsonVal
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
-            return onBigDecimal();
+            return onBigDecimal(Value);
         }
 
         public T? Match<T>(JsonMatcher<T> matcher) where T : class
         {
-            return matcher.OnBigDecimal();
+            return matcher.OnBigDecimal(Value);
         }
     }
 
@@ -263,7 +263,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onString(Value);
@@ -279,7 +279,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onArray(Value);
@@ -295,7 +295,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onObj(Value);
@@ -311,7 +311,7 @@ namespace SickSharp.Format.Tables
     {
         public T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<byte, T> onByte, Func<short, T> onShort,
             Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
-            Func<double, T> onDouble, Func<T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
+            Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<OneArrTable, T> onArray,
             Func<OneObjTable, T> onObj, Func<Root, T> onRoot)
         {
             return onRoot(Value);
