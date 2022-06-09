@@ -3,6 +3,7 @@ using System.Linq;
 using System.Numerics;
 using SickSharp.Primitives;
 
+
 namespace SickSharp.Format.Tables
 {
     public record BigDecimal(BigInteger Unscaled, int Scale, int Precision, int Signum);
