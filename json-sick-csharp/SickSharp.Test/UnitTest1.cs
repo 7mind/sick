@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SickSharp.Encoder;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
 
@@ -13,6 +14,10 @@ public class Tests
     }
 
     [Test]
+    public void Test2()
+    {
+        Bijection<Int32>.Create("test");
+    }
     public void Test1()
     {
         var path = "../../../../../json-sick-scala/output.bin";
@@ -34,7 +39,7 @@ public class Tests
             //     Console.WriteLine($"{i} == {reader.Strings.Read(i)}");
             // }
             // Console.WriteLine($"last == {reader.Strings.Read(reader.Strings.Count-1)}");
-
+            
             Debug.Assert(reader.Bytes.Count == 59);
             Debug.Assert(reader.Shorts.Count == 2042);
             Debug.Assert(reader.Ints.Count == 8);
