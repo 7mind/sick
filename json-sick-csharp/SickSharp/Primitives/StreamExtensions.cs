@@ -1,11 +1,43 @@
 using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace SickSharp.Primitives
 {
+    public static class ByteArrayCollectionExtensions
+    {
+        public static byte[] Merge(this List<byte[]> collection)
+        {
+            var total = collection.Map(a => a.Length).Sum();
+            return collection.Flatten().ToArray();
+        }
+
+        public static List<int> ComputeOffsets(this List<byte[]> collection, Int32 initial)
+        {
+            var res = collection.Map(a => a.Length)
+                .Fold(new List<int> { initial }, (acc, sz) => acc.Append(acc.Last() + sz).ToList());
+            Debug.Assert(res.Count == collection.Count);
+            return res;
+        }
+    }
+    
+    public static class ArrayExtention
+        {
+    
+            public static T[] Concatenate<T>(this T[] array1, T[] array2)
+            {
+                T[] result = new T[array1.Length + array2.Length];
+                array1.CopyTo(result, 0);
+                array2.CopyTo(result, array1.Length);
+                return result;
+            }
+    
+        }
+    
     public static class StreamExtensions
     {
         public static byte[] ReadBuffer(this Stream stream, int count)

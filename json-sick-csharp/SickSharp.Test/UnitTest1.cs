@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LanguageExt;
 using SickSharp.Encoder;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
@@ -16,7 +17,8 @@ public class Tests
     [Test]
     public void Test2()
     {
-        Bijection<Int32>.Create("test");
+        //Console.WriteLine(Option<int>.Some(22).IfNone(11));
+        // Bijection<Int32>.Create("test");
     }
     public void Test1()
     {
