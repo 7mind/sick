@@ -167,12 +167,12 @@ namespace SickSharp.Encoder
     }
 
     
-    public interface IFixedArrayByteEncoder<T> : IByteEncoder<List<T>>
+    public interface IFixedArrayByteEncoder<T> : IByteEncoder<T>
     {
         public int ElementSize();
     }
 
-    class FixedArrayByteEncoder<T> : IFixedArrayByteEncoder<T>
+    class FixedArrayByteEncoder<T> : IFixedArrayByteEncoder<List<T>>
     {
         private IFixedByteEncoder<T> _elementEncoder;
 
@@ -192,7 +192,7 @@ namespace SickSharp.Encoder
             return _elementEncoder.BlobSize();
         }
     }
-    class RefListEncoder : IFixedArrayByteEncoder<Ref>
+    class RefListEncoder : IFixedArrayByteEncoder<List<Ref>>
     {
         public byte[] Bytes(List<Ref> value)
         {
@@ -204,7 +204,7 @@ namespace SickSharp.Encoder
             return Fixed.RefEncoder.BlobSize();
         }
     }
-    class ObjListEncoder : IFixedArrayByteEncoder<ObjEntry>
+    class ObjListEncoder : IFixedArrayByteEncoder<List<ObjEntry>>
     {
         public byte[] Bytes(List<ObjEntry> value)
         {
@@ -216,7 +216,7 @@ namespace SickSharp.Encoder
             return Fixed.ObjEntryEncoder.BlobSize();
         }
     }
-    class RootListEncoder : IFixedArrayByteEncoder<Root>
+    class RootListEncoder : IFixedArrayByteEncoder<List<Root>>
     {
         public byte[] Bytes(List<Root> value)
         {
@@ -231,9 +231,9 @@ namespace SickSharp.Encoder
     
     class FixedArray
     {
-        public static IFixedArrayByteEncoder<ObjEntry> ObjListEncoder = new ObjListEncoder();
-        public static IFixedArrayByteEncoder<Ref> RefListEncoder = new RefListEncoder();
-        public static IFixedArrayByteEncoder<Root> RootListEncoder = new RootListEncoder();
+        public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder = new ObjListEncoder();
+        public static IFixedArrayByteEncoder<List<Ref>> RefListEncoder = new RefListEncoder();
+        public static IFixedArrayByteEncoder<List<Root>> RootListEncoder = new RootListEncoder();
     }
 
 
@@ -298,9 +298,9 @@ namespace SickSharp.Encoder
 
     class FixedArrayEncoder<T> : IVarArrayByteEncoder<T>
     {
-        private IFixedByteEncoder<T> _elementEncoder;
+        private IFixedArrayByteEncoder<T> _elementEncoder;
 
-        public FixedArrayEncoder(IFixedByteEncoder<T> elementEncoder)
+        public FixedArrayEncoder(IFixedArrayByteEncoder<T> elementEncoder)
         {
             _elementEncoder = elementEncoder;
         }

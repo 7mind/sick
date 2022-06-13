@@ -17,6 +17,8 @@ public class Tests
     [Test]
     public void Test2()
     {
+        var a = (0..3);
+        Enumerable.Range(1, 5).Select(n => n * 2).ToList().ForEach(e => Console.WriteLine(e));  
         //Console.WriteLine(Option<int>.Some(22).IfNone(11));
         // Bijection<Int32>.Create("test");
     }

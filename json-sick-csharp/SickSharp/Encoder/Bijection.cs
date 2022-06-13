@@ -9,14 +9,14 @@ namespace SickSharp.Encoder
 {
     public class Bijection<V>
     {
-        private readonly string _name;
+        public string Name { get; }
         private readonly Dictionary<int, V> _mapping;
         private readonly Dictionary<V, int> _reverse;
         private readonly Dictionary<int, int> _counters;
 
         public Bijection(string name, Dictionary<int, V> mapping, Dictionary<V, int> reverse, Dictionary<int, int> counters)
         {
-            _name = name;
+            Name = name;
             _mapping = mapping;
             _reverse = reverse;
             _counters = counters;
@@ -34,6 +34,10 @@ namespace SickSharp.Encoder
             return _reverse.TryGetValue(Key: value);
         }
 
+        public List<V> AsList()
+        {
+            return Enumerable.Range(0, Size() - 1).Map(idx => _mapping[idx]).ToList();
+        }
         
         public int Freq(int key)
         {
@@ -53,7 +57,7 @@ namespace SickSharp.Encoder
         public Bijection<V> Rewrite(Func<V, V> mapping)
         {
             return new Bijection<V>(
-                _name,
+                Name,
                 _mapping.ToDictionary(kv => kv.Key, kv => mapping(kv.Value)),
                 _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value),
                 _counters.ToDictionary(kv => kv.Key, kv => kv.Value)
