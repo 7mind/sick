@@ -58,6 +58,7 @@ class RWIndex private (
   }
 
   def freeze(): ROIndex = {
+//    println(shorts.all().map(_._2._1).toList.sorted.mkString(","))
     new ROIndex(
       bytes.freeze(),
       shorts.freeze(),
@@ -127,7 +128,7 @@ class RWIndex private (
         case ((originalRef, (target, freq)), newRef) =>
           (originalRef, (newRef, target, freq))
       }
-      val updated = Bijection.fromMonotonic(bytes.name, data.map(_._2))
+      val updated = Bijection.fromMonotonic(table.name, data.map(_._2))
       (updated, data.map { case (origRef, (newRef, _, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
     }
 
@@ -188,13 +189,14 @@ class RWIndex private (
         n.toBigDecimal match {
           case Some(value) if value.isWhole && value.isValidInt =>
             val intValue = value.toIntExact
-            if (intValue <= java.lang.Byte.MAX_VALUE) {
+            if (intValue <= java.lang.Byte.MAX_VALUE && intValue >= java.lang.Byte.MIN_VALUE) {
               addByte(intValue.byteValue())
-            }
-            if (intValue <= java.lang.Short.MAX_VALUE) {
+            } else if (intValue <= java.lang.Short.MAX_VALUE && intValue >= java.lang.Short.MIN_VALUE) {
               addShort(intValue.shortValue())
-            } else {
+            } else if (intValue <= java.lang.Integer.MAX_VALUE && intValue >= java.lang.Integer.MIN_VALUE) {
               addInt(intValue)
+            } else {
+              throw new IllegalStateException(s"Cannot decode number $n")
             }
           case Some(value) if value.isWhole && value.isValidLong =>
             addLong(value.toLongExact)

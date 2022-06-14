@@ -7,23 +7,44 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp.Encoder
 {
+    class ListComparer<T> : IEqualityComparer<List<T>>
+    {
+        public bool Equals(List<T> x, List<T> y)
+        {
+            return x.SequenceEqual(y);
+        }
+
+        public int GetHashCode(List<T> obj)
+        {
+            int hashcode = 0;
+            foreach (T t in obj)
+            {
+                if (t != null)
+                {
+                    hashcode ^= t.GetHashCode();
+                }
+            }
+            return hashcode;
+        }
+    }
+    
     public class Bijection<V>
     {
         public string Name { get; }
         private readonly Dictionary<int, V> _mapping;
         private readonly Dictionary<V, int> _reverse;
         private readonly Dictionary<int, int> _counters;
+        private readonly IEqualityComparer<V>? _comparer;
 
-        public Bijection(string name, Dictionary<int, V> mapping, Dictionary<V, int> reverse, Dictionary<int, int> counters)
+        public Bijection(string name, Dictionary<int, V> mapping, Dictionary<V, int> reverse, Dictionary<int, int> counters, IEqualityComparer<V>? comparer)
         {
             Name = name;
             _mapping = mapping;
             _reverse = reverse;
             _counters = counters;
+            _comparer = comparer;
         }
-
-
-
+        
         public Option<V> Get(int idx)
         {
             return _mapping.TryGetValue(Key: idx);
@@ -61,11 +82,13 @@ namespace SickSharp.Encoder
 
         public Bijection<V> Rewrite(Func<V, V> mapping)
         {
+            var rev = _comparer != null ? _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value, _comparer) : _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value);
             return new Bijection<V>(
                 Name,
                 _mapping.ToDictionary(kv => kv.Key, kv => mapping(kv.Value)),
-                _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value),
-                _counters.ToDictionary(kv => kv.Key, kv => kv.Value)
+                rev,
+                _counters.ToDictionary(kv => kv.Key, kv => kv.Value),
+                _comparer
             );
         }
         
@@ -86,23 +109,42 @@ namespace SickSharp.Encoder
         }
         
         
-        public static Bijection<V> Create(string name) 
+        // public static Bijection<V> Create(string name)
+        // {
+        //     return Create(name, null);
+        // }
+        //
+        public static Bijection<V> Create(string name, IEqualityComparer<V>? comparer) 
         {
-            return new Bijection<V>(name, 
-                new Dictionary<int, V>(), 
-                new Dictionary<V, int>(),
-                new Dictionary<int, int>()
-            );
+            if (comparer == null)
+            {
+                return new Bijection<V>(name, 
+                    new Dictionary<int, V>(), 
+                    new Dictionary<V, int>(),
+                    new Dictionary<int, int>(),
+                    null
+                );
+            }
+            else
+            {
+                return new Bijection<V>(name, 
+                    new Dictionary<int, V>(), 
+                    new Dictionary<V, int>(comparer),
+                    new Dictionary<int, int>(),
+                    comparer
+                );
+
+            }
         }
 
-        public static Bijection<V> FromMonothonic(string name, List<(int Idx, V Value, int Freq)> content) 
+        public static Bijection<V> FromMonothonic(string name, List<(int Idx, V Value, int Freq)> content, IEqualityComparer<V>? comparer) 
         {
 
             var data = content.ToDictionary(v => v.Idx, v => v.Value);
-            var revdata = content.ToDictionary(v => v.Value, v => v.Idx);
+            var revdata = comparer != null ?  content.ToDictionary(v => v.Value, v => v.Idx, comparer) : content.ToDictionary(v => v.Value, v => v.Idx);
             var freq = content.ToDictionary(v => v.Idx, v => v.Freq);
 
-            return new Bijection<V>(name, data, revdata, freq);
+            return new Bijection<V>(name, data, revdata, freq, comparer);
         }
     }
 
@@ -119,5 +161,6 @@ namespace SickSharp.Encoder
         }
     }
     
+
 
 }

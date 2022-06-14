@@ -11,7 +11,7 @@ namespace SickSharp.Encoder
 {
     public class Index
     {
-        private Bijection<Byte> _bytes;
+        private Bijection<SByte> _bytes;
         private Bijection<Int16> _shorts;
         private Bijection<Int32> _ints;
         private Bijection<Int64> _longs;
@@ -26,7 +26,7 @@ namespace SickSharp.Encoder
         private Bijection<List<ObjEntry>> _objs;
         private Bijection<Root> _roots;
         
-        public Index(Bijection<byte> bytes, Bijection<short> shorts, Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
+        public Index(Bijection<sbyte> bytes, Bijection<short> shorts, Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
         {
             _bytes = bytes;
             _shorts = shorts;
@@ -45,18 +45,18 @@ namespace SickSharp.Encoder
         public static Index Create()
         {
             return new Index(
-                Bijection<byte>.Create("bytes"),
-                Bijection<short>.Create("shorts"),
-                Bijection<int>.Create("ints"),
-                Bijection<long>.Create("longs"),
-                Bijection<BigInteger>.Create("bigints"),
-                Bijection<Single>.Create("floats"),
-                Bijection<Double>.Create("doubles"),
-                Bijection<BigDecimal>.Create("bigdecs"),
-                Bijection<String>.Create("strings"),
-                Bijection<List<Ref>>.Create("arrays"),
-                Bijection<List<ObjEntry>>.Create("objects"),
-                Bijection<Root>.Create("roots")
+                Bijection<sbyte>.Create("bytes", null),
+                Bijection<short>.Create("shorts", null),
+                Bijection<int>.Create("ints", null),
+                Bijection<long>.Create("longs", null),
+                Bijection<BigInteger>.Create("bigints", null),
+                Bijection<Single>.Create("floats", null),
+                Bijection<Double>.Create("doubles", null),
+                Bijection<BigDecimal>.Create("bigdecs", null),
+                Bijection<String>.Create("strings", null),
+                Bijection<List<Ref>>.Create("arrays", new ListComparer<Ref>()),
+                Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
+                Bijection<Root>.Create("roots", null)
                 );
         }
 
@@ -64,7 +64,7 @@ namespace SickSharp.Encoder
         {
             return new List<SerializedTable>
             {
-                new(_bytes.Name, new FixedArrayByteEncoder<byte>(Fixed.ByteEncoder).Bytes(_bytes.AsList())),
+                new(_bytes.Name, new FixedArrayByteEncoder<sbyte>(Fixed.ByteEncoder).Bytes(_bytes.AsList())),
                 new(_shorts.Name, new FixedArrayByteEncoder<short>(Fixed.ShortEncoder).Bytes(_shorts.AsList())),
                 new(_ints.Name, new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(_ints.AsList())),
                 new(_longs.Name, new FixedArrayByteEncoder<long>(Fixed.LongEncoder).Bytes(_longs.AsList())),
@@ -94,6 +94,7 @@ namespace SickSharp.Encoder
             return new SerializedIndex(everything);
         }
 
+        // this can be externalized so Index won't depend on json.net
         public Ref append(String id, JToken json)
         {
             var idRef = addString(id);
@@ -118,8 +119,8 @@ namespace SickSharp.Encoder
                 JValue v =>
                     v.Type switch
                     {
-                        JTokenType.Integer => addLong((long)v.Value),
-                        JTokenType.Float => addDouble((double)v.Value),
+                        JTokenType.Integer => handleInt(v),
+                        JTokenType.Float => handleFloat(v),
                         JTokenType.String => addString((string)v.Value),
                         JTokenType.Boolean => new Ref(RefKind.Bit, Convert.ToInt32((bool)v.Value)),
                         JTokenType.Null => new Ref(RefKind.Nul, 0),
@@ -132,12 +133,33 @@ namespace SickSharp.Encoder
             };
         }
 
+        private Ref handleInt(JValue v)
+        {
+            return v.Value switch
+            {
+                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => addByte(Convert.ToSByte(i)),
+                Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => addShort(Convert.ToInt16(i)),
+                Int64 i when i <= Int32.MaxValue && i >= Int32.MinValue => addInt(Convert.ToInt32(i)),
+                Int64 i when i <= Int64.MaxValue && i >= Int64.MinValue => addLong(i),
+                _ => throw new InvalidDataException($"Unexpected integer: {v}")
+            };
+        }
+        private Ref handleFloat(JValue v)
+        {
+            return v.Value switch
+            {
+                Double i when i <= Single.MaxValue && i >= Single.MinValue => addFloat(Convert.ToSingle(i)),
+                Double i when i <= Double.MaxValue && i >= Double.MinValue => addDouble(i),
+                _ => throw new InvalidDataException($"Unexpected integer: {v}")
+            };
+        }
+
         private Ref addString(String s)
         {
             return new Ref(RefKind.Str, _strings.Add(s));
         }
 
-        private Ref addByte(Byte s)
+        private Ref addByte(SByte s)
         {
             return new Ref(RefKind.Byte, _bytes.Add(s));
         }

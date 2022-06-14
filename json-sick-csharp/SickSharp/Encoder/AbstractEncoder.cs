@@ -23,7 +23,7 @@ namespace SickSharp.Encoder
 
     public class Fixed
     {
-        public static readonly IFixedByteEncoder<Byte> ByteEncoder = new ByteEncoder();
+        public static readonly IFixedByteEncoder<SByte> ByteEncoder = new ByteEncoder();
         public static IFixedByteEncoder<Int16> ShortEncoder = new ShortEncoder();
         public static readonly IFixedByteEncoder<Int32> IntEncoder = new IntEncoder();
         public static readonly IFixedByteEncoder<Int64> LongEncoder = new LongEncoder();
@@ -35,11 +35,11 @@ namespace SickSharp.Encoder
         public static IFixedByteEncoder<Root> RootEncoder = new RootEncoder();
     }
     
-    class ByteEncoder : IFixedByteEncoder<Byte>
+    class ByteEncoder : IFixedByteEncoder<SByte>
     {
-        public byte[] Bytes(byte value)
+        public byte[] Bytes(sbyte value)
         {
-            return new byte[1] { value };
+            return new byte[1] { (byte)value };
         }
 
         public int BlobSize()
@@ -119,7 +119,7 @@ namespace SickSharp.Encoder
     {
         public byte[] Bytes(RefKind value)
         {
-            return Fixed.ByteEncoder.Bytes((byte)value);
+            return Fixed.ByteEncoder.Bytes((sbyte)value);
         }
 
         public int BlobSize()

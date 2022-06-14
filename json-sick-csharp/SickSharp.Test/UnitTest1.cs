@@ -37,9 +37,7 @@ public class Tests
         using (var stream = File.Open(outPath, FileMode.Open))
         {
             var reader = new SickReader(stream);
-            Console.WriteLine(reader.Header);
-            var configRef = reader.GetRoot("config.json")!;
-            Console.WriteLine(configRef);
+            VerifyConfigJson(reader);
         }
     }
     
@@ -66,30 +64,38 @@ public class Tests
             // }
             // Console.WriteLine($"last == {reader.Strings.Read(reader.Strings.Count-1)}");
             
-            Debug.Assert(reader.Bytes.Count == 59);
-            Debug.Assert(reader.Shorts.Count == 2042);
-            Debug.Assert(reader.Ints.Count == 8);
-            Debug.Assert(reader.Longs.Count == 0);
-
-            Debug.Assert(reader.Floats.Count == 5);
-            Debug.Assert(reader.Doubles.Count == 0);
-
-            var configRef = reader.GetRoot("config.json")!;
-            Console.WriteLine(configRef);
-
-                
-            var config = reader.Resolve(configRef);
-            Console.WriteLine(config);
-            Console.WriteLine(config.Match(new TestMatcher()));
-            foreach (var key in ((JObj)config).Value) Console.WriteLine($"{key.Key} -> {key.Value}");
-
-            var queryResult = reader.Query(configRef, "mutations[0].segments[-1].segment");
-            Console.WriteLine($"{queryResult} == {String.Join(", ", ((JObj)queryResult).Value.Content().ToList())}");
+            VerifyConfigJson(reader);
         }
         
         //Assert.Pass();
     }
-    
+
+    private static void VerifyConfigJson(SickReader reader)
+    {
+        Debug.Assert(reader.Bytes.Count == 59);
+        Debug.Assert(reader.Shorts.Count == 1983);
+        Debug.Assert(reader.Ints.Count == 8);
+        Debug.Assert(reader.Longs.Count == 0);
+
+        Debug.Assert(reader.Floats.Count == 5);
+        Debug.Assert(reader.Doubles.Count == 0);
+        Debug.Assert(reader.Strings.Count == 27365);
+        Debug.Assert(reader.Arrs.Count == 5124);
+        Debug.Assert(reader.Objs.Count == 44130);
+
+        var configRef = reader.GetRoot("config.json")!;
+        Console.WriteLine(configRef);
+
+
+        var config = reader.Resolve(configRef);
+        Console.WriteLine(config);
+        Console.WriteLine(config.Match(new TestMatcher()));
+        foreach (var key in ((JObj)config).Value) Console.WriteLine($"{key.Key} -> {key.Value}");
+
+        var queryResult = reader.Query(configRef, "mutations[0].segments[-1].segment");
+        Console.WriteLine($"{queryResult} == {String.Join(", ", ((JObj)queryResult).Value.Content().ToList())}");
+    }
+
     private class TestMatcher : JsonMatcher<string>
     {
         public override string? OnObj(OneObjTable value)
