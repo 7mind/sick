@@ -11,8 +11,6 @@ namespace SickSharp.Encoder
 {
     public class Index
     {
-        private Bijection<SByte> _bytes;
-        private Bijection<Int16> _shorts;
         private Bijection<Int32> _ints;
         private Bijection<Int64> _longs;
         private Bijection<BigInteger> _bigints;
@@ -26,10 +24,10 @@ namespace SickSharp.Encoder
         private Bijection<List<ObjEntry>> _objs;
         private Bijection<Root> _roots;
         
-        public Index(Bijection<sbyte> bytes, Bijection<short> shorts, Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
+        public Index(Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
         {
-            _bytes = bytes;
-            _shorts = shorts;
+            // _bytes = bytes;
+            // _shorts = shorts;
             _ints = ints;
             _longs = longs;
             _floats = floats;
@@ -45,8 +43,6 @@ namespace SickSharp.Encoder
         public static Index Create()
         {
             return new Index(
-                Bijection<sbyte>.Create("bytes", null),
-                Bijection<short>.Create("shorts", null),
                 Bijection<int>.Create("ints", null),
                 Bijection<long>.Create("longs", null),
                 Bijection<BigInteger>.Create("bigints", null),
@@ -64,8 +60,6 @@ namespace SickSharp.Encoder
         {
             return new List<SerializedTable>
             {
-                new(_bytes.Name, new FixedArrayByteEncoder<sbyte>(Fixed.ByteEncoder).Bytes(_bytes.AsList())),
-                new(_shorts.Name, new FixedArrayByteEncoder<short>(Fixed.ShortEncoder).Bytes(_shorts.AsList())),
                 new(_ints.Name, new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(_ints.AsList())),
                 new(_longs.Name, new FixedArrayByteEncoder<long>(Fixed.LongEncoder).Bytes(_longs.AsList())),
                 new(_bigints.Name, new VarArrayEncoder<BigInteger>(Variable.BigIntEncoder).Bytes(_bigints.AsList())),
@@ -137,8 +131,8 @@ namespace SickSharp.Encoder
         {
             return v.Value switch
             {
-                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => addByte(Convert.ToSByte(i)),
-                Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => addShort(Convert.ToInt16(i)),
+                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => new Ref(RefKind.Byte, (byte)i),
+                Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => new Ref(RefKind.Short, (short)i),
                 Int64 i when i <= Int32.MaxValue && i >= Int32.MinValue => addInt(Convert.ToInt32(i)),
                 Int64 i when i <= Int64.MaxValue && i >= Int64.MinValue => addLong(i),
                 _ => throw new InvalidDataException($"Unexpected integer: {v}")
@@ -158,17 +152,7 @@ namespace SickSharp.Encoder
         {
             return new Ref(RefKind.Str, _strings.Add(s));
         }
-
-        private Ref addByte(SByte s)
-        {
-            return new Ref(RefKind.Byte, _bytes.Add(s));
-        }
-
-        private Ref addShort(Int16 s)
-        {
-            return new Ref(RefKind.Short, _shorts.Add(s));
-        }
-
+        
         private Ref addInt(Int32 s)
         {
             return new Ref(RefKind.Int, _ints.Add(s));

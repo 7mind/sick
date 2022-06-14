@@ -9,8 +9,8 @@ object RWIndex {
   def apply(): RWIndex = {
     val strings = Bijection[String]("Strings")
 
-    val bytes = Bijection[Byte]("Bytes")
-    val shorts = Bijection[Short]("Shorts")
+//    val bytes = Bijection[Byte]("Bytes")
+//    val shorts = Bijection[Short]("Shorts")
     val ints = Bijection[Int]("Integers")
     val longs = Bijection[Long]("Longs")
     val bigints = Bijection[BigInt]("Bigints")
@@ -24,8 +24,8 @@ object RWIndex {
     val roots = Bijection[Root]("Roots")
     new RWIndex(
       strings,
-      bytes,
-      shorts,
+//      bytes,
+//      shorts,
       ints,
       longs,
       bigints,
@@ -40,8 +40,8 @@ object RWIndex {
 }
 class RWIndex private (
   strings: Bijection[String],
-  bytes: Bijection[Byte],
-  shorts: Bijection[Short],
+//  bytes: Bijection[Byte],
+//  shorts: Bijection[Short],
   ints: Bijection[Int],
   longs: Bijection[Long],
   bigints: Bijection[BigInt],
@@ -60,8 +60,8 @@ class RWIndex private (
   def freeze(): ROIndex = {
 //    println(shorts.all().map(_._2._1).toList.sorted.mkString(","))
     new ROIndex(
-      bytes.freeze(),
-      shorts.freeze(),
+//      bytes.freeze(),
+//      shorts.freeze(),
       ints.freeze(),
       longs.freeze(),
       bigints.freeze(),
@@ -76,7 +76,7 @@ class RWIndex private (
   }
 
   override def toString: String = {
-    Seq(strings, bytes, shorts, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs, roots).filterNot(_.isEmpty).mkString("\n\n")
+    Seq(strings, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs, roots).filterNot(_.isEmpty).mkString("\n\n")
   }
 
   def reconstruct(ref: Ref): Json = {
@@ -87,9 +87,10 @@ class RWIndex private (
         Json.fromBoolean(ref.ref == 1)
 
       case RefKind.TByte =>
-        Json.fromInt(bytes(ref.ref))
+        Json.fromInt(ref.ref)
       case RefKind.TShort =>
-        Json.fromInt(shorts(ref.ref))
+        Json.fromInt(ref.ref)
+
       case RefKind.TInt =>
         Json.fromInt(ints(ref.ref))
       case RefKind.TLng =>
@@ -132,8 +133,6 @@ class RWIndex private (
       (updated, data.map { case (origRef, (newRef, _, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
     }
 
-    val (newBytes, byteMap) = rebuildSimpleTable(bytes, RefKind.TByte)
-    val (newShorts, shortMap) = rebuildSimpleTable(shorts, RefKind.TShort)
     val (newInts, intmapMap) = rebuildSimpleTable(ints, RefKind.TInt)
     val (newLongs, longMap) = rebuildSimpleTable(longs, RefKind.TLng)
     val (newBigints, bigintMap) = rebuildSimpleTable(bigints, RefKind.TBigInt)
@@ -145,17 +144,10 @@ class RWIndex private (
     val (newObjs, objMap) = rebuildSimpleTable(objs, RefKind.TObj)
     val (newRoots, rootMap) = rebuildSimpleTable(roots, RefKind.TRoot)
 
-    val inplace = Map(
-      Ref(RefKind.TNul, 0) -> Ref(RefKind.TNul, 0),
-      Ref(RefKind.TBit, 0) -> Ref(RefKind.TBit, 0),
-      Ref(RefKind.TBit, 1) -> Ref(RefKind.TBit, 1),
-    )
-    val fullMap = Seq(inplace, byteMap, shortMap, intmapMap, longMap, bigintMap, floatMap, doubleMap, bigdecMap, stringMap, arrMap, objMap, rootMap).flatten.toMap
+    val fullMap = Seq(intmapMap, longMap, bigintMap, floatMap, doubleMap, bigdecMap, stringMap, arrMap, objMap, rootMap).flatten.toMap
 
     new RWIndex(
       newStrs,
-      newBytes,
-      newShorts,
       newInts,
       newLongs,
       newBigints,
@@ -190,9 +182,9 @@ class RWIndex private (
           case Some(value) if value.isWhole && value.isValidInt =>
             val intValue = value.toIntExact
             if (intValue <= java.lang.Byte.MAX_VALUE && intValue >= java.lang.Byte.MIN_VALUE) {
-              addByte(intValue.byteValue())
+              Ref(RefKind.TByte, intValue)
             } else if (intValue <= java.lang.Short.MAX_VALUE && intValue >= java.lang.Short.MIN_VALUE) {
-              addShort(intValue.shortValue())
+              Ref(RefKind.TShort, intValue)
             } else if (intValue <= java.lang.Integer.MAX_VALUE && intValue >= java.lang.Integer.MIN_VALUE) {
               addInt(intValue)
             } else {
@@ -232,8 +224,6 @@ class RWIndex private (
   }
 
   private def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.add(s))
-  private def addByte(s: Byte): Ref = Ref(RefKind.TByte, bytes.add(s))
-  private def addShort(s: Short): Ref = model.Ref(RefKind.TShort, shorts.add(s))
   private def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.add(s))
   private def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.add(s))
   private def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.add(s))

@@ -34,21 +34,19 @@ namespace SickSharp.Format
             _stream = stream;
             Header = ReadHeader();
 
-            Bytes = new ByteTable(_stream, Header.Offsets[0]);
-            Shorts = new ShortTable(_stream, Header.Offsets[1]);
-            Ints = new IntTable(_stream, Header.Offsets[2]);
-            Longs = new LongTable(_stream, Header.Offsets[3]);
-            BigInts = new BigIntTable(_stream, Header.Offsets[4]);
+            Ints = new IntTable(_stream, Header.Offsets[0]);
+            Longs = new LongTable(_stream, Header.Offsets[1]);
+            BigInts = new BigIntTable(_stream, Header.Offsets[2]);
 
-            Floats = new FloatTable(_stream, Header.Offsets[5]);
-            Doubles = new DoubleTable(_stream, Header.Offsets[6]);
-            BigDecimals = new BigDecTable(_stream, Header.Offsets[7]);
+            Floats = new FloatTable(_stream, Header.Offsets[3]);
+            Doubles = new DoubleTable(_stream, Header.Offsets[4]);
+            BigDecimals = new BigDecTable(_stream, Header.Offsets[5]);
 
-            Strings = new StringTable(_stream, Header.Offsets[8]);
+            Strings = new StringTable(_stream, Header.Offsets[6]);
 
-            Arrs = new ArrTable(_stream, Header.Offsets[9]);
-            Objs = new ObjTable(_stream, Strings, Header.Offsets[10]);
-            Roots = new RootTable(_stream, Header.Offsets[11]);
+            Arrs = new ArrTable(_stream, Header.Offsets[7]);
+            Objs = new ObjTable(_stream, Strings, Header.Offsets[8]);
+            Roots = new RootTable(_stream, Header.Offsets[9]);
 
             for (var i = 0; i < Roots.Count; i++)
             {
@@ -60,8 +58,6 @@ namespace SickSharp.Format
         }
 
         public Header Header { get; }
-        public ByteTable Bytes { get; }
-        public ShortTable Shorts { get; }
         public IntTable Ints { get; }
         public LongTable Longs { get; }
         public BigIntTable BigInts { get; }
@@ -158,9 +154,9 @@ namespace SickSharp.Format
                 case RefKind.Bit:
                     return new JBool(reference.Value == 1);
                 case RefKind.Byte:
-                    return new JByte(Bytes.Read(reference.Value));
+                    return new JByte((byte)reference.Value);
                 case RefKind.Short:
-                    return new JShort(Shorts.Read(reference.Value));
+                    return new JShort((short)reference.Value);
                 case RefKind.Int:
                     return new JInt(Ints.Read(reference.Value));
                 case RefKind.Lng:
@@ -200,7 +196,7 @@ namespace SickSharp.Format
             var tableCount = _stream.ReadInt32();
 
             Debug.Assert(version == 0);
-            Debug.Assert(tableCount == 12);
+            Debug.Assert(tableCount == 10);
 
             var tableOffsets = new List<int>();
 

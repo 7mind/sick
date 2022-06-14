@@ -108,12 +108,6 @@ namespace SickSharp.Encoder
             return idx;
         }
         
-        
-        // public static Bijection<V> Create(string name)
-        // {
-        //     return Create(name, null);
-        // }
-        //
         public static Bijection<V> Create(string name, IEqualityComparer<V>? comparer) 
         {
             if (comparer == null)

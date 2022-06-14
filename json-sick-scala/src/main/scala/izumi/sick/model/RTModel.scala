@@ -65,7 +65,15 @@ case class Obj(values: Vector[(RefVal, Ref)]) {}
 object Obj {
   implicit object ObjMap extends RefMappable[Obj] {
     override def remap(value: Obj, mapping: Map[Ref, Ref]): Obj = {
-      Obj(value.values.map { case (k, v) => (mapping(Ref(RefKind.TStr, k)).ref, mapping(v)) })
+      def fullMapping(ref: Ref) = {
+        ref.kind match {
+          case RefKind.TNul | RefKind.TBit | RefKind.TByte | RefKind.TShort =>
+            ref
+          case _ => mapping(ref)
+        }
+      }
+
+      Obj(value.values.map { case (k, v) => (mapping(Ref(RefKind.TStr, k)).ref, fullMapping(v)) })
     }
   }
 }
