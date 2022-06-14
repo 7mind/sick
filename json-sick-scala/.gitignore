@@ -1,5 +1,5 @@
 config.json
-output*.bin*
+*.bin*
 
 .bsp
 
