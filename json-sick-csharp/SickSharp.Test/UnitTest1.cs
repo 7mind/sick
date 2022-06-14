@@ -23,10 +23,13 @@ public class Tests
         var path = "../../../../../json-sick-scala/config.json";
         var outPath = "../../../../../json-sick-scala/config-sharp.bin";
         
-        var loaded = JToken.Load(new JsonTextReader(new StreamReader(path)));
+        using var sr = new StreamReader(path);
+        using var jreader = new JsonTextReader(sr);
+        jreader.DateParseHandling = DateParseHandling.None;
+        
+        var loaded = JToken.Load(jreader);
         var index = Index.Create();
         var root = index.append("config.json", loaded);
-        Console.WriteLine(root);
         
         using (BinaryWriter binWriter =  
                new BinaryWriter(File.Open(outPath, FileMode.Create)))  
@@ -48,30 +51,13 @@ public class Tests
         using (var stream = File.Open(path, FileMode.Open))
         {
             var reader = new SickReader(stream);
-            Console.WriteLine(reader.Header);
-
-            // var firstArr = reader.Arrs.Read(0);
-            // Console.WriteLine(reader.Arrs.Count);
-            // for (var i = 0; i < firstArr.Count; i++) Console.WriteLine($"{i} == {firstArr.Read(i)}");
-            //
-            // var firstObj = reader.Objs.Read(0);
-            // Console.WriteLine(reader.Objs.Count);
-            // for (var i = 0; i < firstObj.Count; i++) Console.WriteLine($"{i} == {firstObj.Read(i)}");
-
-            // for (int i = 0; i < 10 /*reader.Strings.Count*/; i++)
-            // {
-            //     Console.WriteLine($"{i} == {reader.Strings.Read(i)}");
-            // }
-            // Console.WriteLine($"last == {reader.Strings.Read(reader.Strings.Count-1)}");
-            
             VerifyConfigJson(reader);
         }
-        
-        //Assert.Pass();
     }
 
     private static void VerifyConfigJson(SickReader reader)
     {
+        Console.WriteLine(reader.Header);
         // Debug.Assert(reader.Bytes.Count == 59);
         // Debug.Assert(reader.Shorts.Count == 1983);
         Debug.Assert(reader.Ints.Count == 8);

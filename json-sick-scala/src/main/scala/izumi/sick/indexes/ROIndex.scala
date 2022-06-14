@@ -5,8 +5,6 @@ import izumi.sick.model.{Arr, Obj, Root, ToBytes}
 import izumi.sick.tables.Reftable
 
 final class ROIndex(
-//  val bytes: Reftable[Byte],
-//  val shorts: Reftable[Short],
   val ints: Reftable[Int],
   val longs: Reftable[Long],
   val bigints: Reftable[BigInt],
@@ -21,8 +19,6 @@ final class ROIndex(
   def parts: Seq[(Reftable[Any], ToBytes[Seq[Any]])] = {
     import izumi.sick.model.ToBytes._
     Seq(
-//      (bytes, implicitly[ToBytes[Seq[Byte]]]),
-//      (shorts, implicitly[ToBytes[Seq[Short]]]),
       (ints, implicitly[ToBytes[Seq[Int]]]),
       (longs, implicitly[ToBytes[Seq[Long]]]),
       (bigints, implicitly[ToBytes[Seq[BigInt]]]),
