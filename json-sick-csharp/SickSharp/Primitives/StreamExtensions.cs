@@ -26,19 +26,35 @@ namespace SickSharp.Primitives
             return res;
         }
     }
-    
-    public static class ArrayExtention
+
+    public static class ArrayListExtention
+    {
+        public static T[] Concatenate<T>(this IEnumerable<T[]> arrays)
         {
-    
-            public static T[] Concatenate<T>(this T[] array1, T[] array2)
+            var sz = arrays.Map(a => a.Length).Sum();
+            T[] result = new T[sz];
+            var nextOffset = 0;
+            foreach (var array in arrays)
             {
-                T[] result = new T[array1.Length + array2.Length];
-                array1.CopyTo(result, 0);
-                array2.CopyTo(result, array1.Length);
-                return result;
+                array.CopyTo(result, nextOffset);
+                nextOffset += array.Length;
             }
-    
+            return result;
         }
+    }
+    
+    // public static class ArrayExtention
+    //     {
+    //
+    //         public static T[] Concatenate<T>(this T[] array1, T[] array2)
+    //         {
+    //             T[] result = new T[array1.Length + array2.Length];
+    //             array1.CopyTo(result, 0);
+    //             array2.CopyTo(result, array1.Length);
+    //             return result;
+    //         }
+    //
+    //     }
     
     public static class StreamExtensions
     {

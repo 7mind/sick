@@ -183,8 +183,8 @@ namespace SickSharp.Encoder
 
         public byte[] Bytes(List<T> value)
         {
-            return value.Map(e => _elementEncoder.Bytes(e)).Fold(Fixed.IntEncoder.Bytes(value.Count),
-                (bytes, bytes1) => bytes.Concatenate(bytes1));
+            return value.Map(e => _elementEncoder.Bytes(e)).Prepend(Fixed.IntEncoder.Bytes(value.Count))
+                .Concatenate();
         }
 
         public int ElementSize()
@@ -288,11 +288,9 @@ namespace SickSharp.Encoder
         {
             var elements = value.Map(e => _elementEncoder.Bytes(e)).ToList();
             var offsets = elements.ComputeOffsets(0);
-            var header = offsets.Fold(Fixed.IntEncoder.Bytes(value.Count),
-                (acc, el) => acc.Concatenate(Fixed.IntEncoder.Bytes(el)));
+            var header = offsets.Prepend(value.Count).Map(o => Fixed.IntEncoder.Bytes(o)).Concatenate();
             var lastOffset = offsets.LastOrNone().Map(offset => offset + elements.Last().Length).IfNone(0);
-            var data = elements.Fold(Fixed.IntEncoder.Bytes(lastOffset), (acc, bytes) => acc.Concatenate(bytes));
-            return header.Concatenate(data);
+            return elements.Prepend(Fixed.IntEncoder.Bytes(lastOffset)).Prepend(header).Concatenate();
         }
     }
 
@@ -310,11 +308,9 @@ namespace SickSharp.Encoder
         {
             var elements = value.Map(e => _elementEncoder.Bytes(e)).ToList();
             var offsets = elements.ComputeOffsets(0);
-            var header = offsets.Fold(Fixed.IntEncoder.Bytes(value.Count),
-                (acc, el) => acc.Concatenate(Fixed.IntEncoder.Bytes(el)));
+            var header = offsets.Prepend(value.Count).Map(el => Fixed.IntEncoder.Bytes(el)).Concatenate();
             var lastOffset = offsets.LastOrNone().Map(offset => offset + elements.Last().Length).IfNone(0);
-            var data = elements.Fold(Fixed.IntEncoder.Bytes(lastOffset), (acc, bytes) => acc.Concatenate(bytes));
-            return header.Concatenate(data);
+            return elements.Prepend(Fixed.IntEncoder.Bytes(lastOffset)).Prepend(header).Concatenate();
         }
     }
 
