@@ -6,8 +6,6 @@ using System.Numerics;
 using System.Text;
 using SickSharp.Format.Tables;
 using SickSharp.Primitives;
-using LanguageExt;
-using static LanguageExt.Prelude;
 
 namespace SickSharp.Encoder
 {

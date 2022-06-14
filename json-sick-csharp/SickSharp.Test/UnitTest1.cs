@@ -1,8 +1,6 @@
 using System.Diagnostics;
-using LanguageExt;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SickSharp.Encoder;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
 using Index = SickSharp.Encoder.Index;
