@@ -36,7 +36,12 @@ namespace SickSharp.Encoder
 
         public List<V> AsList()
         {
-            return Enumerable.Range(0, Size() - 1).Map(idx => _mapping[idx]).ToList();
+            if (Size() > 0)
+            {
+                return Enumerable.Range(0, Size()).Map(idx => _mapping[idx]).ToList();
+            }
+
+            return new List<V>();
         }
         
         public int Freq(int key)

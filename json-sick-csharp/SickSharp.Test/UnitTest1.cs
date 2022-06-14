@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using LanguageExt;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SickSharp.Encoder;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
+using Index = SickSharp.Encoder.Index;
 
 namespace SickSharp.Test;
 
@@ -13,15 +16,34 @@ public class Tests
     public void Setup()
     {
     }
-
+    
     [Test]
     public void Test2()
     {
-        var a = (0..3);
-        Enumerable.Range(1, 5).Select(n => n * 2).ToList().ForEach(e => Console.WriteLine(e));  
-        //Console.WriteLine(Option<int>.Some(22).IfNone(11));
-        // Bijection<Int32>.Create("test");
+        var path = "../../../../../json-sick-scala/config.json";
+        var outPath = "../../../../../json-sick-scala/config-sharp.bin";
+        
+        var loaded = JToken.Load(new JsonTextReader(new StreamReader(path)));
+        var index = Index.Create();
+        var root = index.append("config.json", loaded);
+        Console.WriteLine(root);
+        
+        using (BinaryWriter binWriter =  
+               new BinaryWriter(File.Open(outPath, FileMode.Create)))  
+        {  
+            binWriter.Write(index.Serialize().data);  
+        }
+
+        using (var stream = File.Open(outPath, FileMode.Open))
+        {
+            var reader = new SickReader(stream);
+            Console.WriteLine(reader.Header);
+            var configRef = reader.GetRoot("config.json")!;
+            Console.WriteLine(configRef);
+        }
     }
+    
+    [Test]
     public void Test1()
     {
         var path = "../../../../../json-sick-scala/output.bin";
@@ -65,7 +87,7 @@ public class Tests
             Console.WriteLine($"{queryResult} == {String.Join(", ", ((JObj)queryResult).Value.Content().ToList())}");
         }
         
-        Assert.Pass();
+        //Assert.Pass();
     }
     
     private class TestMatcher : JsonMatcher<string>

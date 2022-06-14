@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using Newtonsoft.Json.Linq;
 using SickSharp.Format.Tables;
 using SickSharp.Primitives;
 
@@ -22,9 +24,9 @@ namespace SickSharp.Encoder
         private Bijection<String> _strings;
         private Bijection<List<Ref>> _arrs;
         private Bijection<List<ObjEntry>> _objs;
-        private Bijection<List<Root>> _roots;
+        private Bijection<Root> _roots;
         
-        public Index(Bijection<byte> bytes, Bijection<short> shorts, Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<List<Root>> roots)
+        public Index(Bijection<byte> bytes, Bijection<short> shorts, Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
         {
             _bytes = bytes;
             _shorts = shorts;
@@ -54,7 +56,7 @@ namespace SickSharp.Encoder
                 Bijection<String>.Create("strings"),
                 Bijection<List<Ref>>.Create("arrays"),
                 Bijection<List<ObjEntry>>.Create("objects"),
-                Bijection<List<Root>>.Create("roots")
+                Bijection<Root>.Create("roots")
                 );
         }
 
@@ -73,7 +75,7 @@ namespace SickSharp.Encoder
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
                 new(_arrs.Name,  new FixedArrayEncoder<List<Ref>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
                 new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder).Bytes(_objs.AsList())),
-                new(_roots.Name,  new FixedArrayEncoder<List<Root>>(FixedArray.RootListEncoder).Bytes(_roots.AsList())),
+                new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
         }
 
@@ -90,6 +92,99 @@ namespace SickSharp.Encoder
             } ;
             var everything = (header.Append(encodedOffsets).Append(tables).ToList()).Merge();
             return new SerializedIndex(everything);
+        }
+
+        public Ref append(String id, JToken json)
+        {
+            var idRef = addString(id);
+            var rootRef = traverse(json);
+            var root = new Root(idRef.Value, rootRef);
+            return _roots.RevGet(root).Match(
+                Some: some => throw new InvalidDataException(), 
+                None: () => new Ref(RefKind.Root, _roots.Add(root))
+                );
+        }
+
+        private Ref traverse(JToken json)
+        {
+            return json switch
+            {
+                JObject v =>
+                    addObj(
+                        v.Properties().Map(e => new ObjEntry(addString(e.Name).Value, traverse(e.Value))).ToList()
+                        ),
+                JArray v =>
+                    addArr(v.Map(e => traverse(e)).ToList()),
+                JValue v =>
+                    v.Type switch
+                    {
+                        JTokenType.Integer => addLong((long)v.Value),
+                        JTokenType.Float => addDouble((double)v.Value),
+                        JTokenType.String => addString((string)v.Value),
+                        JTokenType.Boolean => new Ref(RefKind.Bit, Convert.ToInt32((bool)v.Value)),
+                        JTokenType.Null => new Ref(RefKind.Nul, 0),
+                        JTokenType.Date => addString(((DateTime)v.Value).ToString()),
+                        _ => throw new NotImplementedException($"failure: {v}")
+                    ,
+                    },
+                _ => 
+                    throw new NotImplementedException(),
+            };
+        }
+
+        private Ref addString(String s)
+        {
+            return new Ref(RefKind.Str, _strings.Add(s));
+        }
+
+        private Ref addByte(Byte s)
+        {
+            return new Ref(RefKind.Byte, _bytes.Add(s));
+        }
+
+        private Ref addShort(Int16 s)
+        {
+            return new Ref(RefKind.Short, _shorts.Add(s));
+        }
+
+        private Ref addInt(Int32 s)
+        {
+            return new Ref(RefKind.Int, _ints.Add(s));
+        }
+
+        private Ref addLong(Int64 s)
+        {
+            return new Ref(RefKind.Lng, _longs.Add(s));
+        }
+
+        private Ref addBigInt(BigInteger s)
+        {
+            return new Ref(RefKind.BigInt, _bigints.Add(s));
+        }
+
+        private Ref addFloat(Single s)
+        {
+            return new Ref(RefKind.Flt, _floats.Add(s));
+        }
+
+        private Ref addDouble(Double s)
+        {
+            return new Ref(RefKind.Dbl, _doubles.Add(s));
+        }
+
+        private Ref addBigDec(BigDecimal s)
+        {
+            return new Ref(RefKind.BigDec, _bigDecs.Add(s));
+        }
+
+        private Ref addArr(List<Ref> s)
+        {
+            return new Ref(RefKind.Arr, _arrs.Add(s));
+        }
+
+        private Ref addObj(List<ObjEntry> s)
+        {
+            return new Ref(RefKind.Obj, _objs.Add(s));
         }
     }
 

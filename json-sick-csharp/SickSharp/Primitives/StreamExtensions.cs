@@ -20,6 +20,8 @@ namespace SickSharp.Primitives
         {
             var res = collection.Map(a => a.Length)
                 .Fold(new List<int> { initial }, (acc, sz) => acc.Append(acc.Last() + sz).ToList());
+            
+            res.RemoveAt(res.Count -1);
             Debug.Assert(res.Count == collection.Count);
             return res;
         }
