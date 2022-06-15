@@ -2,11 +2,47 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LanguageExt;
 using SickSharp.Format.Tables;
 
 namespace SickSharp.Encoder
 {
+    public struct Option<T>
+    {
+        public static Option<T> None => default;
+        public static Option<T> Some(T value) => new Option<T>(value);
+
+        readonly bool isSome;
+        readonly T value;
+
+        Option(T value)
+        {
+            this.value = value;
+            isSome = this.value is { };
+        }
+
+        public bool IsSome(out T value)
+        {
+            value = this.value;
+            return isSome;
+        }
+        
+        public B Match<B>(Func<T, B> Some, Func<B> None) =>
+            isSome
+                ? Some(value)
+                : None();
+    }
+
+    public static class OutExtensions
+    {
+        public static Option<V> TryGetValue<K, V>(this IDictionary<K, V> self, K Key)
+        {
+            V value;
+            return self.TryGetValue(Key, out value)
+                ? Option<V>.Some(value)
+                : Option<V>.None;
+        }
+    }
+
     class ListComparer<T> : IEqualityComparer<List<T>>
     {
         public bool Equals(List<T> x, List<T> y)
@@ -59,7 +95,7 @@ namespace SickSharp.Encoder
         {
             if (Size() > 0)
             {
-                return Enumerable.Range(0, Size()).Map(idx => _mapping[idx]).ToList();
+                return Enumerable.Range(0, Size()).Select(idx => _mapping[idx]).ToList();
             }
 
             return new List<V>();

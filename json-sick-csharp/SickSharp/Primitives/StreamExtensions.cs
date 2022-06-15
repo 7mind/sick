@@ -10,16 +10,15 @@ namespace SickSharp.Primitives
 {
     public static class ByteArrayCollectionExtensions
     {
-        public static byte[] Merge(this List<byte[]> collection)
-        {
-            var total = collection.Map(a => a.Length).Sum();
-            return collection.Flatten().ToArray();
-        }
-
         public static List<int> ComputeOffsets(this List<byte[]> collection, Int32 initial)
         {
-            var res = collection.Map(a => a.Length)
-                .Fold(new List<int> { initial }, (acc, sz) => acc.Append(acc.Last() + sz).ToList());
+                
+            var res = new List<int>() {initial};
+            var counts = collection.Select(a => a.Length).ToList();
+            for (int i = 0; i < counts.Count(); i++)
+            {
+                res.Add(res.Last() + counts[i]);
+            }
             
             res.RemoveAt(res.Count -1);
             Debug.Assert(res.Count == collection.Count);
@@ -31,7 +30,7 @@ namespace SickSharp.Primitives
     {
         public static T[] Concatenate<T>(this IEnumerable<T[]> arrays)
         {
-            var sz = arrays.Map(a => a.Length).Sum();
+            var sz = arrays.Select(a => a.Length).Sum();
             T[] result = new T[sz];
             var nextOffset = 0;
             foreach (var array in arrays)

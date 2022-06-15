@@ -76,15 +76,15 @@ namespace SickSharp.Encoder
         public SerializedIndex Serialize()
         {
             var version = 0;
-            var tables = SerializedTables().Map(d => d.data).ToList();
+            var tables = SerializedTables().Select(d => d.data).ToList();
             var headerLen = (2 + tables.Count) * Fixed.IntEncoder.BlobSize();
             var offsets = tables.ComputeOffsets(headerLen);
 
-            var encodedOffsets = new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(offsets);
             var header = new List<byte[]> {
                 Fixed.IntEncoder.Bytes(version),
+                new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(offsets),
             } ;
-            var everything = (header.Append(encodedOffsets).Append(tables).ToList()).Merge();
+            var everything = (header.Concat(tables).ToList()).Concatenate();
             return new SerializedIndex(everything);
         }
 
@@ -106,10 +106,10 @@ namespace SickSharp.Encoder
             {
                 JObject v =>
                     addObj(
-                        v.Properties().Map(e => new ObjEntry(addString(e.Name).Value, traverse(e.Value))).ToList()
+                        v.Properties().Select(e => new ObjEntry(addString(e.Name).Value, traverse(e.Value))).ToList()
                         ),
                 JArray v =>
-                    addArr(v.Map(e => traverse(e)).ToList()),
+                    addArr(v.Select(e => traverse(e)).ToList()),
                 JValue v =>
                     v.Type switch
                     {

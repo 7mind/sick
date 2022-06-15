@@ -130,7 +130,7 @@ namespace SickSharp.Encoder
     {
         public byte[] Bytes(Ref value)
         {
-            return (new List<byte[]> { Fixed.RefKindEncoder.Bytes(value.Kind), Fixed.IntEncoder.Bytes(value.Value) }).Merge();
+            return (new List<byte[]> { Fixed.RefKindEncoder.Bytes(value.Kind), Fixed.IntEncoder.Bytes(value.Value) }).Concatenate();
         }
 
         public int BlobSize()
@@ -143,7 +143,7 @@ namespace SickSharp.Encoder
     {
         public byte[] Bytes(ObjEntry value)
         {
-            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Value),  }).Merge();
+            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Value),  }).Concatenate();
         }
 
         public int BlobSize()
@@ -155,7 +155,7 @@ namespace SickSharp.Encoder
     {
         public byte[] Bytes(Root value)
         {
-            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Reference),  }).Merge();
+            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Reference),  }).Concatenate();
         }
 
         public int BlobSize()
@@ -181,7 +181,7 @@ namespace SickSharp.Encoder
 
         public byte[] Bytes(List<T> value)
         {
-            return value.Map(e => _elementEncoder.Bytes(e)).Prepend(Fixed.IntEncoder.Bytes(value.Count))
+            return value.Select(e => _elementEncoder.Bytes(e)).Prepend(Fixed.IntEncoder.Bytes(value.Count))
                 .Concatenate();
         }
 
@@ -284,10 +284,10 @@ namespace SickSharp.Encoder
 
         public byte[] Bytes(List<T> value)
         {
-            var elements = value.Map(e => _elementEncoder.Bytes(e)).ToList();
+            var elements = value.Select(e => _elementEncoder.Bytes(e)).ToList();
             var offsets = elements.ComputeOffsets(0);
-            var header = offsets.Prepend(value.Count).Map(o => Fixed.IntEncoder.Bytes(o)).Concatenate();
-            var lastOffset = offsets.LastOrNone().Map(offset => offset + elements.Last().Length).IfNone(0);
+            var header = offsets.Prepend(value.Count).Select(o => Fixed.IntEncoder.Bytes(o)).Concatenate();
+            var lastOffset = !offsets.Any() ? 0 : offsets.Last() + elements.Last().Length;
             return elements.Prepend(Fixed.IntEncoder.Bytes(lastOffset)).Prepend(header).Concatenate();
         }
     }
@@ -304,10 +304,10 @@ namespace SickSharp.Encoder
 
         public byte[] Bytes(List<T> value)
         {
-            var elements = value.Map(e => _elementEncoder.Bytes(e)).ToList();
+            var elements = value.Select(e => _elementEncoder.Bytes(e)).ToList();
             var offsets = elements.ComputeOffsets(0);
-            var header = offsets.Prepend(value.Count).Map(el => Fixed.IntEncoder.Bytes(el)).Concatenate();
-            var lastOffset = offsets.LastOrNone().Map(offset => offset + elements.Last().Length).IfNone(0);
+            var header = offsets.Prepend(value.Count).Select(el => Fixed.IntEncoder.Bytes(el)).Concatenate();
+            var lastOffset = !offsets.Any() ? 0 : offsets.Last() + elements.Last().Length;
             return elements.Prepend(Fixed.IntEncoder.Bytes(lastOffset)).Prepend(header).Concatenate();
         }
     }
