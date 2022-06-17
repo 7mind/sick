@@ -8,8 +8,8 @@ import akka.util.Collections.EmptyImmutableSeq
 
 import java.nio.{ByteBuffer, ByteOrder}
 import scala.annotation.{nowarn, tailrec}
-import scala.collection.{BufferedIterator, LinearSeq}
 import scala.collection.mutable.ListBuffer
+import scala.collection.{BufferedIterator, LinearSeq}
 import scala.reflect.ClassTag
 
 object ByteIterator {

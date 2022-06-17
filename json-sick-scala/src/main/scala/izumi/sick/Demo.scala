@@ -1,13 +1,14 @@
 package izumi.sick
 
-import akka.util.ByteString
 import com.github.luben.zstd.Zstd
 import io.circe._
-import izumi.sick.indexes.RWIndex
+import izumi.sick.indexes.IndexRW
 import izumi.sick.model.{ToBytesFixed, ToBytesFixedArray, ToBytesVar, ToBytesVarArray}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
+
+import izumi.sick.sickcirce.CirceTraverser._
 
 sealed trait Foo
 case class Bar(xs: Vector[String]) extends Foo
@@ -41,15 +42,13 @@ object Demo {
     val file = args.headOption.getOrElse("config.json")
     val json = Files.readAllBytes(Paths.get(file))
     val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).right.get
-    val rwIndex = RWIndex()
+    val rwIndex = IndexRW()
     val root = rwIndex.append("config.json", parsed)
 
-    val rwIndexSorted = rwIndex.rebuild()
+    val roIndex = rwIndex.rebuild().freeze()
 
-    val newRoot = rwIndexSorted.findRoot("config.json").get.ref
-    assert(rwIndexSorted.reconstruct(newRoot) == rwIndex.reconstruct(root))
-
-    val roIndex = rwIndexSorted.freeze()
+    val newRoot = roIndex.findRoot("config.json").get.ref
+    assert(roIndex.reconstruct(newRoot) == rwIndex.freeze().reconstruct(root))
 
     println(s"Original root: $root -> $newRoot")
 
@@ -60,7 +59,7 @@ object Demo {
     }
     println(roIndex.summary)
 
-    val packed = packBlobs(roIndex.blobs)
+    val packed = roIndex.pack()
 
     val level = 20
     val raw = packed.data.toArray
@@ -118,19 +117,4 @@ object Demo {
 
   }
 
-  private def packBlobs(collections: Seq[ByteString]): Packed = {
-    import izumi.sick.model.ToBytes._
-    val version = 0
-    val headerLen = (2 + collections.length) * Integer.BYTES
-
-    val offsets = computeOffsets(collections, headerLen)
-    assert(offsets.size == collections.size)
-
-    val everything = Seq((Seq(version, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ collections
-    val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
-    Packed(version, headerLen, offsets, blob)
-  }
-
 }
-
-case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)

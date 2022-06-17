@@ -1,7 +1,7 @@
 package izumi.sick.model
 
 import izumi.sick.model.Ref.RefVal
-import izumi.sick.tables.Bijection.RefMappable
+import izumi.sick.tables.RefTableRW.RefMappable
 
 sealed trait RefKind
 object RefKind {
