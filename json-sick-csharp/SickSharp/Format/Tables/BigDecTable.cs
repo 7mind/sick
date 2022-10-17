@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -10,7 +11,7 @@ namespace SickSharp.Format.Tables
 
     public class BigDecTable : VarTable<BigDecimal>
     {
-        public BigDecTable(Stream stream, int offset) : base(stream, offset)
+        public BigDecTable(Stream stream, UInt32 offset) : base(stream, offset)
         {
         }
 

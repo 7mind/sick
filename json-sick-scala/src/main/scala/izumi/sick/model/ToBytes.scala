@@ -70,6 +70,16 @@ object ToBytes {
     }
   }
 
+  implicit object CharToBytes extends ToBytesFixed[Char] {
+    override def blobSize: Int = java.lang.Character.BYTES
+
+    override def bytes(value: Char): ByteString = {
+      val bb = ByteBuffer.allocate(blobSize)
+      bb.putChar(value)
+      ByteString(bb.array())
+    }
+  }
+
   implicit object ByteToBytes extends ToBytesFixed[Byte] {
     override def blobSize: Int = 1
 
@@ -193,6 +203,7 @@ object ToBytes {
       val limit: Short = 2
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
+      println(bucketSize)
 
       val hashed = value.values.map {
         case (k, v) =>
@@ -206,6 +217,7 @@ object ToBytes {
       val data = sorted.map(_._1)
       val buckets = sorted.map(_._2._2).zipWithIndex
       val noIndex = 65535
+      assert(noIndex <= Char.MaxValue)
       val maxIndex = noIndex - 1
 
       if (sorted.size >= maxIndex) {
@@ -226,8 +238,22 @@ object ToBytes {
 
         startIndexes.toSeq
       }
+      assert(index.length == 1 || index.length == bucketCount)
 
-      index.bytes ++ (data: Seq[(RefVal, Ref)]).bytes
+      val shortIndex = index.map {
+        i =>
+          assert(i >= 0 && i <= noIndex)
+          i.toChar
+      }
+      val bytesWithHeader = shortIndex.bytes
+      assert(bytesWithHeader.size == Integer.BYTES + Character.BYTES * bucketCount || bytesWithHeader.size == Integer.BYTES + Character.BYTES)
+
+      val indexHeader = bytesWithHeader.drop(java.lang.Integer.BYTES)
+
+      assert(
+        indexHeader.size == Character.BYTES * bucketCount || indexHeader.size == Character.BYTES
+      )
+      indexHeader ++ (data: Seq[(RefVal, Ref)]).bytes
     }
   }
 
@@ -242,8 +268,7 @@ object ToBytes {
 
 object KHash {
   def compute(s: String): Long = {
-    var a: Int = 0xDEADBEEF
-    val shift: Int = 1
+    var a: Int = 0x6BADBEEF
     s.getBytes(StandardCharsets.UTF_8).foreach {
       b =>
         a ^= a << 13

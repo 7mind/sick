@@ -89,6 +89,12 @@ namespace SickSharp.Primitives
             Debug.Assert(bytes.Length == sizeof(short));
             return BinaryPrimitives.ReadInt16BigEndian(bytes);
         }
+        
+        public static ushort ReadUInt16(this byte[] bytes)
+        {
+            Debug.Assert(bytes.Length == sizeof(short));
+            return BinaryPrimitives.ReadUInt16BigEndian(bytes);
+        }
 
         public static int ReadInt32(this byte[] bytes)
         {

@@ -34,19 +34,19 @@ namespace SickSharp.Format
             _stream = stream;
             Header = ReadHeader();
 
-            Ints = new IntTable(_stream, Header.Offsets[0]);
-            Longs = new LongTable(_stream, Header.Offsets[1]);
-            BigInts = new BigIntTable(_stream, Header.Offsets[2]);
+            Ints = new IntTable(_stream, (UInt32)Header.Offsets[0]);
+            Longs = new LongTable(_stream, (UInt32)Header.Offsets[1]);
+            BigInts = new BigIntTable(_stream, (UInt32)Header.Offsets[2]);
 
-            Floats = new FloatTable(_stream, Header.Offsets[3]);
-            Doubles = new DoubleTable(_stream, Header.Offsets[4]);
-            BigDecimals = new BigDecTable(_stream, Header.Offsets[5]);
+            Floats = new FloatTable(_stream, (UInt32)Header.Offsets[3]);
+            Doubles = new DoubleTable(_stream, (UInt32)Header.Offsets[4]);
+            BigDecimals = new BigDecTable(_stream, (UInt32)Header.Offsets[5]);
 
-            Strings = new StringTable(_stream, Header.Offsets[6]);
+            Strings = new StringTable(_stream, (UInt32)Header.Offsets[6]);
 
-            Arrs = new ArrTable(_stream, Header.Offsets[7]);
-            Objs = new ObjTable(_stream, Strings, Header.Offsets[8]);
-            Roots = new RootTable(_stream, Header.Offsets[9]);
+            Arrs = new ArrTable(_stream, (UInt32)Header.Offsets[7]);
+            Objs = new ObjTable(_stream, Strings, (UInt32)Header.Offsets[8]);
+            Roots = new RootTable(_stream, (UInt32)Header.Offsets[9]);
 
             for (var i = 0; i < Roots.Count; i++)
             {
@@ -125,7 +125,32 @@ namespace SickSharp.Format
                 if (value is JObj)
                 {
                     var currentObj = ((JObj)value).Value;
-                    for (int i = 0; i < currentObj.Count; i++)
+
+                    var lower = 0;
+                    var upper = currentObj.Count;
+                    
+                    if (currentObj.UseIndex)
+                    {
+                        var khash = KHash.Compute(currentQuery);
+                        var bucket = Convert.ToUInt32(khash / OneObjTable.BucketSize);
+
+                        var probablyLower = currentObj.Index[bucket];
+                        if (probablyLower == OneObjTable.NoIndex)
+                        {
+                            throw new KeyNotFoundException(
+                                $"Field {currentQuery} not found in object {currentObj} with id {reference}"
+                            );
+                        }
+                        
+                        if (probablyLower < OneObjTable.MaxIndex)
+                        {
+                            Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
+                            lower = probablyLower;
+                            upper = currentObj.NextIndex[probablyLower];
+                        }
+                    }
+                    
+                    for (int i = lower; i < upper; i++)
                     {
                         var k = currentObj.ReadKey(i);
                         if (k.Key == currentQuery)

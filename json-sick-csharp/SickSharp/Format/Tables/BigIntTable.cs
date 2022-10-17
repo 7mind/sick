@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Numerics;
 
@@ -5,7 +6,7 @@ namespace SickSharp.Format.Tables
 {
     public class BigIntTable : VarTable<BigInteger>
     {
-        public BigIntTable(Stream stream, int offset) : base(stream, offset)
+        public BigIntTable(Stream stream, UInt32 offset) : base(stream, offset)
         {
         }
 

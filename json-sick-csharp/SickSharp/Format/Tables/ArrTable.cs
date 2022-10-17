@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using SickSharp.Primitives;
 
@@ -5,11 +6,11 @@ namespace SickSharp.Format.Tables
 {
     public class ArrTable : BasicVarTable<OneArrTable>
     {
-        public ArrTable(Stream stream, int offset) : base(stream, offset)
+        public ArrTable(Stream stream, UInt32 offset) : base(stream, offset)
         {
         }
 
-        protected override OneArrTable BasicRead(int absoluteStartOffset, int byteLen)
+        protected override OneArrTable BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
         {
             return new OneArrTable(Stream, absoluteStartOffset);
         }
@@ -17,7 +18,7 @@ namespace SickSharp.Format.Tables
 
     public class OneArrTable : FixedTable<Ref>
     {
-        public OneArrTable(Stream stream, int offset) : base(stream, offset)
+        public OneArrTable(Stream stream, UInt32 offset) : base(stream, offset)
         {
         }
 

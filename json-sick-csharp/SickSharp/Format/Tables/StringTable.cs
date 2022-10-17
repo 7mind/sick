@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text;
 
@@ -5,7 +6,7 @@ namespace SickSharp.Format.Tables
 {
     public class StringTable : VarTable<string>
     {
-        public StringTable(Stream stream, int offset) : base(stream, offset)
+        public StringTable(Stream stream, UInt32 offset) : base(stream, offset)
         {
         }
 

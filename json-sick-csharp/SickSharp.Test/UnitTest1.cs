@@ -41,7 +41,14 @@ public class Tests
             VerifyConfigJson(reader);
         }
     }
-    
+
+    [Test]
+    public void CheckKHash()
+    {
+        Debug.Assert(KHash.Compute("test") == 1753799407);
+        Debug.Assert(KHash.Compute("segments") == 2958995695);
+    }
+     
     [Test]
     public void Test1()
     {
