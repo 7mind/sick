@@ -2,9 +2,9 @@
  * Copyright (C) 2009-2022 Lightbend Inc. <https://www.lightbend.com>
  */
 
-package akka.util
+package izumi.sick.thirdparty.akka.util
 
-import akka.util.Collections.EmptyImmutableSeq
+import izumi.sick.thirdparty.akka.util.Collections.EmptyImmutableSeq
 
 import java.nio.{ByteBuffer, ByteOrder}
 import scala.annotation.{nowarn, tailrec}
@@ -60,7 +60,7 @@ object ByteIterator {
                 result
               }
             case mbai: MultiByteArrayIterator => this ++: mbai
-            case bi => super.++(bi)
+            case bi                           => super.++(bi)
           }
       case io => super.++(io)
     }
@@ -68,12 +68,12 @@ object ByteIterator {
     final override def clone: ByteArrayIterator = new ByteArrayIterator(array, from, until)
 
     final override def take(n: Int): this.type = {
-      if (n < len) until = { if (n > 0) (from + n) else from }
+      if (n < len) until = { if (n > 0) from + n else from }
       this
     }
 
     final override def drop(n: Int): this.type = {
-      if (n > 0) from = { if (n < len) (from + n) else until }
+      if (n > 0) from = { if (n < len) from + n else until }
       this
     }
 
@@ -161,7 +161,7 @@ object ByteIterator {
     def asInputStream: java.io.InputStream = new java.io.InputStream {
       override def available: Int = iterator.len
 
-      def read: Int = if (hasNext) (next().toInt & 0xFF) else -1
+      def read: Int = if (hasNext) next().toInt & 0xFF else -1
 
       override def read(b: Array[Byte], off: Int, len: Int): Int = {
         if ((off < 0) || (len < 0) || (off + len > b.length)) throw new IndexOutOfBoundsException
@@ -176,7 +176,7 @@ object ByteIterator {
       override def skip(n: Long): Long = {
         val nSkip = math.min(iterator.len, n.toInt)
         iterator.drop(nSkip)
-        nSkip
+        nSkip.toLong
       }
     }
   }
@@ -194,6 +194,7 @@ object ByteIterator {
     // After normalization:
     // * iterators.isEmpty == false
     // * (!iterator.head.isEmpty || iterators.tail.isEmpty) == true
+    @SuppressWarnings(Array("UnsafeTraversableMethods"))
     private def normalize(): this.type = {
       @tailrec def norm(xs: LinearSeq[ByteArrayIterator]): LinearSeq[ByteArrayIterator] = {
         if (xs.isEmpty) MultiByteArrayIterator.clearedList
@@ -205,9 +206,11 @@ object ByteIterator {
     }
     normalize()
 
+    @SuppressWarnings(Array("UnsafeTraversableMethods"))
     @inline private def current: ByteArrayIterator = iterators.head
+    @SuppressWarnings(Array("UnsafeTraversableMethods"))
     @inline private def dropCurrent(): Unit = { iterators = iterators.tail }
-    @inline def clear(): Unit = { iterators = MultiByteArrayIterator.empty.iterators }
+    @inline def clear(): Unit               = { iterators = MultiByteArrayIterator.empty.iterators }
 
     @inline final def hasNext: Boolean = current.hasNext
 
@@ -227,6 +230,7 @@ object ByteIterator {
       result
     }
 
+    @SuppressWarnings(Array("AvoidOperatorOverload"))
     private[akka] def ++:(that: ByteArrayIterator): this.type = {
       iterators = that +: iterators
       this
@@ -258,10 +262,11 @@ object ByteIterator {
     }
 
     /** For performance sensitive code, call take() directly on ByteString (it's optimised there) */
+    @SuppressWarnings(Array("UnsafeTraversableMethods"))
     final override def take(n: Int): this.type = {
-      var rest = n
+      var rest    = n
       val builder = new ListBuffer[ByteArrayIterator]
-      while ((rest > 0) && !iterators.isEmpty) {
+      while ((rest > 0) && iterators.nonEmpty) {
         current.take(rest)
         if (current.hasNext) {
           rest -= current.len
@@ -285,9 +290,9 @@ object ByteIterator {
       } else this
 
     final override def takeWhile(p: Byte => Boolean): this.type = {
-      var stop = false
+      var stop    = false
       val builder = new ListBuffer[ByteArrayIterator]
-      while (!stop && !iterators.isEmpty) {
+      while (!stop && iterators.nonEmpty) {
         val lastLen = current.len
         current.takeWhile(p)
         if (current.hasNext) builder += current
@@ -307,9 +312,9 @@ object ByteIterator {
       } else this
 
     final override def copyToArray[B >: Byte](xs: Array[B], start: Int, len: Int): Int = {
-      var pos = start
+      var pos  = start
       var rest = len
-      while ((rest > 0) && !iterators.isEmpty && pos < xs.length) {
+      while ((rest > 0) && iterators.nonEmpty && pos < xs.length) {
         val n = 0 max ((xs.length - pos) min current.len min rest)
         current.copyToArray(xs, pos, n)
         pos += n
@@ -342,7 +347,7 @@ object ByteIterator {
       n: Int,
       elemSize: Int,
     )(getSingle: => A
-    )(getMult: (Array[A], Int, Int) => Unit
+    )(getMult: (Array[A], Int, Int) => Any
     ): this.type =
       if (n <= 0) this
       else {
@@ -388,7 +393,7 @@ object ByteIterator {
     def asInputStream: java.io.InputStream = new java.io.InputStream {
       override def available: Int = current.len
 
-      def read: Int = if (hasNext) (next().toInt & 0xFF) else -1
+      def read: Int = if (hasNext) next().toInt & 0xFF else -1
 
       override def read(b: Array[Byte], off: Int, len: Int): Int = {
         val nRead = current.asInputStream.read(b, off, len)
@@ -402,7 +407,7 @@ object ByteIterator {
             if (!isEmpty) {
               val m = current.asInputStream.skip(n)
               normalize()
-              val newN = n - m
+              val newN       = n - m
               val newSkipped = skipped + m
               if (newN > 0) skipImpl(newN, newSkipped)
               else newSkipped
@@ -492,10 +497,10 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
     if (found) index else -1
   }
 
-  def indexOf(elem: Byte): Int = indexOf(elem, 0)
+  def indexOf(elem: Byte): Int            = indexOf(elem, 0)
   def indexOf(elem: Byte, from: Int): Int = indexWhere(_ == elem, from)
 
-  override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
+  override def indexOf[B >: Byte](elem: B): Int            = indexOf(elem, 0)
   override def indexOf[B >: Byte](elem: B, from: Int): Int = indexWhere(_ == elem, from)
 
   def toByteString: ByteString

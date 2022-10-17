@@ -1,7 +1,7 @@
 package izumi.sick.tables
 
-import izumi.sick.model.Ref
 import izumi.sick.model.Ref.RefVal
+import izumi.sick.model.{Ref, RefKind}
 
 import scala.collection.mutable
 
@@ -64,6 +64,14 @@ object RefTableRW {
 
   trait RefMappable[V] {
     def remap(value: V, mapping: Map[Ref, Ref]): V
+  }
+  object RefMappable {
+    def refRemap(ref: Ref)(remap: Ref => Ref): Ref = {
+      ref.kind match {
+        case _: RefKind.NonMappable => ref
+        case _: RefKind.Mappable => remap(ref)
+      }
+    }
   }
 
   implicit class Remap[V: RefMappable](bijection: RefTableRW[V]) {

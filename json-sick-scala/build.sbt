@@ -18,3 +18,9 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3"
+
+scalacOptions ++= Seq(
+  "-Xsource:3",
+  "-deprecation",
+  "-language:higherKinds",
+)

@@ -2,13 +2,14 @@ package izumi.sick.sickcirce
 
 import io.circe.Json
 import izumi.sick.indexes.{IndexRO, IndexRW}
-import izumi.sick.model._
+import izumi.sick.model.*
 
 object CirceTraverser {
   implicit class ROIndexExt(index: IndexRO) {
 
-    import index._
+    import index.*
 
+    @SuppressWarnings(Array("OptionGet"))
     def reconstruct(ref: Ref): Json = {
       ref.kind match {
         case RefKind.TNul =>
@@ -55,7 +56,7 @@ object CirceTraverser {
   }
 
   implicit class RWIndexExt(index: IndexRW) {
-    import index._
+    import index.*
 
     def append(id: String, j: Json): Ref = {
       val idRef = addString(id)

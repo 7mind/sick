@@ -1,9 +1,9 @@
 package izumi.sick.indexes
 
-import akka.util.ByteString
 import izumi.sick.indexes.IndexRO.Packed
 import izumi.sick.model.{Arr, Obj, Root, ToBytes}
 import izumi.sick.tables.RefTableRO
+import izumi.sick.thirdparty.akka.util.ByteString
 
 //trait AbstractIndex {
 //  def getInt(index: RefVal): Int
@@ -60,7 +60,7 @@ final class IndexRO(
       (bigDecimals, implicitly[ToBytes[Seq[BigDecimal]]]),
       (strings, implicitly[ToBytes[Seq[String]]]),
       (arrs, implicitly[ToBytes[Seq[Arr]]]),
-      (objs, implicitly[ToBytes[Seq[Obj]]]),
+      (objs, toBytesFixedSizeArray(new ObjToBytes(strings))),
       (roots, implicitly[ToBytes[Seq[Root]]]),
     ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]]) }
   }
@@ -80,5 +80,5 @@ final class IndexRO(
 }
 
 object IndexRO {
-  case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)
+  final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)
 }

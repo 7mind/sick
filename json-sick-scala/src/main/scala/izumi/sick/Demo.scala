@@ -4,11 +4,11 @@ import com.github.luben.zstd.Zstd
 import io.circe._
 import izumi.sick.indexes.IndexRW
 import izumi.sick.model.{ToBytesFixed, ToBytesFixedArray, ToBytesVar, ToBytesVarArray}
+import izumi.sick.sickcirce.CirceTraverser._
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-
-import izumi.sick.sickcirce.CirceTraverser._
+import scala.util.Random
 
 sealed trait Foo
 case class Bar(xs: Vector[String]) extends Foo
@@ -26,6 +26,88 @@ import izumi.sick.StrTool._
 
 case class Val(value: Int, pad: Int = 8) {
   override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad + 2, ' ')}}"
+}
+
+object Gen {
+
+  def main(args: Array[String]): Unit = {
+    val sb = new StringBuilder()
+    sb.append("using Zenject;\n")
+    val max = 1000
+    val cargs = 15;
+    val fwdlinks = 1;
+    (1 to max).foreach {
+      idx =>
+        val prevs = (0 to cargs)
+          .map(_ => Random.nextInt(idx))
+          .toSet
+          .filter(i => i < idx && i > 0)
+          .map { i: Int => s"IFoo$i arg$i" }.mkString(", ")
+
+        val fwds = (0 to fwdlinks)
+          .map(_ => Random.nextInt(max))
+          .toSet
+          .filter(i => i > idx)
+          .map {
+            i: Int =>
+              s"""
+                 |    [Inject]
+                 |    public IFoo$i Foo${i}Prop
+                 |    {
+                 |        get;
+                 |        private set;
+                 |    }
+                 |""".stripMargin
+          }.mkString("\n")
+
+        sb.append(s"""
+                     |public interface IFoo$idx {}
+                     |
+                     |public class Foo$idx : IFoo$idx
+                     |{
+                     |
+                     |    $fwds
+                     |    
+                     |    public Foo$idx($prevs)
+                     |    {
+                     |    }
+                     |}
+                     |""".stripMargin)
+    }
+
+//    println(sb.toString())
+
+    Files.write(Paths.get("/home/pavel/work/random/zenject-test/zenject-test/zenject-test/Boilerplate.cs"), sb.toString().getBytes())
+
+    val sb1 = new StringBuilder()
+    sb1.append(s"""
+                  |using Zenject;
+                  |
+                  |public class Entrypoint0
+                  |{
+                  |    public static void Run(string[] args)
+                  |    {
+                  |     DiContainer container = new DiContainer();
+                  |     
+                  |""".stripMargin)
+    (1 to max).foreach {
+      idx =>
+        sb1.append(s"        container.Bind<IFoo$idx>().To<Foo$idx>().AsSingle().NonLazy();\n")
+    }
+
+    (1 to 10)
+      .map(_ => Random.nextInt(max - 1) + 1)
+      .toSet
+      .map { i: Int => s"if (container.Resolve<IFoo$i>() == null) { throw new Exception(); }" }
+      .foreach {
+        s => (0 to 1).foreach { a => sb1.append(s); sb1.append("\n") }
+      }
+
+    sb1.append("        }\n    }")
+
+    Files.write(Paths.get("/home/pavel/work/random/zenject-test/zenject-test/zenject-test/Entrypoint.cs"), sb1.toString().getBytes())
+
+  }
 }
 
 object Demo {

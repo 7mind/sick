@@ -1,10 +1,12 @@
 package izumi.sick.model
 
-import akka.util.ByteString
 import izumi.sick.model.Ref.RefVal
+import izumi.sick.tables.RefTableRO
+import izumi.sick.thirdparty.akka.util.ByteString
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import scala.collection.mutable
 
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
@@ -20,6 +22,7 @@ sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
 sealed trait ToBytesVar[T] extends ToBytes[T]
 sealed trait ToBytesVarArray[T] extends ToBytes[T]
 
+@SuppressWarnings(Array("UnsafeTraversableMethods"))
 object ToBytes {
   def computeOffsets(collections: Seq[ByteString], initial: Int): Seq[Int] = {
     val out = collections
@@ -175,16 +178,56 @@ object ToBytes {
   implicit object ArrToBytes extends ToBytesFixedArray[Arr] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[Ref]].blobSize
 
+    @SuppressWarnings(Array("UnnecessaryConversion"))
     override def bytes(value: Arr): ByteString = {
       (value.values.toSeq: Seq[Ref]).bytes
     }
   }
 
-  implicit object ObjToBytes extends ToBytesFixedArray[Obj] {
+  class ObjToBytes(strings: RefTableRO[String]) extends ToBytesFixedArray[Obj] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
 
+    @SuppressWarnings(Array("UnnecessaryConversion"))
     override def bytes(value: Obj): ByteString = {
-      (value.values.toSeq: Seq[(RefVal, Ref)]).bytes
+      val bucketCount: Short = 16
+      val limit: Short = 2
+      val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
+      val bucketSize = range / bucketCount
+
+      val hashed = value.values.map {
+        case (k, v) =>
+          val kval = strings(k)
+          val hash = KHash.compute(kval)
+          val bucket = (hash / bucketSize).toInt
+          ((k, v), (hash, bucket))
+      }
+
+      val sorted = hashed.sortBy(_._2._1)
+      val data = sorted.map(_._1)
+      val buckets = sorted.map(_._2._2).zipWithIndex
+      val noIndex = 65535
+      val maxIndex = noIndex - 1
+
+      if (sorted.size >= maxIndex) {
+        throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndex")
+      }
+
+      val index: Seq[Int] = if (sorted.size <= limit) {
+        Seq(noIndex)
+      } else {
+        val startIndexes = mutable.ArrayBuffer.fill(bucketCount)(maxIndex)
+        buckets.foreach {
+          case (bucket, index) =>
+            val currentVal = startIndexes(bucket)
+            if (currentVal == 0 || currentVal == maxIndex) {
+              startIndexes(bucket) = index
+            }
+        }
+
+        startIndexes.toSeq
+      }
+
+      index.bytes ++ (data: Seq[(RefVal, Ref)]).bytes
     }
   }
 
@@ -194,5 +237,18 @@ object ToBytes {
     override def bytes(value: Root): ByteString = {
       (value.id, value.ref).bytes
     }
+  }
+}
+
+object KHash {
+  def compute(s: String): Long = {
+    var a: Int = 0xDEADBEEF
+    val shift: Int = 1
+    s.getBytes(StandardCharsets.UTF_8).foreach {
+      b =>
+        a ^= a << 13
+        a += (a ^ b) << 8
+    }
+    Integer.toUnsignedLong(a)
   }
 }
