@@ -143,7 +143,7 @@ namespace SickSharp.Format
                         
                     if (probablyLower < OneObjTable.MaxIndex)
                     {
-                        Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
+                        // Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
                         lower = probablyLower;
                         upper = currentObj.NextIndex[probablyLower];
                     }

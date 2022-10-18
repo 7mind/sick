@@ -56,7 +56,8 @@ namespace SickSharp.Format.Tables
         public OneObjTable(Stream stream, StringTable strings, UInt32 offset) : base(stream, offset)
         {
             Debug.Assert(Range == 4294967296);
-            Debug.Assert(BucketSize == 268435456);
+            Debug.Assert(Range % BucketCount == 0);
+
             _strings = strings;
             Index = new();
             NextIndex = new();
