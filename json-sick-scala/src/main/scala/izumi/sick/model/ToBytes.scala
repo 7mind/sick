@@ -203,7 +203,6 @@ object ToBytes {
       val limit: Short = 2
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
-      println(bucketSize)
 
       val hashed = value.values.map {
         case (k, v) =>
@@ -231,7 +230,7 @@ object ToBytes {
         buckets.foreach {
           case (bucket, index) =>
             val currentVal = startIndexes(bucket)
-            if (currentVal == 0 || currentVal == maxIndex) {
+            if (currentVal == maxIndex) {
               startIndexes(bucket) = index
             }
         }

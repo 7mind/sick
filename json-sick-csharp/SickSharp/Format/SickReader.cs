@@ -120,53 +120,51 @@ namespace SickSharp.Format
                     $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {value}"
                 );
             }
-            else
+
+            if (value is JObj)
             {
-                if (value is JObj)
+                var currentObj = ((JObj)value).Value;
+
+                var lower = 0;
+                var upper = currentObj.Count;
+                    
+                if (currentObj.UseIndex)
                 {
-                    var currentObj = ((JObj)value).Value;
+                    var khash = KHash.Compute(currentQuery);
+                    var bucket = Convert.ToUInt32(khash / OneObjTable.BucketSize);
 
-                    var lower = 0;
-                    var upper = currentObj.Count;
-                    
-                    if (currentObj.UseIndex)
+                    var probablyLower = currentObj.Index[bucket];
+                    if (probablyLower == OneObjTable.NoIndex)
                     {
-                        var khash = KHash.Compute(currentQuery);
-                        var bucket = Convert.ToUInt32(khash / OneObjTable.BucketSize);
-
-                        var probablyLower = currentObj.Index[bucket];
-                        if (probablyLower == OneObjTable.NoIndex)
-                        {
-                            throw new KeyNotFoundException(
-                                $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                            );
-                        }
+                        throw new KeyNotFoundException(
+                            $"Field {currentQuery} not found in object {currentObj} with id {reference}"
+                        );
+                    }
                         
-                        if (probablyLower < OneObjTable.MaxIndex)
-                        {
-                            Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
-                            lower = probablyLower;
-                            upper = currentObj.NextIndex[probablyLower];
-                        }
-                    }
-                    
-                    for (int i = lower; i < upper; i++)
+                    if (probablyLower < OneObjTable.MaxIndex)
                     {
-                        var k = currentObj.ReadKey(i);
-                        if (k.Key == currentQuery)
-                        {
-                            return Query(k.Value, next);
-                        }
+                        Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
+                        lower = probablyLower;
+                        upper = currentObj.NextIndex[probablyLower];
                     }
-                    throw new KeyNotFoundException(
-                        $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                    );
                 }
-
+                    
+                for (int i = lower; i < upper; i++)
+                {
+                    var k = currentObj.ReadKey(i);
+                    if (k.Key == currentQuery)
+                    {
+                        return Query(k.Value, next);
+                    }
+                }
                 throw new KeyNotFoundException(
-                    $"Tried to find field {currentQuery} in entity with id {reference} which should be an object, but it was {value}"
+                    $"Field {currentQuery} not found in object {currentObj} with id {reference}"
                 );
             }
+
+            throw new KeyNotFoundException(
+                $"Tried to find field {currentQuery} in entity with id {reference} which should be an object, but it was {value}"
+            );
 
         }
         

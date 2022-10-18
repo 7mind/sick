@@ -30,6 +30,16 @@ namespace SickSharp.Encoder
             isSome
                 ? Some(value)
                 : None();
+
+        public T UsafeGet()
+        {
+            if (isSome)
+            {
+                return value; 
+            }
+
+            throw new KeyNotFoundException();
+        }
     }
 
     public static class OutExtensions

@@ -88,17 +88,17 @@ namespace SickSharp.Format.Tables
                 }
             }
 
-            Console.WriteLine("Cur");
-            foreach (var keyValuePair in Index)
-            {
-                Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
-            }
-            
-            Console.WriteLine("Next");
-            foreach (var keyValuePair in NextIndex)
-            {
-                Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
-            }
+            // Console.WriteLine("Cur");
+            // foreach (var keyValuePair in Index)
+            // {
+            //     Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
+            // }
+            //
+            // Console.WriteLine("Next");
+            // foreach (var keyValuePair in NextIndex)
+            // {
+            //     Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
+            // }
 
         }
 

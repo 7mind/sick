@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -24,6 +25,7 @@ namespace SickSharp.Encoder
         public static readonly IFixedByteEncoder<SByte> ByteEncoder = new ByteEncoder();
         public static IFixedByteEncoder<Int16> ShortEncoder = new ShortEncoder();
         public static readonly IFixedByteEncoder<Int32> IntEncoder = new IntEncoder();
+        public static readonly IFixedByteEncoder<UInt16> UInt16Encoder = new UInt16Encoder();
         public static readonly IFixedByteEncoder<Int64> LongEncoder = new LongEncoder();
         public static IFixedByteEncoder<Single> FloatEncoder = new FloatEncoder();
         public static IFixedByteEncoder<Double> DoubleEncoder = new DoubleEncoder();
@@ -69,6 +71,19 @@ namespace SickSharp.Encoder
         public int BlobSize()
         {
             return 4;
+        }
+    }
+    
+    class UInt16Encoder : IFixedByteEncoder<UInt16>
+    {
+        public byte[] Bytes(UInt16 value)
+        {
+            return BitConverter.IsLittleEndian ? BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(value)) : BitConverter.GetBytes(value);
+        }
+
+        public int BlobSize()
+        {
+            return 2;
         }
     }
 
@@ -204,9 +219,65 @@ namespace SickSharp.Encoder
     }
     class ObjListEncoder : IFixedArrayByteEncoder<List<ObjEntry>>
     {
+        private readonly Bijection<string> _strings;
+        public const ushort Limit = 2;
+
+        public ObjListEncoder(Bijection<string> strings)
+        {
+            _strings = strings;
+        }
+
         public byte[] Bytes(List<ObjEntry> value)
         {
-            return new FixedArrayByteEncoder<ObjEntry>(Fixed.ObjEntryEncoder).Bytes(value);
+            var index = new List<UInt16>();
+            var data = value;
+            
+            if (value.Count > Limit)
+            {
+                if (value.Count >= OneObjTable.MaxIndex)
+                {
+                    throw new ArgumentException($"Too many values in an object, the limit is {OneObjTable.MaxIndex}");
+                }
+                var toIndex = new List<ObjIndexEntry>(); 
+                foreach (var objEntry in value)
+                {
+                    var kval = _strings.Get(objEntry.Key).UsafeGet();
+                    var hash = KHash.Compute(kval);
+                    var bucket = hash / OneObjTable.BucketSize;
+                    Debug.Assert(bucket < OneObjTable.BucketCount && bucket >= 0);
+                    toIndex.Add(new ObjIndexEntry(objEntry.Key, objEntry.Value, hash, (int)bucket));
+                }
+
+                var ordered = toIndex.OrderBy(obj => obj.hash).ToList();
+
+                data = ordered.Select(e => new ObjEntry(e.Key, e.Value)).ToList();
+
+                var startIndexes = Enumerable.Repeat(OneObjTable.MaxIndex, OneObjTable.BucketCount).ToList();
+                
+                for (var i = 0; i < ordered.Count; i++)
+                {
+                    var e = ordered[i];
+                    var currentVal = startIndexes[e.bucket];
+                    if (currentVal == OneObjTable.MaxIndex)
+                    {
+                        Debug.Assert(i >= 0 && i < OneObjTable.MaxIndex);
+                        startIndexes[e.bucket] = (ushort)i;
+                    }
+                }
+
+                index = startIndexes;
+            }
+            else
+            {
+                index.Add(OneObjTable.NoIndex);
+            }
+
+            var elements = new List<byte[]>
+            {
+                new FixedArrayByteEncoder<UInt16>(Fixed.UInt16Encoder).Bytes(index)[Fixed.IntEncoder.BlobSize()..],
+                new FixedArrayByteEncoder<ObjEntry>(Fixed.ObjEntryEncoder).Bytes(data),
+            };
+            return elements.Concatenate();
         }
 
         public int ElementSize()
@@ -214,6 +285,10 @@ namespace SickSharp.Encoder
             return Fixed.ObjEntryEncoder.BlobSize();
         }
     }
+    
+    public record ObjIndexEntry(int Key, Ref Value, long hash, int bucket);
+
+    
     class RootListEncoder : IFixedArrayByteEncoder<List<Root>>
     {
         public byte[] Bytes(List<Root> value)
@@ -229,7 +304,10 @@ namespace SickSharp.Encoder
     
     class FixedArray
     {
-        public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder = new ObjListEncoder();
+        public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder(Bijection<string> strings)
+        {
+            return new ObjListEncoder(strings);  
+        } 
         public static IFixedArrayByteEncoder<List<Ref>> RefListEncoder = new RefListEncoder();
         public static IFixedArrayByteEncoder<List<Root>> RootListEncoder = new RootListEncoder();
     }

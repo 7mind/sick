@@ -68,7 +68,7 @@ namespace SickSharp.Encoder
                 new(_bigDecs.Name, new VarArrayEncoder<BigDecimal>(Variable.BigDecimalEncoder).Bytes(_bigDecs.AsList())),
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
                 new(_arrs.Name,  new FixedArrayEncoder<List<Ref>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
-                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder).Bytes(_objs.AsList())),
+                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings)).Bytes(_objs.AsList())),
                 new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
         }
