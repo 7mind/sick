@@ -145,7 +145,10 @@ namespace SickSharp.Format
                     {
                         // Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
                         lower = probablyLower;
-                        upper = currentObj.NextIndex[probablyLower];
+                        if (currentObj.NextIndex.ContainsKey(probablyLower))
+                        {
+                            upper = currentObj.NextIndex[probablyLower];
+                        }
                     }
                 }
                     
