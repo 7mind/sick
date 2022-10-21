@@ -129,7 +129,7 @@ namespace SickSharp.Encoder
 
         private Ref handleInt(JValue v)
         {
-            return v.Value switch
+            return (Int64)v.Value switch
             {
                 Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => new Ref(RefKind.Byte, (byte)i),
                 Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => new Ref(RefKind.Short, (short)i),
@@ -140,7 +140,7 @@ namespace SickSharp.Encoder
         }
         private Ref handleFloat(JValue v)
         {
-            return v.Value switch
+            return (Double)v.Value switch
             {
                 Double i when i <= Single.MaxValue && i >= Single.MinValue => addFloat(Convert.ToSingle(i)),
                 Double i when i <= Double.MaxValue && i >= Double.MinValue => addDouble(i),
