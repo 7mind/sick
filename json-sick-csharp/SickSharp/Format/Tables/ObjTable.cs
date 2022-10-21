@@ -44,12 +44,12 @@ namespace SickSharp.Format.Tables
         
 		public const ushort NoIndex = 65535;
 		public const ushort MaxIndex = NoIndex - 1;
-		public const ushort BucketCount = 16;
+		public const ushort BucketCount = 128;
 		public const long Range = (long)UInt32.MaxValue + 1;
 		public const long BucketSize = Range / BucketCount;
         public const ushort IndexMemberSize = sizeof(ushort);
 
-        public readonly Dictionary<UInt32, ushort> Index;
+        public readonly ushort[] Index = new ushort[BucketCount];
         public readonly Dictionary<UInt32, ushort> NextIndex;
         public bool UseIndex { get; }
         
@@ -59,7 +59,6 @@ namespace SickSharp.Format.Tables
             Debug.Assert(Range % BucketCount == 0);
 
             _strings = strings;
-            Index = new();
             NextIndex = new();
 
             var indexHeader = ReadBytes(offset, IndexMemberSize).ReadUInt16();
