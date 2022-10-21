@@ -45,7 +45,7 @@ namespace SickSharp.Format
             Strings = new StringTable(_stream, (UInt32)Header.Offsets[6]);
 
             Arrs = new ArrTable(_stream, (UInt32)Header.Offsets[7]);
-            Objs = new ObjTable(_stream, Strings, (UInt32)Header.Offsets[8]);
+            Objs = new ObjTable(_stream, Strings, (UInt32)Header.Offsets[8], Header.Settings);
             Roots = new RootTable(_stream, (UInt32)Header.Offsets[9]);
 
             for (var i = 0; i < Roots.Count; i++)
@@ -80,6 +80,103 @@ namespace SickSharp.Format
             return Query(reference, path.Split('.').ToList());
         }
 
+        
+        public Ref QueryRef(Ref reference, string path)
+        {
+            return QueryRef(reference, path.Split('.').ToList());
+        }
+        private Ref QueryRef(Ref reference, List<string> parts)
+        {
+            // var value = Resolve(reference);
+            // if (value == null)
+            // {
+            //     throw new KeyNotFoundException(
+            //         $"Reference {reference} not found with query {String.Join("->", parts)}"
+            //         );
+            // }
+
+            if (parts.Count == 0)
+            {
+                return reference;
+            }
+
+            var currentQuery = parts.First();
+            var next = parts.Skip(1).ToList();
+
+            if (currentQuery.EndsWith("]") && currentQuery.Contains("[") && !currentQuery.StartsWith("["))
+            {
+                var index = currentQuery.Substring(currentQuery.IndexOf('['));
+                currentQuery = currentQuery.Substring(0, currentQuery.IndexOf('['));
+                next.Insert(0, index);
+            }
+            
+            if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
+            {
+                var index = currentQuery.Substring(1, currentQuery.Length - 2);
+                var iindex = Int32.Parse(index);
+                if (reference.Kind == RefKind.Arr)
+                {
+                    var currentObj = Arrs.Read(reference.Value);
+                    var i = (iindex >= 0)?iindex : currentObj.Count + iindex;
+                    return QueryRef(currentObj.Read(i), next);
+                }
+                
+                throw new KeyNotFoundException(
+                    $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference}"
+                );
+            }
+
+            if (reference.Kind == RefKind.Obj)
+            {
+                var currentObj = Objs.Read(reference.Value);
+
+                var lower = 0;
+                var upper = currentObj.Count;
+                    
+                if (currentObj.UseIndex)
+                {
+                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
+                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
+
+                    var khash = KHash.Compute(currentQuery);
+                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+
+                    var probablyLower = currentObj.Index[bucket];
+                    if (probablyLower == ObjIndexing.NoIndex)
+                    {
+                        throw new KeyNotFoundException(
+                            $"Field {currentQuery} not found in object {currentObj} with id {reference}"
+                        );
+                    }
+                        
+                    if (probablyLower < ObjIndexing.MaxIndex)
+                    {
+                        //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
+                        lower = probablyLower;
+                        upper = currentObj.NextIndex[probablyLower];
+                    }
+                }
+                    
+
+                for (int i = lower; i < upper; i++)
+                {
+                    var k = currentObj.ReadKey(i);
+                    if (k.Key == currentQuery)
+                    {
+                        return QueryRef(k.Value, next);
+                    }
+                }
+                throw new KeyNotFoundException(
+                    $"Field {currentQuery} not found in object {currentObj} with id {reference}"
+                );
+            }
+
+            throw new KeyNotFoundException(
+                $"Tried to find field {currentQuery} in entity with id {reference} which should be an object, but it was {reference}"
+            );
+
+        }
+        
         private IJsonVal Query(Ref reference, List<string> parts)
         {
             var value = Resolve(reference);
@@ -130,25 +227,29 @@ namespace SickSharp.Format
                     
                 if (currentObj.UseIndex)
                 {
+                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
+                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
+
                     var khash = KHash.Compute(currentQuery);
-                    var bucket = Convert.ToUInt32(khash / OneObjTable.BucketSize);
+                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
 
                     var probablyLower = currentObj.Index[bucket];
-                    if (probablyLower == OneObjTable.NoIndex)
+                    if (probablyLower == ObjIndexing.NoIndex)
                     {
                         throw new KeyNotFoundException(
                             $"Field {currentQuery} not found in object {currentObj} with id {reference}"
                         );
                     }
                         
-                    if (probablyLower < OneObjTable.MaxIndex)
+                    if (probablyLower < ObjIndexing.MaxIndex)
                     {
                         // Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
                         lower = probablyLower;
-                        if (currentObj.NextIndex.ContainsKey(probablyLower))
-                        {
-                            upper = currentObj.NextIndex[probablyLower];
-                        }
+                        upper = currentObj.NextIndex[probablyLower];
+                    }
+                    else
+                    {
+                        throw new InvalidDataException();
                     }
                 }
                     
@@ -157,6 +258,7 @@ namespace SickSharp.Format
                     var k = currentObj.ReadKey(i);
                     if (k.Key == currentQuery)
                     {
+                        //Console.WriteLine($"{currentQuery} 0..{lower}..{i}..{upper}..{currentObj.Count}");
                         return Query(k.Value, next);
                     }
                 }
@@ -233,7 +335,9 @@ namespace SickSharp.Format
                 tableOffsets.Add(next);
             }
 
-            var header = new Header(version, tableCount, tableOffsets);
+            var bucketCount = _stream.ReadUInt16();
+            
+            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount));
             return header;
         }
     }

@@ -221,10 +221,12 @@ namespace SickSharp.Encoder
     {
         private readonly Bijection<string> _strings;
         public const ushort Limit = 2;
+        private readonly ObjIndexing _settings;
 
-        public ObjListEncoder(Bijection<string> strings)
+        public ObjListEncoder(Bijection<string> strings, ObjIndexing settings)
         {
             _strings = strings;
+            _settings = settings;
         }
 
         public byte[] Bytes(List<ObjEntry> value)
@@ -234,17 +236,17 @@ namespace SickSharp.Encoder
             
             if (value.Count > Limit)
             {
-                if (value.Count >= OneObjTable.MaxIndex)
+                if (value.Count >= ObjIndexing.MaxIndex)
                 {
-                    throw new ArgumentException($"Too many values in an object, the limit is {OneObjTable.MaxIndex}");
+                    throw new ArgumentException($"Too many values in an object, the limit is {ObjIndexing.MaxIndex}");
                 }
                 var toIndex = new List<ObjIndexEntry>(); 
                 foreach (var objEntry in value)
                 {
                     var kval = _strings.Get(objEntry.Key).UsafeGet();
                     var hash = KHash.Compute(kval);
-                    var bucket = hash / OneObjTable.BucketSize;
-                    Debug.Assert(bucket < OneObjTable.BucketCount && bucket >= 0);
+                    var bucket = hash / _settings.BucketSize;
+                    Debug.Assert(bucket < _settings.BucketCount && bucket >= 0);
                     toIndex.Add(new ObjIndexEntry(objEntry.Key, objEntry.Value, hash, (int)bucket));
                 }
 
@@ -252,15 +254,15 @@ namespace SickSharp.Encoder
 
                 data = ordered.Select(e => new ObjEntry(e.Key, e.Value)).ToList();
 
-                var startIndexes = Enumerable.Repeat(OneObjTable.MaxIndex, OneObjTable.BucketCount).ToList();
+                var startIndexes = Enumerable.Repeat(ObjIndexing.MaxIndex, _settings.BucketCount).ToList();
                 
                 for (var i = 0; i < ordered.Count; i++)
                 {
                     var e = ordered[i];
                     var currentVal = startIndexes[e.bucket];
-                    if (currentVal == OneObjTable.MaxIndex)
+                    if (currentVal == ObjIndexing.MaxIndex)
                     {
-                        Debug.Assert(i >= 0 && i < OneObjTable.MaxIndex);
+                        Debug.Assert(i >= 0 && i < ObjIndexing.MaxIndex);
                         startIndexes[e.bucket] = (ushort)i;
                     }
                 }
@@ -269,7 +271,7 @@ namespace SickSharp.Encoder
             }
             else
             {
-                index.Add(OneObjTable.NoIndex);
+                index.Add(ObjIndexing.NoIndex);
             }
 
             var elements = new List<byte[]>
@@ -304,9 +306,9 @@ namespace SickSharp.Encoder
     
     class FixedArray
     {
-        public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder(Bijection<string> strings)
+        public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder(Bijection<string> strings, ObjIndexing settings)
         {
-            return new ObjListEncoder(strings);  
+            return new ObjListEncoder(strings, settings);  
         } 
         public static IFixedArrayByteEncoder<List<Ref>> RefListEncoder = new RefListEncoder();
         public static IFixedArrayByteEncoder<List<Root>> RootListEncoder = new RootListEncoder();

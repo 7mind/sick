@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -23,8 +24,19 @@ namespace SickSharp.Encoder
         private Bijection<List<Ref>> _arrs;
         private Bijection<List<ObjEntry>> _objs;
         private Bijection<Root> _roots;
-        
-        public Index(Bijection<int> ints, Bijection<long> longs, Bijection<BigInteger> bigints, Bijection<float> floats, Bijection<double> doubles, Bijection<BigDecimal> bigDecs, Bijection<string> strings, Bijection<List<Ref>> arrs, Bijection<List<ObjEntry>> objs, Bijection<Root> roots)
+        private readonly ObjIndexing _settings;
+
+        public Index(
+            Bijection<int> ints, 
+            Bijection<long> longs, 
+            Bijection<BigInteger> bigints, 
+            Bijection<float> floats, 
+            Bijection<double> doubles, 
+            Bijection<BigDecimal> bigDecs, 
+            Bijection<string> strings, 
+            Bijection<List<Ref>> arrs, 
+            Bijection<List<ObjEntry>> objs, 
+            Bijection<Root> roots, ObjIndexing settings)
         {
             // _bytes = bytes;
             // _shorts = shorts;
@@ -37,10 +49,11 @@ namespace SickSharp.Encoder
             _arrs = arrs;
             _objs = objs;
             _roots = roots;
+            _settings = settings;
             _bigints = bigints;
         }
 
-        public static Index Create()
+        public static Index Create(ushort buckets = 16)
         {
             return new Index(
                 Bijection<int>.Create("ints", null),
@@ -52,7 +65,8 @@ namespace SickSharp.Encoder
                 Bijection<String>.Create("strings", null),
                 Bijection<List<Ref>>.Create("arrays", new ListComparer<Ref>()),
                 Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
-                Bijection<Root>.Create("roots", null)
+                Bijection<Root>.Create("roots", null),
+                new ObjIndexing(buckets)
                 );
         }
 
@@ -68,7 +82,7 @@ namespace SickSharp.Encoder
                 new(_bigDecs.Name, new VarArrayEncoder<BigDecimal>(Variable.BigDecimalEncoder).Bytes(_bigDecs.AsList())),
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
                 new(_arrs.Name,  new FixedArrayEncoder<List<Ref>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
-                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings)).Bytes(_objs.AsList())),
+                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, _settings)).Bytes(_objs.AsList())),
                 new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
         }
@@ -77,13 +91,16 @@ namespace SickSharp.Encoder
         {
             var version = 0;
             var tables = SerializedTables().Select(d => d.data).ToList();
-            var headerLen = (2 + tables.Count) * Fixed.IntEncoder.BlobSize();
+            var headerLen = (2 + tables.Count) * Fixed.IntEncoder.BlobSize() + Fixed.UInt16Encoder.BlobSize();
             var offsets = tables.ComputeOffsets(headerLen);
 
+            
             var header = new List<byte[]> {
                 Fixed.IntEncoder.Bytes(version),
                 new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(offsets),
+                Fixed.UInt16Encoder.Bytes(_settings.BucketCount),
             } ;
+
             var everything = (header.Concat(tables).ToList()).Concatenate();
             return new SerializedIndex(everything);
         }

@@ -77,10 +77,20 @@ namespace SickSharp.Primitives
         {
             return stream.ReadBuffer(offset, sizeof(int)).ReadInt32();
         }
+        
+        public static ushort ReadUInt16(this Stream stream, long offset)
+        {
+            return stream.ReadBuffer(offset, sizeof(ushort)).ReadUInt16();
+        }
 
         public static int ReadInt32(this Stream stream)
         {
             return ReadInt32(stream, stream.Position);
+        }
+        
+        public static ushort ReadUInt16(this Stream stream)
+        {
+            return ReadUInt16(stream, stream.Position);
         }
     }
 

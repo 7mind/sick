@@ -11,15 +11,17 @@ namespace SickSharp.Format.Tables
     public class ObjTable : BasicVarTable<OneObjTable>
     {
         private readonly StringTable _strings;
+        private readonly ObjIndexing _settings;
 
-        public ObjTable(Stream stream, StringTable strings, UInt32 offset) : base(stream, offset)
+        public ObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream, offset)
         {
             _strings = strings;
+            _settings = settings;
         }
 
         protected override OneObjTable BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
         {
-            return new OneObjTable(Stream, _strings, absoluteStartOffset);
+            return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings);
         }
     }
 
@@ -37,53 +39,76 @@ namespace SickSharp.Format.Tables
             return (long)(a) & 0xffffffffL;
         }
     }
+
+    public class ObjIndexing
+    {
+        public const ushort NoIndex = 65535;
+        public const ushort MaxIndex = NoIndex - 1;
+        //public const ushort BucketCount = 16;
+        public const long Range = (long)UInt32.MaxValue + 1;
+        public readonly ushort BucketCount;
+        public readonly long BucketSize;
+
+        public ObjIndexing(ushort bucketCount)
+        {
+            BucketCount = bucketCount;
+            BucketSize = Range / BucketCount;
+            Debug.Assert(Range == 4294967296);
+            Debug.Assert(BucketCount > 1);
+            Debug.Assert(Range % BucketCount == 0);
+        }
+
+        public const ushort IndexMemberSize = sizeof(ushort); 
+        
+        
+    }
     
     public class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
         
-		public const ushort NoIndex = 65535;
-		public const ushort MaxIndex = NoIndex - 1;
-		public const ushort BucketCount = 128;
-		public const long Range = (long)UInt32.MaxValue + 1;
-		public const long BucketSize = Range / BucketCount;
-        public const ushort IndexMemberSize = sizeof(ushort);
 
-        public readonly ushort[] Index = new ushort[BucketCount];
-        public readonly Dictionary<UInt32, ushort> NextIndex;
+
+        public readonly ushort[]? Index;
+        public readonly ushort[]? NextIndex;
+        //public readonly Dictionary<UInt32, ushort> NextIndex;
         public bool UseIndex { get; }
         
-        public OneObjTable(Stream stream, StringTable strings, UInt32 offset) : base(stream, offset)
+        public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream, offset)
         {
-            Debug.Assert(Range == 4294967296);
-            Debug.Assert(Range % BucketCount == 0);
+
 
             _strings = strings;
-            NextIndex = new();
 
-            var indexHeader = ReadBytes(offset, IndexMemberSize).ReadUInt16();
+            var indexHeader = ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16();
 
-            if (indexHeader == NoIndex)
+            if (indexHeader == ObjIndexing.NoIndex)
             {
-                Offset = offset + IndexMemberSize;
+                Offset = offset + ObjIndexing.IndexMemberSize;
                 UseIndex = false;
             } 
             else
             {
-                var indexSize = BucketCount * IndexMemberSize;
+                var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
                 Offset = (uint)(offset + indexSize) ;
                 UseIndex = true;
+                Index = new ushort[settings.BucketCount];
+                NextIndex = new ushort[Count];
 
                 uint prevGood = 0;
 
-                for (UInt32 i = 0; i < BucketCount; i++)
+                for (UInt32 i = 0; i < settings.BucketCount; i++)
                 {
-                    var bucketI = ReadBytes(offset + IndexMemberSize*i , IndexMemberSize).ReadUInt16();
+                    var bucketI = ReadBytes(offset + ObjIndexing.IndexMemberSize*i , ObjIndexing.IndexMemberSize).ReadUInt16();
                     Index[i] = bucketI;
-                    if (bucketI < MaxIndex)
+                    if (bucketI < ObjIndexing.MaxIndex)
                     {
                         NextIndex[prevGood] = bucketI;
                         prevGood = bucketI;
+                    }
+                    else
+                    {
+                        NextIndex[prevGood] = (ushort)(settings.BucketCount - 1);
                     }
                 }
             }
