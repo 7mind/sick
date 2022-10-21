@@ -66,8 +66,10 @@ namespace SickSharp.Primitives
         {
             var bytes = new byte[count];
             stream.Position = offset;
-            Debug.Assert(stream.Length >= stream.Position + count);
-            stream.Read(bytes);
+            stream.Seek(offset, SeekOrigin.Begin);
+            var ret = stream.Read(bytes, 0, count);
+            // Debug.Assert(stream.Length >= stream.Position + count);
+            Debug.Assert(ret == count);
             return bytes;
         }
 
