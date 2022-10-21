@@ -25,7 +25,7 @@ public class Tests
         jreader.DateParseHandling = DateParseHandling.None;
         
         var loaded = JToken.Load(jreader);
-        var index = Index.Create();
+        var index = Index.Create(128);
         var root = index.append("config.json", loaded);
         
         using (BinaryWriter binWriter =  
@@ -46,7 +46,7 @@ public class Tests
             var reader = new SickReader(stream);
             var rootRef = reader.GetRoot("config.json");
             var nodesValue = reader.QueryRef(rootRef, "nodes");
-            for (int x = 0; x < 10000; x++)
+            for (int x = 0; x < 100000; x++)
             {
                       reader.Query(nodesValue, "node_399.int_node");
                       reader.Query(nodesValue, "node_398.int_node");

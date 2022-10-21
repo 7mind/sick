@@ -65,7 +65,7 @@ namespace SickSharp.Primitives
         public static byte[] ReadBuffer(this Stream stream, long offset, int count)
         {
             var bytes = new byte[count];
-            stream.Position = offset;
+            // stream.Position = offset;
             stream.Seek(offset, SeekOrigin.Begin);
             var ret = stream.Read(bytes, 0, count);
             // Debug.Assert(stream.Length >= stream.Position + count);
