@@ -17,6 +17,7 @@ public class Tests
 
     public void Write()
     {
+        ushort buckets = 256;
         var path = "../../../../../data.json";
         var outPath = "../../../../../data.bin";
 
@@ -25,13 +26,15 @@ public class Tests
         jreader.DateParseHandling = DateParseHandling.None;
         
         var loaded = JToken.Load(jreader);
-        var index = Index.Create(128);
+        var index = Index.Create(buckets);
         var root = index.append("config.json", loaded);
         
         using (BinaryWriter binWriter =  
-               new BinaryWriter(File.Open(outPath, FileMode.Create)))  
-        {  
-            binWriter.Write(index.Serialize().data);  
+               new BinaryWriter(File.Open(outPath, FileMode.Create)))
+        {
+            var data = index.Serialize().data;
+            Console.WriteLine($"Serialized with {buckets} buckets, size: {data.Length} bytes");
+            binWriter.Write(data);  
         }
     }
     
@@ -46,16 +49,28 @@ public class Tests
             var reader = new SickReader(stream);
             var rootRef = reader.GetRoot("config.json");
             var nodesValue = reader.QueryRef(rootRef!, "nodes");
-            for (int x = 0; x < 1000000; x++)
+            
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            var iters = 1_000_000;
+            Console.WriteLine($"Going to perform {iters} lookups...");
+            for (int x = 0; x < iters; x++)
             {
                 var f1 = reader.ReadObjectFieldRef(nodesValue, "node_399");
                 var f2 = reader.ReadObjectFieldRef(f1, "int_node");
+                var resolved = reader.Resolve(f2);
 
                 // reader.Query(nodesValue, "node_399.int_node");
                 // reader.Query(nodesValue, "node_398.int_node");
                 // reader.Query(nodesValue, "node_397.int_node");
             }
-
+            stopwatch.Stop();
+            TimeSpan stopwatchElapsed = stopwatch.Elapsed;
+            Console.WriteLine($"Finished in {stopwatchElapsed.TotalSeconds} sec");
+            Console.WriteLine($"Iters/sec {Convert.ToDouble(iters) / stopwatchElapsed.TotalSeconds}");
+            #if DEBUG_TRAVEL
+            Console.WriteLine($"Total travel = {SickReader.TotalTravel}, total index lookups = {SickReader.TotalLookups}, ratio = {Convert.ToDouble(SickReader.TotalTravel) / SickReader.TotalLookups}");
+            #endif
             // Console.WriteLine(tgt);
             //VerifyConfigJson(reader);
         }

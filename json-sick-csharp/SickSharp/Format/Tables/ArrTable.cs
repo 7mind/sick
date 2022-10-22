@@ -18,8 +18,10 @@ namespace SickSharp.Format.Tables
 
     public class OneArrTable : FixedTable<Ref>
     {
-        public OneArrTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public OneArrTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()

@@ -6,8 +6,10 @@ namespace SickSharp.Format.Tables
 {
     public class FloatTable : FixedTable<float>
     {
-        public FloatTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public FloatTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()

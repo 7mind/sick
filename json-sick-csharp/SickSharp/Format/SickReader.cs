@@ -69,6 +69,11 @@ namespace SickSharp.Format
         public ObjTable Objs { get; }
         public RootTable Roots { get; }
 
+        #if DEBUG_TRAVEL
+        public static volatile int TotalLookups = 0;
+        public static volatile int TotalTravel = 0;
+        #endif
+        
         public Ref? GetRoot(string id)
         {
             Ref? value;
@@ -117,13 +122,19 @@ namespace SickSharp.Format
                         upper = currentObj.NextIndex[probablyLower];
                     }
                 }
-                    
 
+
+                #if DEBUG_TRAVEL
+                TotalLookups += 1;
+                #endif
                 for (int i = lower; i < upper; i++)
                 {
                     var k = currentObj.ReadKey(i);
                     if (k.Key == field)
                     {
+                        #if DEBUG_TRAVEL
+                        TotalTravel += (i - lower);
+                        #endif
                         return k.Value;
                     }
                 }

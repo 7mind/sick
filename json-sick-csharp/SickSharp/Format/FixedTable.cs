@@ -10,28 +10,30 @@ namespace SickSharp.Format
     {
         //private readonly int _offset;
         private readonly Stream _stream;
-        private UInt32 _offset;
+        // private UInt32 _offset;
 
 
-        public FixedTable(Stream stream, UInt32 offset)
+        public FixedTable(Stream stream)
         {
             _stream = stream;
-            Offset = offset;
-        }
 
-        protected UInt32 Offset
-        {
-            get => _offset;
-            set
-            {
-                Count = _stream.ReadInt32(value);
-                _offset = value + sizeof(int);
-            }
-            
         }
 
         public int Count { get; protected set; }
+        public UInt32 StartOffset { get; protected set; }
+        public UInt32 DataOffset { get; protected set; }
 
+        protected void SetStart(UInt32 offset)
+        {
+            StartOffset = offset;
+            DataOffset = offset +  sizeof(int);
+        }
+        
+        protected void ReadStandardCount()
+        {
+            Count = _stream.ReadInt32(StartOffset);
+        }
+        
         // Call this carefully, it may explode!
         // Only use it on small collections and only when you are completely sure that they are actually small
         public List<TV> ReadAll()
@@ -44,7 +46,7 @@ namespace SickSharp.Format
         public TV Read(int index)
         {
             Debug.Assert(index < Count);
-            var target = Offset + index * ElementByteLength();
+            var target = DataOffset + index * ElementByteLength();
             return Convert(ReadBytes(target, ElementByteLength()));
         }
 

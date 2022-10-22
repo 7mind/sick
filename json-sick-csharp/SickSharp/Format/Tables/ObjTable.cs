@@ -1,9 +1,12 @@
 #nullable enable
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
+using SickSharp.Encoder;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
@@ -66,40 +69,47 @@ namespace SickSharp.Format.Tables
     public class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
-        
-
 
         public readonly ushort[]? Index;
         public readonly ushort[]? NextIndex;
         //public readonly Dictionary<UInt32, ushort> NextIndex;
         public bool UseIndex { get; }
-        
-        public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream, offset)
+
+        public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream)
         {
-
-
             _strings = strings;
 
+
             var indexHeader = ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16();
+            // var indexHeader = (ushort)((rawIndex[0] << 8) | rawIndex[1]); 
 
             if (indexHeader == ObjIndexing.NoIndex)
             {
-                Offset = offset + ObjIndexing.IndexMemberSize;
+                SetStart(offset + ObjIndexing.IndexMemberSize);
+                ReadStandardCount();
                 UseIndex = false;
             } 
             else
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
-                Offset = (uint)(offset + indexSize) ;
+                var intSize = Fixed.IntEncoder.BlobSize();
+                var rawIndex = ReadBytes(offset, indexSize + intSize);
+
+                SetStart((uint)(offset + indexSize));
+                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(rawIndex, indexSize, intSize));
+
                 UseIndex = true;
                 Index = new ushort[settings.BucketCount];
                 NextIndex = new ushort[Count];
 
                 uint prevGood = 0;
 
+                
                 for (UInt32 i = 0; i < settings.BucketCount; i++)
                 {
-                    var bucketI = ReadBytes(offset + ObjIndexing.IndexMemberSize*i , ObjIndexing.IndexMemberSize).ReadUInt16();
+                    var start = ObjIndexing.IndexMemberSize * i;
+                    var bucketI = (ushort)((rawIndex[start] << 8) | rawIndex[start + 1]); 
+                    
                     Index[i] = bucketI;
                     if (bucketI < ObjIndexing.MaxIndex)
                     {
@@ -112,19 +122,6 @@ namespace SickSharp.Format.Tables
                     }
                 }
             }
-
-            // Console.WriteLine("Cur");
-            // foreach (var keyValuePair in Index)
-            // {
-            //     Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
-            // }
-            //
-            // Console.WriteLine("Next");
-            // foreach (var keyValuePair in NextIndex)
-            // {
-            //     Console.WriteLine($"{keyValuePair.Key} {keyValuePair.Value}");
-            // }
-
         }
 
         protected override short ElementByteLength()

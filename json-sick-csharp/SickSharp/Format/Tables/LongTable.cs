@@ -6,8 +6,10 @@ namespace SickSharp.Format.Tables
 {
     public class LongTable : FixedTable<long>
     {
-        public LongTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public LongTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()

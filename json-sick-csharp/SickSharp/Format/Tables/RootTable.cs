@@ -6,8 +6,10 @@ namespace SickSharp.Format.Tables
 {
     public class RootTable : FixedTable<Root>
     {
-        public RootTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public RootTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()

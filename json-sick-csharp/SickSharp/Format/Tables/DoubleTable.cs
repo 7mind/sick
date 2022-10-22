@@ -6,8 +6,10 @@ namespace SickSharp.Format.Tables
 {
     public class DoubleTable : FixedTable<double>
     {
-        public DoubleTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public DoubleTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()

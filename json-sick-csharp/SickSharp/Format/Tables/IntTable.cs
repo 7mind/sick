@@ -6,8 +6,10 @@ namespace SickSharp.Format.Tables
 {
     public class IntTable : FixedTable<int>
     {
-        public IntTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public IntTable(Stream stream, UInt32 offset) : base(stream)
         {
+            SetStart(offset);
+            ReadStandardCount();
         }
 
         protected override short ElementByteLength()
