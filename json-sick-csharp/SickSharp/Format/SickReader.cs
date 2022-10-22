@@ -79,22 +79,81 @@ namespace SickSharp.Format
         {
             return Query(reference, path.Split('.').ToList());
         }
-
         
         public Ref QueryRef(Ref reference, string path)
         {
             return QueryRef(reference, path.Split('.').ToList());
         }
+
+        public Ref ReadObjectFieldRef(Ref reference, string field)
+        {
+            if (reference.Kind == RefKind.Obj)
+            {
+                var currentObj = Objs.Read(reference.Value);
+
+                var lower = 0;
+                var upper = currentObj.Count;
+                    
+                if (currentObj.UseIndex)
+                {
+                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
+                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
+
+                    var khash = KHash.Compute(field);
+                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+
+                    var probablyLower = currentObj.Index[bucket];
+                    if (probablyLower == ObjIndexing.NoIndex)
+                    {
+                        throw new KeyNotFoundException(
+                            $"Field {field} not found in object {currentObj} with id {reference}"
+                        );
+                    }
+                        
+                    if (probablyLower < ObjIndexing.MaxIndex)
+                    {
+                        //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
+                        lower = probablyLower;
+                        upper = currentObj.NextIndex[probablyLower];
+                    }
+                }
+                    
+
+                for (int i = lower; i < upper; i++)
+                {
+                    var k = currentObj.ReadKey(i);
+                    if (k.Key == field)
+                    {
+                        return k.Value;
+                    }
+                }
+                throw new KeyNotFoundException(
+                    $"Field {field} not found in object {currentObj} with id {reference}"
+                );
+            }
+            
+            throw new KeyNotFoundException(
+                $"Tried to find field {field} in entity with id {reference} which should be an object, but it was {reference}"
+            );
+        }
+
+        public Ref ReadArrayElementRef(Ref reference, int iindex)
+        {
+            if (reference.Kind == RefKind.Arr)
+            {
+                var currentObj = Arrs.Read(reference.Value);
+                var i = (iindex >= 0)?iindex : currentObj.Count + iindex;
+                return currentObj.Read(i);
+            }
+            
+            throw new KeyNotFoundException(
+                $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference}"
+            );
+        }
+
+        
         private Ref QueryRef(Ref reference, List<string> parts)
         {
-            // var value = Resolve(reference);
-            // if (value == null)
-            // {
-            //     throw new KeyNotFoundException(
-            //         $"Reference {reference} not found with query {String.Join("->", parts)}"
-            //         );
-            // }
-
             if (parts.Count == 0)
             {
                 return reference;
@@ -114,163 +173,27 @@ namespace SickSharp.Format
             {
                 var index = currentQuery.Substring(1, currentQuery.Length - 2);
                 var iindex = Int32.Parse(index);
-                if (reference.Kind == RefKind.Arr)
-                {
-                    var currentObj = Arrs.Read(reference.Value);
-                    var i = (iindex >= 0)?iindex : currentObj.Count + iindex;
-                    return QueryRef(currentObj.Read(i), next);
-                }
-                
-                throw new KeyNotFoundException(
-                    $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference}"
-                );
+
+                var resolvedArr = ReadArrayElementRef(reference, iindex);
+                return QueryRef(resolvedArr, next);
             }
-
-            if (reference.Kind == RefKind.Obj)
-            {
-                var currentObj = Objs.Read(reference.Value);
-
-                var lower = 0;
-                var upper = currentObj.Count;
-                    
-                if (currentObj.UseIndex)
-                {
-                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
-                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
-
-                    var khash = KHash.Compute(currentQuery);
-                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
-
-                    var probablyLower = currentObj.Index[bucket];
-                    if (probablyLower == ObjIndexing.NoIndex)
-                    {
-                        throw new KeyNotFoundException(
-                            $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                        );
-                    }
-                        
-                    if (probablyLower < ObjIndexing.MaxIndex)
-                    {
-                        //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
-                        lower = probablyLower;
-                        upper = currentObj.NextIndex[probablyLower];
-                    }
-                }
-                    
-
-                for (int i = lower; i < upper; i++)
-                {
-                    var k = currentObj.ReadKey(i);
-                    if (k.Key == currentQuery)
-                    {
-                        return QueryRef(k.Value, next);
-                    }
-                }
-                throw new KeyNotFoundException(
-                    $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                );
-            }
-
-            throw new KeyNotFoundException(
-                $"Tried to find field {currentQuery} in entity with id {reference} which should be an object, but it was {reference}"
-            );
-
+            
+            var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
+            return QueryRef(resolvedObj, next);
         }
         
         private IJsonVal Query(Ref reference, List<string> parts)
         {
-            var value = Resolve(reference);
+            var result = QueryRef(reference, parts);
+            var value = Resolve(result);
             if (value == null)
             {
                 throw new KeyNotFoundException(
-                    $"Reference {reference} not found with query {String.Join("->", parts)}"
+                    $"Failed to query '{reference}' lookup result was '{result}' but it failed to resolve. The query was '{String.Join("->", parts)}'"
                     );
             }
 
-            if (parts.Count == 0)
-            {
-                return value;
-            }
-
-            var currentQuery = parts.First();
-            var next = parts.Skip(1).ToList();
-
-            if (currentQuery.EndsWith("]") && currentQuery.Contains("[") && !currentQuery.StartsWith("["))
-            {
-                var index = currentQuery.Substring(currentQuery.IndexOf('['));
-                currentQuery = currentQuery.Substring(0, currentQuery.IndexOf('['));
-                next.Insert(0, index);
-            }
-            
-            if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
-            {
-                var index = currentQuery.Substring(1, currentQuery.Length - 2);
-                var iindex = Int32.Parse(index);
-                if (value is JArr)
-                {
-                    var currentObj = ((JArr)value).Value;
-                    var i = (iindex >= 0)?iindex : currentObj.Count + iindex;
-                    return Query(currentObj.Read(i), next);
-                }
-                
-                throw new KeyNotFoundException(
-                    $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {value}"
-                );
-            }
-
-            if (value is JObj)
-            {
-                var currentObj = ((JObj)value).Value;
-
-                var lower = 0;
-                var upper = currentObj.Count;
-                    
-                if (currentObj.UseIndex)
-                {
-                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
-                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
-
-                    var khash = KHash.Compute(currentQuery);
-                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
-
-                    var probablyLower = currentObj.Index[bucket];
-                    if (probablyLower == ObjIndexing.NoIndex)
-                    {
-                        throw new KeyNotFoundException(
-                            $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                        );
-                    }
-                        
-                    if (probablyLower < ObjIndexing.MaxIndex)
-                    {
-                        // Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
-                        lower = probablyLower;
-                        upper = currentObj.NextIndex[probablyLower];
-                    }
-                    else
-                    {
-                        throw new InvalidDataException();
-                    }
-                }
-                    
-                for (int i = lower; i < upper; i++)
-                {
-                    var k = currentObj.ReadKey(i);
-                    if (k.Key == currentQuery)
-                    {
-                        //Console.WriteLine($"{currentQuery} 0..{lower}..{i}..{upper}..{currentObj.Count}");
-                        return Query(k.Value, next);
-                    }
-                }
-                throw new KeyNotFoundException(
-                    $"Field {currentQuery} not found in object {currentObj} with id {reference}"
-                );
-            }
-
-            throw new KeyNotFoundException(
-                $"Tried to find field {currentQuery} in entity with id {reference} which should be an object, but it was {value}"
-            );
-
+            return value;
         }
         
         public IJsonVal Resolve(Ref reference)

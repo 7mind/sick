@@ -45,12 +45,15 @@ public class Tests
             
             var reader = new SickReader(stream);
             var rootRef = reader.GetRoot("config.json");
-            var nodesValue = reader.QueryRef(rootRef, "nodes");
-            for (int x = 0; x < 100000; x++)
+            var nodesValue = reader.QueryRef(rootRef!, "nodes");
+            for (int x = 0; x < 1000000; x++)
             {
-                      reader.Query(nodesValue, "node_399.int_node");
-                      reader.Query(nodesValue, "node_398.int_node");
-                      reader.Query(nodesValue, "node_397.int_node");
+                var f1 = reader.ReadObjectFieldRef(nodesValue, "node_399");
+                var f2 = reader.ReadObjectFieldRef(f1, "int_node");
+
+                // reader.Query(nodesValue, "node_399.int_node");
+                // reader.Query(nodesValue, "node_398.int_node");
+                // reader.Query(nodesValue, "node_397.int_node");
             }
 
             // Console.WriteLine(tgt);
