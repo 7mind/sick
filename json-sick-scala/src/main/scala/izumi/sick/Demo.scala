@@ -6,13 +6,8 @@ import izumi.sick.indexes.{IndexRW, PackSettings}
 import izumi.sick.model.{ToBytesFixed, ToBytesFixedArray, ToBytesVar, ToBytesVarArray}
 import izumi.sick.sickcirce.CirceTraverser.*
 
-import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-
-sealed trait Foo
-case class Bar(xs: Vector[String]) extends Foo
-case class Qux(i: Long, d: Option[Double]) extends Foo
 
 object StrTool {
   implicit class StringExt(s: String) {
@@ -34,17 +29,8 @@ object Demo {
   val rootname = "sample.json"
   out.toFile.mkdirs()
 
-  val foo: Seq[Foo] = List(
-    Bar(Vector("a")),
-    Bar(Vector("a")),
-    Bar(Vector("b")),
-    Qux(13, Some(14.0)),
-    Qux(42, Some(42.1)),
-    Qux(42, Some(42.1)),
-  )
-
   def main(args: Array[String]): Unit = {
-    import scala.jdk.CollectionConverters._
+    import scala.jdk.CollectionConverters.*
     val allInputs = Files
       .walk(in)
       .map(_.toFile)
@@ -81,8 +67,6 @@ object Demo {
         val raw = packed.data.toArray
         val compressed = Zstd.compress(raw, level)
 
-        //    println(roIndex.arrs.data(0))
-        //    println(roIndex.objs.data(0))
         println("=" * 80)
         assert(roIndex.parts.size == packed.offsets.size)
         val szInt = implicitly[ToBytesFixed[Int]].blobSize
