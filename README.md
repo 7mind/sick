@@ -47,7 +47,7 @@ Let's build a table for every unique value in our `JSON` :
 
 This way we flattened and deduplicated our `JSON`.
 
-## Streaming
+### Streaming
 
 Now we may do manu different things, for example we may stream our table:
 
@@ -77,7 +77,7 @@ array:0[1] = remove
 
 There is an interesting observation: the initial stream entries (when there is no removals) may be safely reordered, though sometimes the receiver would need to store them until it can sort them out.
 
-## Binary storage
+### Binary storage
 
 We may note that the only complex data structures in our "Value" column are lists and `(type, index)` pairs. Let's call the pairs "references".
 
