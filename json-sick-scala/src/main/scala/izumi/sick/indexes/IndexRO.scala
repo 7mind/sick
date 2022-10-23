@@ -19,6 +19,7 @@ import izumi.sick.thirdparty.akka.util.ByteString
 //}
 
 final class IndexRO(
+  val settings: PackSettings,
   val ints: RefTableRO[Int],
   val longs: RefTableRO[Long],
   val bigints: RefTableRO[BigInt],
@@ -42,7 +43,7 @@ final class IndexRO(
     parts.map(_._1).filterNot(_.isEmpty).mkString("\n\n")
   }
 
-  def pack(): Packed = pack(blobs)
+  def pack(): Packed = pack(blobs, settings)
 
   private def blobs: Seq[ByteString] = parts.map {
     case (p, codec) =>
@@ -60,20 +61,20 @@ final class IndexRO(
       (bigDecimals, implicitly[ToBytes[Seq[BigDecimal]]]),
       (strings, implicitly[ToBytes[Seq[String]]]),
       (arrs, implicitly[ToBytes[Seq[Arr]]]),
-      (objs, toBytesFixedSizeArray(new ObjToBytes(strings))),
+      (objs, toBytesFixedSizeArray(new ObjToBytes(strings, settings))),
       (roots, implicitly[ToBytes[Seq[Root]]]),
     ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]]) }
   }
 
-  private def pack(collections: Seq[ByteString]): Packed = {
+  private def pack(collections: Seq[ByteString], settings: PackSettings): Packed = {
     import izumi.sick.model.ToBytes._
     val version = 0
-    val headerLen = (2 + collections.length) * Integer.BYTES
+    val headerLen = (2 + collections.length) * Integer.BYTES + java.lang.Short.BYTES
 
     val offsets = computeOffsets(collections, headerLen)
     assert(offsets.size == collections.size)
 
-    val everything = Seq((Seq(version, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ collections
+    val everything = Seq((Seq(version, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes) ++ collections
     val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
     Packed(version, headerLen, offsets, blob)
   }
@@ -81,4 +82,10 @@ final class IndexRO(
 
 object IndexRO {
   final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)
+}
+
+case class PackSettings(bucketCount: Short, limit: Short)
+
+object PackSettings {
+  def default = PackSettings(128, 8)
 }

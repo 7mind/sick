@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using SickSharp.Primitives;
 
@@ -34,6 +35,19 @@ namespace SickSharp.Format.Tables
             var kind = (RefKind)bytes[0];
             var value = bytes[1..(sizeof(int) + 1)].ReadInt32();
             return new Ref(kind, value);
+        }
+        
+        public IEnumerator<Ref> GetEnumerator()
+        {
+            return Content().GetEnumerator();
+        }
+        
+        public IEnumerable<Ref> Content()
+        {
+            for (var i = 0; i < Count; i++) 
+            {
+                yield return Read(i);
+            };
         }
     }
 }

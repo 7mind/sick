@@ -1,5 +1,6 @@
 package izumi.sick.model
 
+import izumi.sick.indexes.PackSettings
 import izumi.sick.model.Ref.RefVal
 import izumi.sick.tables.RefTableRO
 import izumi.sick.thirdparty.akka.util.ByteString
@@ -194,13 +195,13 @@ object ToBytes {
     }
   }
 
-  class ObjToBytes(strings: RefTableRO[String]) extends ToBytesFixedArray[Obj] {
+  class ObjToBytes(strings: RefTableRO[String], packSettings: PackSettings) extends ToBytesFixedArray[Obj] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
 
     @SuppressWarnings(Array("UnnecessaryConversion"))
     override def bytes(value: Obj): ByteString = {
-      val bucketCount: Short = 16
-      val limit: Short = 2
+      val bucketCount: Short = packSettings.bucketCount
+      val limit: Short = packSettings.limit
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
 

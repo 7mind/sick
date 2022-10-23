@@ -46,8 +46,9 @@ class IndexRW private (
   roots: RefTableRW[Root],
 ) {
 
-  def freeze(): IndexRO = {
+  def freeze(settings: PackSettings): IndexRO = {
     new IndexRO(
+      settings,
       ints.freeze(),
       longs.freeze(),
       bigints.freeze(),
