@@ -98,12 +98,35 @@ So, `["a", "bb", "ccc"]` would become something like `3 0 2 3 a b bb ccc` withou
 An important fact is that this encoding is indexed too and it can be reused to store any lists of variable-length data.
 
 
+### Additional capabilities over `JSON`
+
+It's easy to note that our table may store circular references, something `JSON` can't do natively:
+
+| Type   | index | Value                | Is Root |
+| ------ | ----- | -------------------- | ------- |
+| object | 0     | [string:0, object:1] | No      |
+| object | 1     | [string:1, object:0] | No      |
+
+
+This may be convenient in some complex cases.
+
+Also we may note, that we may happily store multiple json files in one table and have full deduplication over their content. We just need to introduce a separate attribute (`is root`)
+storing either nothing or the name of our "root entry" (`JSON` file).
+
+In real implementation it's more convenient to just create a separate "root" type, the value of a root type should always be a reference to its name and a reference to the actual `JSON` value we encoded:
+
+| Type   | index | Value                          |
+| ------ | ----- | ------------------------------ |
+| string | 0     | "some key"                     |
+| string | 1     | "some value"                   |
+| string | 2     | "some value"                   |
+| object | 0     | [string:0, string,1]           |
+| object | 1     | [string:1, string:0]           |
+| array  | 0     | [object:0, object:0, object:1] |
+| root   | 0     | [string:2, array:0]            |
 ## Implementation
 
 TODO
-### Additional capabilities over `JSON`
-
-TODO: multiple roots, circular references
 
 ### Streaming
 
