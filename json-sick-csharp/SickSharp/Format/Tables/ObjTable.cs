@@ -70,9 +70,8 @@ namespace SickSharp.Format.Tables
     {
         private readonly StringTable _strings;
 
-        public readonly ushort[]? Index;
-        public readonly ushort[]? NextIndex;
-        //public readonly Dictionary<UInt32, ushort> NextIndex;
+        public readonly ushort[]? BucketStartOffsets;
+        public readonly Dictionary<UInt32, ushort> BucketEndOffsets;
         public bool UseIndex { get; }
 
         public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream)
@@ -99,26 +98,22 @@ namespace SickSharp.Format.Tables
                 Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(rawIndex, indexSize, intSize));
 
                 UseIndex = true;
-                Index = new ushort[settings.BucketCount];
-                NextIndex = new ushort[Count];
+                BucketStartOffsets = new ushort[settings.BucketCount];
+                BucketEndOffsets = new Dictionary<uint, ushort>();
 
-                uint prevGood = 0;
+                uint previousBucketStart = 0;
 
                 
                 for (UInt32 i = 0; i < settings.BucketCount; i++)
                 {
                     var start = ObjIndexing.IndexMemberSize * i;
-                    var bucketI = (ushort)((rawIndex[start] << 8) | rawIndex[start + 1]); 
+                    var bucketIStartOffset = (ushort)((rawIndex[start] << 8) | rawIndex[start + 1]); 
                     
-                    Index[i] = bucketI;
-                    if (bucketI < ObjIndexing.MaxIndex)
+                    BucketStartOffsets[i] = bucketIStartOffset;
+                    if (bucketIStartOffset < ObjIndexing.MaxIndex)
                     {
-                        NextIndex[prevGood] = bucketI;
-                        prevGood = bucketI;
-                    }
-                    else
-                    {
-                        NextIndex[prevGood] = (ushort)(settings.BucketCount - 1);
+                        BucketEndOffsets[previousBucketStart] = bucketIStartOffset;
+                        previousBucketStart = bucketIStartOffset;
                     }
                 }
             }

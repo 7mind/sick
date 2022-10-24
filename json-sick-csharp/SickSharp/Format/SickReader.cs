@@ -101,13 +101,13 @@ namespace SickSharp.Format
                     
                 if (currentObj.UseIndex)
                 {
-                    Debug.Assert(currentObj.Index != null, "currentObj.Index != null");
-                    Debug.Assert(currentObj.NextIndex != null, "currentObj.NextIndex != null");
+                    Debug.Assert(currentObj.BucketStartOffsets != null, "currentObj.Index != null");
+                    Debug.Assert(currentObj.BucketEndOffsets != null, "currentObj.NextIndex != null");
 
                     var khash = KHash.Compute(field);
                     var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
 
-                    var probablyLower = currentObj.Index[bucket];
+                    var probablyLower = currentObj.BucketStartOffsets[bucket];
                     if (probablyLower == ObjIndexing.NoIndex)
                     {
                         throw new KeyNotFoundException(
@@ -119,7 +119,10 @@ namespace SickSharp.Format
                     {
                         //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
                         lower = probablyLower;
-                        upper = currentObj.NextIndex[probablyLower];
+                        if (currentObj.BucketEndOffsets.ContainsKey(probablyLower))
+                        {
+                            upper = currentObj.BucketEndOffsets[probablyLower];
+                        }
                     }
                 }
 
@@ -127,6 +130,7 @@ namespace SickSharp.Format
                 #if DEBUG_TRAVEL
                 TotalLookups += 1;
                 #endif
+                Debug.Assert(lower <= upper);
                 for (int i = lower; i < upper; i++)
                 {
                     var k = currentObj.ReadKey(i);
