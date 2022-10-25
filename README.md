@@ -100,7 +100,9 @@ An important fact is that this encoding is indexed too and it can be reused to s
 
 ### Additional capabilities over `JSON`
 
-It's easy to note that our table may store circular references, something `JSON` can't do natively:
+`SICK` encoding follows compositional principles of `JSON` (a set primitive types plus lists and dictionaries), though it is more powerful: it has "reference" type and allows you to encode custom types.
+
+(1) It's easy to note that our table may store circular references, something `JSON` can't do natively:
 
 | Type   | index | Value                | Is Root |
 | ------ | ----- | -------------------- | ------- |
@@ -110,7 +112,7 @@ It's easy to note that our table may store circular references, something `JSON`
 
 This may be convenient in some complex cases.
 
-Also we may note, that we may happily store multiple json files in one table and have full deduplication over their content. We just need to introduce a separate attribute (`is root`)
+(2) Also we may note, that we may happily store multiple json files in one table and have full deduplication over their content. We just need to introduce a separate attribute (`is root`)
 storing either nothing or the name of our "root entry" (`JSON` file).
 
 In real implementation it's more convenient to just create a separate "root" type, the value of a root type should always be a reference to its name and a reference to the actual `JSON` value we encoded:
@@ -124,6 +126,11 @@ In real implementation it's more convenient to just create a separate "root" typ
 | object | 1     | [string:1, string:0]           |
 | array  | 0     | [object:0, object:0, object:1] |
 | root   | 0     | [string:2, array:0]            |
+
+(3) We may encode custom scalar data types (e.g. timestamps) natively just by introducing new type tags.
+
+(4) We may even store polymorphic types by introducing new type tags or even new type references.
+
 ## Implementation
 
 TODO
@@ -134,3 +141,15 @@ TODO
 ### Efficient binary indexed storage
 
 TODO
+
+### Limitations
+
+Current implementation has the following limitations:
+
+1. Maximum object size: `65534` keys
+2. The order of object keys is not preserved
+3. Maximum amount of array elements: `2^32`
+4. Maximum amount of unique values of the same type: `2^32`
+
+These limitations may be lifted by using more bytes to store offset pointers and counts on binary level.
+Though it's hard to imagine a real application which would need that.
