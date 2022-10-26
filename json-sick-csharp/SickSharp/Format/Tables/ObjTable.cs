@@ -70,10 +70,11 @@ namespace SickSharp.Format.Tables
     {
         private readonly StringTable _strings;
 
-        public readonly ushort[]? BucketStartOffsets;
-        public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
+        // public readonly ushort[]? BucketStartOffsets;
+        // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
-
+        public byte[]? RawIndex;
+        
         public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream)
         {
             _strings = strings;
@@ -92,29 +93,12 @@ namespace SickSharp.Format.Tables
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
                 var intSize = Fixed.IntEncoder.BlobSize();
-                var rawIndex = stream.ReadBytes(offset, indexSize + intSize);
+                RawIndex = stream.ReadBytes(offset, indexSize + intSize);
 
                 SetStart((uint)(offset + indexSize));
-                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(rawIndex, indexSize, intSize));
+                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(RawIndex, indexSize, intSize));
 
                 UseIndex = true;
-                BucketStartOffsets = new ushort[settings.BucketCount];
-                BucketEndOffsets = new Dictionary<uint, ushort>();
-
-                uint previousBucketStart = 0;
-                
-                for (UInt32 i = 0; i < settings.BucketCount; i++)
-                {
-                    var start = ObjIndexing.IndexMemberSize * i;
-                    var bucketIStartOffset = rawIndex.ReadUInt16BE(start);
-
-                    BucketStartOffsets[i] = bucketIStartOffset;
-                    if (bucketIStartOffset < ObjIndexing.MaxIndex)
-                    {
-                        BucketEndOffsets[previousBucketStart] = bucketIStartOffset;
-                        previousBucketStart = bucketIStartOffset;
-                    }
-                }
             }
         }
 

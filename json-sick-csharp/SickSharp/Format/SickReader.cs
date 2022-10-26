@@ -5,6 +5,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using SickSharp.Format.Tables;
 using SickSharp.Primitives;
@@ -130,13 +131,31 @@ namespace SickSharp.Format
                     
                 if (currentObj.UseIndex)
                 {
-                    Debug.Assert(currentObj.BucketStartOffsets != null, "currentObj.Index != null");
-                    Debug.Assert(currentObj.BucketEndOffsets != null, "currentObj.NextIndex != null");
+                    
+                    //BucketStartOffsets = new ushort[settings.BucketCount];
+                    //BucketEndOffsets = new Dictionary<uint, ushort>();
+
+                    uint previousBucketStart = 0;
+                
+                    // for (UInt32 i = 0; i < settings.BucketCount; i++)
+                    // {
+                    //
+                    //
+                    //     BucketStartOffsets[i] = bucketIStartOffset;
+                    //     if (bucketIStartOffset < ObjIndexing.MaxIndex)
+                    //     {
+                    //         BucketEndOffsets[previousBucketStart] = bucketIStartOffset;
+                    //         previousBucketStart = bucketIStartOffset;
+                    //     }
+                    // }
+                    
+                    // Debug.Assert(currentObj.BucketStartOffsets != null, "currentObj.Index != null");
+                    // Debug.Assert(currentObj.BucketEndOffsets != null, "currentObj.NextIndex != null");
 
                     var khash = KHash.Compute(field);
                     var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+                    var probablyLower = BucketValue(currentObj, bucket);
 
-                    var probablyLower = currentObj.BucketStartOffsets[bucket];
                     if (probablyLower == ObjIndexing.NoIndex)
                     {
                         throw new KeyNotFoundException(
@@ -148,9 +167,15 @@ namespace SickSharp.Format
                     {
                         //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
                         lower = probablyLower;
-                        if (currentObj.BucketEndOffsets.ContainsKey(probablyLower))
+
+                        for (uint i = bucket+1; i < Header.Settings.BucketCount; i++)
                         {
-                            upper = currentObj.BucketEndOffsets[probablyLower];
+                            var probablyUpper = BucketValue(currentObj, i);
+                            if (probablyUpper < ObjIndexing.MaxIndex)
+                            {
+                                upper = probablyUpper;
+                                break;
+                            }
                         }
                     }
                 }
@@ -181,6 +206,12 @@ namespace SickSharp.Format
             );
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort BucketValue(OneObjTable table, UInt32 bucket)
+        {
+            return table.RawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
+        }
+        
         public Ref ReadArrayElementRef(Ref reference, int iindex)
         {
             if (reference.Kind == RefKind.Arr)
