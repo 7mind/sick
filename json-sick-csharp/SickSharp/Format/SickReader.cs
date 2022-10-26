@@ -189,13 +189,16 @@ namespace SickSharp.Format
                 Debug.Assert(lower <= upper);
                 for (int i = lower; i < upper; i++)
                 {
-                    var k = currentObj.ReadKey(i);
+                    var k = currentObj.ReadKeyOnly(i);
                     if (k.Key == field)
                     {
                         #if DEBUG_TRAVEL
                         TotalTravel += (i - lower);
                         #endif
-                        return k.Value;
+                        
+                        var kind = (RefKind)k.Value[sizeof(int)];
+                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        return new Ref(kind, value);
                     }
                 }
                 throw new KeyNotFoundException(

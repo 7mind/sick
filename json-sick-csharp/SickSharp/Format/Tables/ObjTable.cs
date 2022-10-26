@@ -118,11 +118,17 @@ namespace SickSharp.Format.Tables
         {
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
             var kind = (RefKind)bytes[sizeof(int)];
-
             var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
             return new ObjEntry(keyval, new Ref(kind, value));
         }
 
+        public KeyValuePair<string, byte[]> ReadKeyOnly(int index)
+        {
+            var bytes = ReadBytes(index);
+            var keyval = bytes[..sizeof(int)].ReadInt32BE();
+            return new KeyValuePair<string, byte[]>(_strings.Read(keyval), bytes);
+        }
+        
         public KeyValuePair<string, Ref> ReadKey(int index)
         {
             var obj = Read(index);
@@ -143,4 +149,5 @@ namespace SickSharp.Format.Tables
     }
 
     public record ObjEntry(int Key, Ref Value);
+
 }

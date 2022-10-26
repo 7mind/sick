@@ -43,11 +43,16 @@ namespace SickSharp.Format
             return result;
         }
 
-        public TV Read(int index)
+        public byte[] ReadBytes(int index)
         {
             Debug.Assert(index < Count);
             var target = DataOffset + index * ElementByteLength();
-            return Convert(_stream.ReadBytes(target, ElementByteLength()));
+            return _stream.ReadBytes(target, ElementByteLength());
+        }
+        
+        public TV Read(int index)
+        {
+            return Convert(ReadBytes(index));
         }
         
         protected abstract short ElementByteLength();
