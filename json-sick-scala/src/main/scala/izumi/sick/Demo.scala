@@ -114,8 +114,14 @@ object Demo {
         println(s"Raw size: ${raw.length} == ${raw.length / 1024} kB")
         println(s"Compressed size: ${compressed.length} == ${compressed.length / 1024} kB (zstd level=$level)")
 
-        Files.write(out.resolve(s"scala-${input.getName}.bin"), raw)
-        Files.write(out.resolve(s"scala-${input.getName}.bin.zstd"), compressed)
+        val fileName = input.getName
+        val basename = if (fileName.indexOf(".") > 0) {
+          fileName.substring(0, fileName.lastIndexOf("."))
+        } else {
+          fileName
+        }
+        Files.write(out.resolve(s"$basename-SCALA.bin"), raw)
+      // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
 
     }
 

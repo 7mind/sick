@@ -87,5 +87,5 @@ object IndexRO {
 case class PackSettings(bucketCount: Short, limit: Short)
 
 object PackSettings {
-  def default = PackSettings(128, 8)
+  def default = PackSettings(128, 2)
 }

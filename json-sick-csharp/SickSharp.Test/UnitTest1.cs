@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices.ComTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SickSharp.Format;
@@ -30,7 +31,9 @@ public class Tests
     {
         foreach (var file in _files)
         {
-            DoWrite(file, Path.Combine(PathOut, $"cs-{new FileInfo(file).Name}.bin"));
+            var fi = new FileInfo(file);
+            var name = Path.GetFileNameWithoutExtension(fi.Name);
+            DoWrite(file, Path.Combine(PathOut, $"{name}-CS.bin"));
         }
     }
     
@@ -51,6 +54,68 @@ public class Tests
     // }
 
 
+    public int Traverse(Ref reference, SickReader reader, int count, short limit)
+    {
+        var readFirst = false;
+        var next = count + 1;
+        if (count >= limit)
+        {
+            return count;
+        }
+        if (reference.Kind == RefKind.Arr)
+        {
+            var arr = ((JArr)reader.Resolve(reference)).Value;
+            if (arr.Count == 0)
+            {
+                return next;
+            }
+    
+            Ref entry;
+            int index;
+            if (readFirst)
+            {
+                entry = arr.Content().First();
+                index = 0;
+            }
+            else
+            {
+                index = arr.Count / 2;
+                entry = arr.Content().ElementAt(index);
+            }
+
+            var entryRef = reader.ReadArrayElementRef(reference, index);
+            Debug.Assert(entry == entryRef);
+            return Traverse(entryRef, reader, next, limit);
+        }
+    
+        if (reference.Kind == RefKind.Obj)
+        {
+            var obj = ((JObj)reader.Resolve(reference)).Value;
+            if (obj.Count == 0)
+            {
+                return next;
+            }
+    
+            KeyValuePair<string, Ref> entry;
+            int index;
+            if (readFirst)
+            {
+                entry = obj.Content().First();
+                index = 0;
+            }
+            else
+            {
+                index = obj.Count / 2;
+                entry = obj.Content().ElementAt(index);
+            }
+            var fieldVal = reader.ReadObjectFieldRef(reference, entry.Key);
+            Debug.Assert(fieldVal == entry.Value);
+            return Traverse(entry.Value, reader, next, limit);
+        }
+    
+        return count;
+    }
+    
     // public int Traverse(Ref reference, SickReader reader, int count, short limit)
     // {
     //     var next = count + 1;
@@ -66,8 +131,8 @@ public class Tests
     //             return next;
     //         }
     //
-    //         var entry = arr.Content().Last();
-    //         var entryRef = reader.ReadArrayElementRef(reference, arr.Count -1);
+    //         var entry = arr.Content().First();
+    //         var entryRef = reader.ReadArrayElementRef(reference, 0);
     //         Debug.Assert(entry == entryRef);
     //         return Traverse(entryRef, reader, next, limit);
     //     }
@@ -80,7 +145,7 @@ public class Tests
     //             return next;
     //         }
     //
-    //         var firstEntry = obj.Content().Last();
+    //         var firstEntry = obj.Content().First();
     //         var fieldVal = reader.ReadObjectFieldRef(reference, firstEntry.Key);
     //         Debug.Assert(fieldVal == firstEntry.Value);
     //         return Traverse(firstEntry.Value, reader, next, limit);
@@ -88,57 +153,20 @@ public class Tests
     //
     //     return count;
     // }
-    
-    public int Traverse(Ref reference, SickReader reader, int count, short limit)
-    {
-        var next = count + 1;
-        if (count >= limit)
-        {
-            return count;
-        }
-        if (reference.Kind == RefKind.Arr)
-        {
-            var arr = ((JArr)reader.Resolve(reference)).Value;
-            if (arr.Count == 0)
-            {
-                return next;
-            }
-
-            var entry = arr.Content().First();
-            var entryRef = reader.ReadArrayElementRef(reference, 0);
-            Debug.Assert(entry == entryRef);
-            return Traverse(entryRef, reader, next, limit);
-        }
-
-        if (reference.Kind == RefKind.Obj)
-        {
-            var obj = ((JObj)reader.Resolve(reference)).Value;
-            if (obj.Count == 0)
-            {
-                return next;
-            }
-
-            var firstEntry = obj.Content().First();
-            var fieldVal = reader.ReadObjectFieldRef(reference, firstEntry.Key);
-            Debug.Assert(fieldVal == firstEntry.Value);
-            return Traverse(firstEntry.Value, reader, next, limit);
-        }
-
-        return count;
-    }
 
     [Test]
     public void Test2_Read()
     {
         var inputs = Directory.EnumerateFiles(PathOut, "*.bin", SearchOption.TopDirectoryOnly).ToList();
+        inputs.Sort();
 
         foreach (var input in inputs)
         {
             using (var reader = SickReader.OpenFile(input))
             {
-                var name = new FileInfo(input).Name;
-                Console.WriteLine();
-                Console.WriteLine($"Processing {name}...");
+                var fi = new FileInfo(input);
+                var name = fi.Name;
+                Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
                 var rootRef = reader.GetRoot(RootName);
                 
                 Stopwatch stopwatch = new Stopwatch();
@@ -156,6 +184,17 @@ public class Tests
                 
                 Debug.Assert(rootRef != null, $"No root entry in {name}");
                 Console.WriteLine($"{name}: found {RootName}, ref={rootRef}");
+                
+                switch (rootRef.Kind)
+                {
+                    case RefKind.Obj:
+                        Console.WriteLine($"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
+                        break;
+                    default: 
+                        break;
+                }
+                Console.WriteLine();
+
 #if DEBUG_TRAVEL
             Console.WriteLine($"Total travel = {SickReader.TotalTravel}, total index lookups = {SickReader.TotalLookups}, ratio = {Convert.ToDouble(SickReader.TotalTravel) / SickReader.TotalLookups}");
 #endif
@@ -166,20 +205,19 @@ public class Tests
     
     public void DoWrite(string inPath, string outPath)
     {
-        ushort buckets = 256;
         using var sr = new StreamReader(inPath);
         using var jreader = new JsonTextReader(sr);
         jreader.DateParseHandling = DateParseHandling.None;
         
         var loaded = JToken.Load(jreader);
-        var index = Index.Create(buckets);
+        var index = Index.Create();
         var root = index.append(RootName, loaded);
         
         using (BinaryWriter binWriter =  
                new BinaryWriter(File.Open(outPath, FileMode.Create)))
         {
             var data = index.Serialize().data;
-            Console.WriteLine($"Serialized with {buckets} buckets, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
+            Console.WriteLine($"Serialized with {index.Settings.BucketCount} buckets and {index.Settings.Limit} limit, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
             binWriter.Write(data);  
         }
     }

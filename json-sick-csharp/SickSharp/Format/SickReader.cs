@@ -171,8 +171,12 @@ namespace SickSharp.Format
                         {
                             continue;
                         }
-                        
-                        if (probablyUpper >= currentObj.Count)
+
+                        if (probablyUpper == currentObj.Count)
+                        {
+                            break;
+                        }
+                        if (probablyUpper > currentObj.Count)
                         {
                             throw new FormatException(
                                 $"Field {field} in object {currentObj} with id {reference} produced bucket index {probablyUpper} which is more than object size {currentObj.Count}"
@@ -351,7 +355,8 @@ namespace SickSharp.Format
 
             var bucketCount = _stream.ReadUInt16BE();
             
-            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount));
+            // Console.WriteLine($"Offsets: {String.Join(",", tableOffsets)}, buckets: {bucketCount}" );
+            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
             return header;
         }
     }
