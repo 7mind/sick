@@ -157,25 +157,22 @@ namespace SickSharp.Format
                         
                     lower = probablyLower;
 
+                    // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
                     for (uint i = bucket+1; i < Header.Settings.BucketCount; i++)
                     {
                         var probablyUpper = BucketValue(currentObj, i);
                         
-                        if (probablyUpper < currentObj.Count)
+                        if (probablyUpper <= currentObj.Count)
                         {
                             upper = probablyUpper;
                             break;
                         }
-                        
+
                         if (probablyUpper == ObjIndexing.MaxIndex)
                         {
                             continue;
                         }
-
-                        if (probablyUpper == currentObj.Count)
-                        {
-                            break;
-                        }
+                        
                         if (probablyUpper > currentObj.Count)
                         {
                             throw new FormatException(
