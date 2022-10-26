@@ -51,6 +51,44 @@ public class Tests
     // }
 
 
+    // public int Traverse(Ref reference, SickReader reader, int count, short limit)
+    // {
+    //     var next = count + 1;
+    //     if (count >= limit)
+    //     {
+    //         return count;
+    //     }
+    //     if (reference.Kind == RefKind.Arr)
+    //     {
+    //         var arr = ((JArr)reader.Resolve(reference)).Value;
+    //         if (arr.Count == 0)
+    //         {
+    //             return next;
+    //         }
+    //
+    //         var entry = arr.Content().Last();
+    //         var entryRef = reader.ReadArrayElementRef(reference, arr.Count -1);
+    //         Debug.Assert(entry == entryRef);
+    //         return Traverse(entryRef, reader, next, limit);
+    //     }
+    //
+    //     if (reference.Kind == RefKind.Obj)
+    //     {
+    //         var obj = ((JObj)reader.Resolve(reference)).Value;
+    //         if (obj.Count == 0)
+    //         {
+    //             return next;
+    //         }
+    //
+    //         var firstEntry = obj.Content().Last();
+    //         var fieldVal = reader.ReadObjectFieldRef(reference, firstEntry.Key);
+    //         Debug.Assert(fieldVal == firstEntry.Value);
+    //         return Traverse(firstEntry.Value, reader, next, limit);
+    //     }
+    //
+    //     return count;
+    // }
+    
     public int Traverse(Ref reference, SickReader reader, int count, short limit)
     {
         var next = count + 1;
@@ -66,8 +104,8 @@ public class Tests
                 return next;
             }
 
-            var entry = arr.Content().Last();
-            var entryRef = reader.ReadArrayElementRef(reference, arr.Count -1);
+            var entry = arr.Content().First();
+            var entryRef = reader.ReadArrayElementRef(reference, 0);
             Debug.Assert(entry == entryRef);
             return Traverse(entryRef, reader, next, limit);
         }
@@ -80,7 +118,7 @@ public class Tests
                 return next;
             }
 
-            var firstEntry = obj.Content().Last();
+            var firstEntry = obj.Content().First();
             var fieldVal = reader.ReadObjectFieldRef(reference, firstEntry.Key);
             Debug.Assert(fieldVal == firstEntry.Value);
             return Traverse(firstEntry.Value, reader, next, limit);

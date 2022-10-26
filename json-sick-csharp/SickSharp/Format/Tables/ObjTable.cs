@@ -80,8 +80,8 @@ namespace SickSharp.Format.Tables
 
 
             var indexHeader = stream.ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
-            // var indexHeader = (ushort)((rawIndex[0] << 8) | rawIndex[1]);
-
+            // var indexHeader = rawIndex.ReadUInt16BE(0);
+            
             if (indexHeader == ObjIndexing.NoIndex)
             {
                 SetStart(offset + ObjIndexing.IndexMemberSize);
@@ -102,8 +102,7 @@ namespace SickSharp.Format.Tables
                 BucketEndOffsets = new Dictionary<uint, ushort>();
 
                 uint previousBucketStart = 0;
-
-
+                
                 for (UInt32 i = 0; i < settings.BucketCount; i++)
                 {
                     var start = ObjIndexing.IndexMemberSize * i;

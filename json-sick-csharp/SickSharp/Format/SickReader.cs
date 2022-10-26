@@ -274,15 +274,27 @@ namespace SickSharp.Format
             var version = _stream.ReadInt32BE();
             var tableCount = _stream.ReadInt32BE();
 
-            Debug.Assert(version == 0);
-            Debug.Assert(tableCount == 10);
+            var expectedVersion = 0;
+            if (version != expectedVersion)
+            {
+                throw new FormatException($"SICK version expected to be {expectedVersion}, got {version}");
+            }
+
+            var expectedTableCount = 10;
+            if (tableCount != expectedTableCount)
+            {
+                throw new FormatException($"SICK table count expected to be {expectedTableCount}, got {tableCount}");
+            }
 
             var tableOffsets = new List<int>();
 
             foreach (var t in Enumerable.Range(0, tableCount))
             {
                 var next = _stream.ReadInt32BE();
-                if (t > 0) Debug.Assert(next > tableOffsets[t - 1]);
+                if (t > 0 && next <= tableOffsets[t - 1])
+                {
+                    throw new FormatException($"SICK: wrong format, {next} expected to be more than {tableOffsets[t - 1]}");
+                }
                 tableOffsets.Add(next);
             }
 
