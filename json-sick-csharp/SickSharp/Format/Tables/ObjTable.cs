@@ -51,10 +51,13 @@ namespace SickSharp.Format.Tables
         public const long Range = (long)UInt32.MaxValue + 1;
         public readonly ushort BucketCount;
         public readonly long BucketSize;
+        public readonly ushort Limit;
 
-        public ObjIndexing(ushort bucketCount)
+
+        public ObjIndexing(ushort bucketCount, ushort limit)
         {
             BucketCount = bucketCount;
+            Limit = limit;
             BucketSize = Range / BucketCount;
             Debug.Assert(Range == 4294967296);
             Debug.Assert(BucketCount > 1);

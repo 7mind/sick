@@ -220,7 +220,6 @@ namespace SickSharp.Encoder
     class ObjListEncoder : IFixedArrayByteEncoder<List<ObjEntry>>
     {
         private readonly Bijection<string> _strings;
-        public const ushort Limit = 2;
         private readonly ObjIndexing _settings;
 
         public ObjListEncoder(Bijection<string> strings, ObjIndexing settings)
@@ -234,7 +233,7 @@ namespace SickSharp.Encoder
             var index = new List<UInt16>();
             var data = value;
             
-            if (value.Count > Limit)
+            if (value.Count > _settings.Limit)
             {
                 if (value.Count >= ObjIndexing.MaxIndex)
                 {
@@ -274,8 +273,10 @@ namespace SickSharp.Encoder
                     {
                         startIndexes[i] = last;
                     }
-
-                    last = startIndexes[i];
+                    else
+                    {
+                        last = startIndexes[i];
+                    }
                 }
 
                 index = startIndexes;

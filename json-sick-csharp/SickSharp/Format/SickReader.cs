@@ -355,7 +355,7 @@ namespace SickSharp.Format
 
             var bucketCount = _stream.ReadUInt16BE();
             
-            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount));
+            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
             return header;
         }
     }

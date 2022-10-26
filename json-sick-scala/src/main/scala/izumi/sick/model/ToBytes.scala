@@ -224,8 +224,8 @@ object ToBytes {
         throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndex")
       }
 
-      val index: Seq[Int] = if (sorted.size <= limit) {
-        Seq(noIndex)
+      val index: mutable.ArrayBuffer[Int] = if (sorted.size <= limit) {
+        mutable.ArrayBuffer(noIndex)
       } else {
         val startIndexes = mutable.ArrayBuffer.fill(bucketCount)(maxIndex)
         buckets.foreach {
@@ -236,15 +236,30 @@ object ToBytes {
             }
         }
 
-        startIndexes.toSeq
+        startIndexes.to(mutable.ArrayBuffer)
       }
       assert(index.length == 1 || index.length == bucketCount)
+
+      if (index.length == bucketCount) {
+        var last = sorted.size
+        var i = bucketCount - 1;
+        while (i >= 0) {
+          if (index(i) == maxIndex) {
+            index(i) = last
+          } else {
+            last = index(i)
+          }
+          i = i - 1
+        }
+      } else if (index.length > 1) {
+        throw new IllegalStateException(s"Wrong index size: ${index.length}, expected $bucketCount or 1")
+      }
 
       val shortIndex = index.map {
         i =>
           assert(i >= 0 && i <= noIndex)
           i.toChar
-      }
+      }.toSeq
       val bytesWithHeader = shortIndex.bytes
       assert(bytesWithHeader.size == Integer.BYTES + Character.BYTES * bucketCount || bytesWithHeader.size == Integer.BYTES + Character.BYTES)
 

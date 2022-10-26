@@ -166,7 +166,7 @@ public class Tests
     
     public void DoWrite(string inPath, string outPath)
     {
-        ushort buckets = 256;
+        ushort buckets = 128;
         using var sr = new StreamReader(inPath);
         using var jreader = new JsonTextReader(sr);
         jreader.DateParseHandling = DateParseHandling.None;

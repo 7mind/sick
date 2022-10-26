@@ -53,7 +53,7 @@ namespace SickSharp.Encoder
             _bigints = bigints;
         }
 
-        public static Index Create(ushort buckets = 16)
+        public static Index Create(ushort buckets = 128, ushort limit = 2)
         {
             return new Index(
                 Bijection<int>.Create("ints", null),
@@ -66,7 +66,7 @@ namespace SickSharp.Encoder
                 Bijection<List<Ref>>.Create("arrays", new ListComparer<Ref>()),
                 Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
                 Bijection<Root>.Create("roots", null),
-                new ObjIndexing(buckets)
+                new ObjIndexing(buckets, limit)
                 );
         }
 
