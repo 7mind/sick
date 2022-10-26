@@ -24,7 +24,7 @@ namespace SickSharp.Encoder
         private Bijection<List<Ref>> _arrs;
         private Bijection<List<ObjEntry>> _objs;
         private Bijection<Root> _roots;
-        private readonly ObjIndexing _settings;
+        public readonly ObjIndexing Settings;
 
         public Index(
             Bijection<int> ints, 
@@ -49,7 +49,7 @@ namespace SickSharp.Encoder
             _arrs = arrs;
             _objs = objs;
             _roots = roots;
-            _settings = settings;
+            Settings = settings;
             _bigints = bigints;
         }
 
@@ -82,7 +82,7 @@ namespace SickSharp.Encoder
                 new(_bigDecs.Name, new VarArrayEncoder<BigDecimal>(Variable.BigDecimalEncoder).Bytes(_bigDecs.AsList())),
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
                 new(_arrs.Name,  new FixedArrayEncoder<List<Ref>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
-                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, _settings)).Bytes(_objs.AsList())),
+                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, Settings)).Bytes(_objs.AsList())),
                 new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
         }
@@ -98,7 +98,7 @@ namespace SickSharp.Encoder
             var header = new List<byte[]> {
                 Fixed.IntEncoder.Bytes(version),
                 new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(offsets),
-                Fixed.UInt16Encoder.Bytes(_settings.BucketCount),
+                Fixed.UInt16Encoder.Bytes(Settings.BucketCount),
             } ;
 
             var everything = (header.Concat(tables).ToList()).Concatenate();

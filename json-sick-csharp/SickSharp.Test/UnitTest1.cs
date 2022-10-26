@@ -166,20 +166,19 @@ public class Tests
     
     public void DoWrite(string inPath, string outPath)
     {
-        ushort buckets = 128;
         using var sr = new StreamReader(inPath);
         using var jreader = new JsonTextReader(sr);
         jreader.DateParseHandling = DateParseHandling.None;
         
         var loaded = JToken.Load(jreader);
-        var index = Index.Create(buckets);
+        var index = Index.Create();
         var root = index.append(RootName, loaded);
         
         using (BinaryWriter binWriter =  
                new BinaryWriter(File.Open(outPath, FileMode.Create)))
         {
             var data = index.Serialize().data;
-            Console.WriteLine($"Serialized with {buckets} buckets, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
+            Console.WriteLine($"Serialized with {index.Settings.BucketCount} buckets and {index.Settings.Limit} limit, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
             binWriter.Write(data);  
         }
     }
