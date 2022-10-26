@@ -267,6 +267,17 @@ namespace SickSharp.Encoder
                     }
                 }
 
+                ushort last = (ushort)ordered.Count;
+                for (var i = _settings.BucketCount - 1; i >= 0; i--)
+                {
+                    if (startIndexes[i] == ObjIndexing.MaxIndex)
+                    {
+                        startIndexes[i] = last;
+                    }
+
+                    last = startIndexes[i];
+                }
+
                 index = startIndexes;
             }
             else
