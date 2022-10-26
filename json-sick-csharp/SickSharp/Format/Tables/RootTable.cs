@@ -19,10 +19,10 @@ namespace SickSharp.Format.Tables
 
         protected override Root Convert(byte[] bytes)
         {
-            var keyval = bytes[..sizeof(int)].ReadInt32();
+            var keyval = bytes[..sizeof(int)].ReadInt32BE();
             var kind = (RefKind?)bytes[sizeof(int)];
 
-            var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32();
+            var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
             return new Root(keyval, new Ref(kind.Value, value));
         }
     }

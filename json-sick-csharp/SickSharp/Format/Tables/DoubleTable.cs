@@ -19,7 +19,7 @@ namespace SickSharp.Format.Tables
 
         protected override double Convert(byte[] bytes)
         {
-            return bytes.ReadDouble();
+            return bytes.ReadDoubleBE();
         }
     }
 }

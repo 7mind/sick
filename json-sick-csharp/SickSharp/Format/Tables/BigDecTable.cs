@@ -17,9 +17,9 @@ namespace SickSharp.Format.Tables
 
         protected override BigDecimal Convert(byte[] bytes)
         {
-            var signum = bytes[..sizeof(int)].ReadInt32();
-            var precision = bytes[sizeof(int)..(sizeof(int) * 2 + 1)].ReadInt32();
-            var scale = bytes[(sizeof(int) * 2)..(sizeof(int) * 3 + 1)].ReadInt32();
+            var signum = bytes[..sizeof(int)].ReadInt32BE();
+            var precision = bytes[sizeof(int)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+            var scale = bytes[(sizeof(int) * 2)..(sizeof(int) * 3 + 1)].ReadInt32BE();
             return new BigDecimal(new BigInteger(bytes.Skip(sizeof(int)).ToArray()), scale, precision, signum);
         }
     }

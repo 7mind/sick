@@ -19,7 +19,7 @@ namespace SickSharp.Format.Tables
 
         protected override float Convert(byte[] bytes)
         {
-            return bytes.ReadFloat();
+            return bytes.ReadFloatBE();
         }
     }
 }

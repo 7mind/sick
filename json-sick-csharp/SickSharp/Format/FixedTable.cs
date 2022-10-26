@@ -31,7 +31,7 @@ namespace SickSharp.Format
         
         protected void ReadStandardCount()
         {
-            Count = _stream.ReadInt32(StartOffset);
+            Count = _stream.ReadInt32BE(StartOffset);
         }
         
         // Call this carefully, it may explode!
@@ -47,12 +47,7 @@ namespace SickSharp.Format
         {
             Debug.Assert(index < Count);
             var target = DataOffset + index * ElementByteLength();
-            return Convert(ReadBytes(target, ElementByteLength()));
-        }
-
-        public byte[] ReadBytes(long at, int size)
-        {
-            return _stream.ReadBuffer(at, size);
+            return Convert(_stream.ReadBytes(target, ElementByteLength()));
         }
         
         protected abstract short ElementByteLength();

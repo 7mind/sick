@@ -33,7 +33,7 @@ namespace SickSharp.Format.Tables
         protected override Ref Convert(byte[] bytes)
         {
             var kind = (RefKind)bytes[0];
-            var value = bytes[1..(sizeof(int) + 1)].ReadInt32();
+            var value = bytes[1..(sizeof(int) + 1)].ReadInt32BE();
             return new Ref(kind, value);
         }
         

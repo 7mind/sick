@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -28,7 +29,19 @@ namespace SickSharp.Format
     {
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly Stream _stream;
+        
+        public static bool LoadIndexes { get; set; }
 
+        static SickReader()
+        {
+            LoadIndexes = true;
+
+            if (!BitConverter.IsLittleEndian)
+            {
+                throw new ConstraintException("big endian architecure is not supported");
+            }
+        }
+        
         public SickReader(Stream stream)
         {
             _stream = stream;
@@ -258,8 +271,8 @@ namespace SickSharp.Format
         {
             _stream.Position = 0;
 
-            var version = _stream.ReadInt32();
-            var tableCount = _stream.ReadInt32();
+            var version = _stream.ReadInt32BE();
+            var tableCount = _stream.ReadInt32BE();
 
             Debug.Assert(version == 0);
             Debug.Assert(tableCount == 10);
@@ -268,12 +281,12 @@ namespace SickSharp.Format
 
             foreach (var t in Enumerable.Range(0, tableCount))
             {
-                var next = _stream.ReadInt32();
+                var next = _stream.ReadInt32BE();
                 if (t > 0) Debug.Assert(next > tableOffsets[t - 1]);
                 tableOffsets.Add(next);
             }
 
-            var bucketCount = _stream.ReadUInt16();
+            var bucketCount = _stream.ReadUInt16BE();
             
             var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount));
             return header;

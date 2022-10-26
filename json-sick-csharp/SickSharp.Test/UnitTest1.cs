@@ -33,6 +33,22 @@ public class Tests
             DoWrite(file, Path.Combine(PathOut, $"cs-{new FileInfo(file).Name}.bin"));
         }
     }
+    
+    // [Test]
+    // public void Test3_repro()
+    // {
+    //     var input = Path.Combine(PathOut, "default_config");
+    //     using (var stream = File.Open(input, FileMode.Open))
+    //     {
+    //         var name = new FileInfo(input).Name;
+    //         Console.WriteLine($"Processing {name}...");
+    //         var reader = new SickReader(stream);
+    //         var rootRef = reader.GetRoot("data");
+    //
+    //         reader.Query(rootRef, "nodes.node_1.bool_node");
+    //
+    //     }
+    // }
 
 
     public int Traverse(Ref reference, SickReader reader, int count, short limit)
@@ -50,8 +66,8 @@ public class Tests
                 return next;
             }
 
-            var entry = arr.Content().First();
-            var entryRef = reader.ReadArrayElementRef(reference, 0);
+            var entry = arr.Content().Last();
+            var entryRef = reader.ReadArrayElementRef(reference, arr.Count -1);
             Debug.Assert(entry == entryRef);
             return Traverse(entryRef, reader, next, limit);
         }
@@ -64,7 +80,7 @@ public class Tests
                 return next;
             }
 
-            var firstEntry = obj.Content().First();
+            var firstEntry = obj.Content().Last();
             var fieldVal = reader.ReadObjectFieldRef(reference, firstEntry.Key);
             Debug.Assert(fieldVal == firstEntry.Value);
             return Traverse(firstEntry.Value, reader, next, limit);
@@ -92,7 +108,7 @@ public class Tests
                 Console.WriteLine($"Going to perform {iters} traverses...");
                 for (int x = 0; x < iters; x++)
                 {
-                    Traverse(rootRef, reader, 0, 10);
+                    Traverse(rootRef!, reader, 0, 10);
                 }
 
                 stopwatch.Stop();
