@@ -136,46 +136,47 @@ namespace SickSharp.Format
                     //BucketEndOffsets = new Dictionary<uint, ushort>();
 
                     uint previousBucketStart = 0;
-                
-                    // for (UInt32 i = 0; i < settings.BucketCount; i++)
-                    // {
-                    //
-                    //
-                    //     BucketStartOffsets[i] = bucketIStartOffset;
-                    //     if (bucketIStartOffset < ObjIndexing.MaxIndex)
-                    //     {
-                    //         BucketEndOffsets[previousBucketStart] = bucketIStartOffset;
-                    //         previousBucketStart = bucketIStartOffset;
-                    //     }
-                    // }
                     
-                    // Debug.Assert(currentObj.BucketStartOffsets != null, "currentObj.Index != null");
-                    // Debug.Assert(currentObj.BucketEndOffsets != null, "currentObj.NextIndex != null");
-
                     var khash = KHash.Compute(field);
                     var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
                     var probablyLower = BucketValue(currentObj, bucket);
 
-                    if (probablyLower == ObjIndexing.NoIndex)
+                    if (probablyLower == ObjIndexing.MaxIndex)
                     {
                         throw new KeyNotFoundException(
                             $"Field {field} not found in object {currentObj} with id {reference}"
                         );
                     }
-                        
-                    if (probablyLower < ObjIndexing.MaxIndex)
+                    
+                    if (probablyLower >= currentObj.Count)
                     {
-                        //Console.WriteLine($"{currentQuery} {khash} {khash / OneObjTable.BucketSize};; {probablyLower} {currentObj.NextIndex[probablyLower]}");
-                        lower = probablyLower;
+                        throw new FormatException(
+                            $"Field {field} in object {currentObj} with id {reference} produced bucket index {probablyLower} which is more than object size {currentObj.Count}"
+                        );
+                    }
+                        
+                    lower = probablyLower;
 
-                        for (uint i = bucket+1; i < Header.Settings.BucketCount; i++)
+                    for (uint i = bucket+1; i < Header.Settings.BucketCount; i++)
+                    {
+                        var probablyUpper = BucketValue(currentObj, i);
+                        
+                        if (probablyUpper < currentObj.Count)
                         {
-                            var probablyUpper = BucketValue(currentObj, i);
-                            if (probablyUpper < ObjIndexing.MaxIndex)
-                            {
-                                upper = probablyUpper;
-                                break;
-                            }
+                            upper = probablyUpper;
+                            break;
+                        }
+                        
+                        if (probablyUpper == ObjIndexing.MaxIndex)
+                        {
+                            continue;
+                        }
+                        
+                        if (probablyUpper >= currentObj.Count)
+                        {
+                            throw new FormatException(
+                                $"Field {field} in object {currentObj} with id {reference} produced bucket index {probablyUpper} which is more than object size {currentObj.Count}"
+                            );
                         }
                     }
                 }
@@ -184,6 +185,7 @@ namespace SickSharp.Format
                 #if DEBUG_TRAVEL
                 TotalLookups += 1;
                 #endif
+                
                 Debug.Assert(lower <= upper);
                 for (int i = lower; i < upper; i++)
                 {

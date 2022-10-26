@@ -100,6 +100,13 @@ namespace SickSharp.Format.Tables
 
                 UseIndex = true;
             }
+            
+            if (Count >= ObjIndexing.MaxIndex)
+            {
+                throw new FormatException(
+                    $"Object size is {Count} but max index is {ObjIndexing.MaxIndex}, object offset was {offset}"
+                );
+            }
         }
 
         protected override short ElementByteLength()
