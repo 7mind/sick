@@ -25,7 +25,7 @@ namespace SickSharp.Format
     ///     </list>
     /// </summary>
     /// <threadsafety instance="false" />
-    public class SickReader
+    public class SickReader : IDisposable
     {
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly Stream _stream;
@@ -39,6 +39,22 @@ namespace SickSharp.Format
             if (!BitConverter.IsLittleEndian)
             {
                 throw new ConstraintException("big endian architecure is not supported");
+            }
+        }
+
+        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536)
+        {
+            var info = new FileInfo(path);
+            var loadIntoMemory = info.Length <= inMemoryThreshold;
+            if (loadIntoMemory)
+            {
+                var stream = new MemoryStream(File.ReadAllBytes(path)); 
+                return new SickReader(stream);
+            }
+            else
+            {
+                var stream = File.Open(path, FileMode.Open);
+                return new SickReader(stream);
             }
         }
         
@@ -261,12 +277,11 @@ namespace SickSharp.Format
             }
         }
 
-        ~SickReader()
+        public void Dispose()
         {
             _stream.Close();
         }
-
-
+        
         private Header ReadHeader()
         {
             _stream.Position = 0;

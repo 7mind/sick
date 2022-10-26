@@ -134,11 +134,11 @@ public class Tests
 
         foreach (var input in inputs)
         {
-            using (var stream = File.Open(input, FileMode.Open))
+            using (var reader = SickReader.OpenFile(input))
             {
                 var name = new FileInfo(input).Name;
+                Console.WriteLine();
                 Console.WriteLine($"Processing {name}...");
-                var reader = new SickReader(stream);
                 var rootRef = reader.GetRoot(RootName);
                 
                 Stopwatch stopwatch = new Stopwatch();
