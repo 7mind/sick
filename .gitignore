@@ -1,4 +1,5 @@
 .idea
 output/
 .DS_Store
-
+.metals
+.vscode

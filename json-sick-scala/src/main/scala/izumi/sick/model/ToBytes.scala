@@ -5,17 +5,24 @@ import izumi.sick.model.Ref.RefVal
 import izumi.sick.tables.RefTableRO
 import izumi.sick.thirdparty.akka.util.ByteString
 
+import java.io.{FileOutputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
+//  def write[V](stream: OutputStream, table: RefTableRO[V])
 }
 
 sealed trait ToBytesFixed[T] extends ToBytes[T] {
   def blobSize: Int
 }
+
+sealed trait ToBytesTable[T] {
+  def write(stream: FileOutputStream, table: RefTableRO[T]): Long
+}
+
 sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
   def elementSize: Int
 }
@@ -134,31 +141,65 @@ object ToBytes {
     }
   }
 
-  implicit def toBytesFixedSize[T: ToBytesFixed]: ToBytesFixedArray[Seq[T]] = new ToBytesFixedArray[Seq[T]] {
+  implicit def toBytesFixedSize[T: ToBytesFixed]: ToBytesFixedArray[Seq[T]] with ToBytesTable[T] = new ToBytesFixedArray[Seq[T]] with ToBytesTable[T] {
     override def elementSize: Int = implicitly[ToBytesFixed[T]].blobSize
 
     override def bytes(value: Seq[T]): ByteString = {
       value.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
     }
-  }
 
-  implicit def toBytesVarSize[T: ToBytesVar]: ToBytesVarArray[Seq[T]] = new ToBytesVarArray[Seq[T]] {
-    override def bytes(value: Seq[T]): ByteString = {
-      val arrays = value.map(_.bytes)
-      val offsets = computeOffsets(arrays, 0)
-      val header = offsets.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
-      val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
-      header ++ data
+    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
+      val before = stream.getChannel.position()
+      stream.write(table.size.bytes.toArray)
+      table.forEach {
+        s =>
+          stream.write(s.bytes.toArray)
+      }
+      val after = stream.getChannel.position()
+      after - before
     }
   }
 
-  implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]: ToBytesVarArray[Seq[T]] = new ToBytesVarArray[Seq[T]] {
-    override def bytes(value: Seq[T]): ByteString = {
-      val arrays = value.map(_.bytes)
-      val offsets = computeOffsets(arrays, 0)
-      val header = offsets.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
-      val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
-      header ++ data
+  private def doWriteArray[T](stream: FileOutputStream, table: RefTableRO[T], codec: ToBytes[T]): Long = {
+    val before = stream.getChannel.position()
+
+    val dummyOffsets = new Array[Int](table.size + 1)
+    val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+    val headerArr = header.toArray
+    stream.write(headerArr)
+
+    val afterHeader = stream.getChannel.position()
+
+    val sizes = mutable.ArrayBuffer.empty[Int]
+    table.forEach {
+      v =>
+        val arr = codec.bytes(v).toArray
+        stream.write(arr)
+        sizes.append(arr.length)
+    }
+    val after = stream.getChannel.position()
+
+    val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+    val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+    stream.getChannel.position(before)
+    val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+    stream.write(realHeader.toArray)
+    stream.write(lastOffset.bytes.toArray)
+
+    assert(afterHeader == stream.getChannel.position())
+    stream.getChannel.position(after)
+    after - before
+  }
+
+  implicit def toBytesVarSize[T: ToBytesVar]: ToBytesTable[T] = new ToBytesTable[T] {
+    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
+      doWriteArray(stream, table, implicitly[ToBytesVar[T]])
+    }
+  }
+
+  implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]: ToBytesTable[T] = new ToBytesTable[T] {
+    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
+      doWriteArray(stream, table, implicitly[ToBytesFixedArray[T]])
     }
   }
 

@@ -1,7 +1,7 @@
 package izumi.sick.indexes
 
 import izumi.sick.indexes.IndexRO.Packed
-import izumi.sick.model.{Arr, Obj, Root, ToBytes}
+import izumi.sick.model.{Arr, Obj, Root, ToBytes, ToBytesTable}
 import izumi.sick.tables.RefTableRO
 import izumi.sick.thirdparty.akka.util.ByteString
 
@@ -57,9 +57,8 @@ final class IndexRO(
       val sizes = mutable.ArrayBuffer.empty[Int]
       parts.foreach {
         case (p, codec) =>
-          val arr = codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq).toArray
-          out.write(arr)
-          sizes.append(arr.length)
+          val len = codec.asInstanceOf[ToBytesTable[Any]].write(out, p)
+          sizes.append(len.intValue)
       }
 
       // now we know the lengths, so we can write correct dummyOffsets
@@ -76,20 +75,20 @@ final class IndexRO(
     }
   }
 
-  def parts: Seq[(RefTableRO[Any], ToBytes[Seq[Any]])] = {
+  def parts: Seq[(RefTableRO[Any], ToBytesTable[Seq[Any]])] = {
     import izumi.sick.model.ToBytes.*
     Seq(
-      (ints, implicitly[ToBytes[Seq[Int]]]),
-      (longs, implicitly[ToBytes[Seq[Long]]]),
-      (bigints, implicitly[ToBytes[Seq[BigInt]]]),
-      (floats, implicitly[ToBytes[Seq[Float]]]),
-      (doubles, implicitly[ToBytes[Seq[Double]]]),
-      (bigDecimals, implicitly[ToBytes[Seq[BigDecimal]]]),
-      (strings, implicitly[ToBytes[Seq[String]]]),
-      (arrs, implicitly[ToBytes[Seq[Arr]]]),
+      (ints, implicitly[ToBytesTable[Int]]),
+      (longs, implicitly[ToBytesTable[Long]]),
+      (bigints, implicitly[ToBytesTable[BigInt]]),
+      (floats, implicitly[ToBytesTable[Float]]),
+      (doubles, implicitly[ToBytesTable[Double]]),
+      (bigDecimals, implicitly[ToBytesTable[BigDecimal]]),
+      (strings, implicitly[ToBytesTable[String]]),
+      (arrs, implicitly[ToBytesTable[Arr]]),
       (objs, toBytesFixedSizeArray(new ObjToBytes(strings, settings))),
-      (roots, implicitly[ToBytes[Seq[Root]]]),
-    ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]]) }
+      (roots, implicitly[ToBytesTable[Root]]),
+    ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytesTable[Seq[Any]]]) }
   }
 }
 

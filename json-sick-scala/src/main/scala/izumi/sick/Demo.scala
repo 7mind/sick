@@ -77,37 +77,37 @@ object Demo {
           s"Header: ${packed.headerLen} bytes, ${packed.headerLen / Integer.BYTES} integers, [version:int == ${packed.version}][collection_count:int == ${packed.offsets.size}][collection_offsets: int * ${packed.offsets.size}]"
         )
         println(s"Offsets (${packed.offsets.size}):")
-        roIndex.parts.zip(packed.offsets).foreach {
-          case (p, o) =>
-            val sz = p._1.data.size
-
-            val info = p._2 match {
-              case c: ToBytesFixed[_] =>
-                Some(s"[value:${c.blobSize} bytes]")
-              case c: ToBytesFixedArray[_] =>
-                Some(s"[count:int == ${Val(sz, 4)}][element: {${c.elementSize} bytes} * ${sz.toString.padLeft(7, '0')}]")
-              case _: ToBytesVar[_] =>
-                Some(s"[length:int][value:BYTESTR]")
-              case _: ToBytesVarArray[_] =>
-                val dataOffset = o + szInt + sz * szInt + szInt
-                Some(
-                  s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][relative_end_offset:int][element: BYTESTR * ${sz.toString
-                      .padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}"
-                )
-            }
-
-            val tpe = p._2 match {
-              case fixed: ToBytesFixed[_] =>
-                s"Byte<${fixed.blobSize}>"
-              case fixed: ToBytesFixedArray[_] =>
-                s"Arr[Byte<${fixed.elementSize}>]"
-              case _: ToBytesVar[_] =>
-                "BYTESTR"
-              case _: ToBytesVarArray[_] =>
-                "Arr[BYTESTR]"
-            }
-            println(f"  ${p._1.name}%10s -> ${Val(o)}; $tpe%10s ${info.map(i => s"; $i").getOrElse("")}")
-        }
+//        roIndex.parts.zip(packed.offsets).foreach {
+//          case (p, o) =>
+//            val sz = p._1.data.size
+//
+//            val info = p._2 match {
+//              case c: ToBytesFixed[_] =>
+//                Some(s"[value:${c.blobSize} bytes]")
+//              case c: ToBytesFixedArray[_] =>
+//                Some(s"[count:int == ${Val(sz, 4)}][element: {${c.elementSize} bytes} * ${sz.toString.padLeft(7, '0')}]")
+//              case _: ToBytesVar[_] =>
+//                Some(s"[length:int][value:BYTESTR]")
+//              case _: ToBytesVarArray[_] =>
+//                val dataOffset = o + szInt + sz * szInt + szInt
+//                Some(
+//                  s"[count:int == ${Val(sz, 4)}][relative_element_offset: int * ${sz.toString.padLeft(7, ' ')}][relative_end_offset:int][element: BYTESTR * ${sz.toString
+//                      .padLeft(7, ' ')}] data_offset = ${Val(dataOffset)}"
+//                )
+//            }
+//
+//            val tpe = p._2 match {
+//              case fixed: ToBytesFixed[_] =>
+//                s"Byte<${fixed.blobSize}>"
+//              case fixed: ToBytesFixedArray[_] =>
+//                s"Arr[Byte<${fixed.elementSize}>]"
+//              case _: ToBytesVar[_] =>
+//                "BYTESTR"
+//              case _: ToBytesVarArray[_] =>
+//                "Arr[BYTESTR]"
+//            }
+//            println(f"  ${p._1.name}%10s -> ${Val(o)}; $tpe%10s ${info.map(i => s"; $i").getOrElse("")}")
+//        }
         println(s"Offsets: ${packed.offsets.mkString(", ")}")
         println("NOTE: relative element offsets should use corresponding data offsets as their base")
         println(

@@ -7,8 +7,14 @@ class RefTableRO[V](val name: String, val data: Map[RefVal, V]) {
 
   def isEmpty: Boolean = data.isEmpty
 
+  def size: RefVal = data.size
+
   def asSeq: Seq[V] = {
     (0 until data.size).map(data)
+  }
+
+  def forEach(f: V => Unit): Unit = {
+    (0 until data.size).foreach(i => f(data(i)))
   }
 
   override def toString: String = {
