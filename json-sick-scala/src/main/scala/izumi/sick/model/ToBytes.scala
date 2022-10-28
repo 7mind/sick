@@ -40,6 +40,12 @@ object ToBytes {
     out
   }
 
+  private def fromByteBuffer(blobSize: Int)(b: ByteBuffer => Any): ByteString = {
+    val bb = ByteBuffer.allocate(blobSize)
+    b(bb)
+    ByteString.fromArrayUnsafe(bb.array())
+  }
+
   implicit class AsBytes[T: ToBytes](value: T) {
     def bytes: ByteString = implicitly[ToBytes[T]].bytes(value)
   }
@@ -48,9 +54,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Long.BYTES
 
     override def bytes(value: Long): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putLong(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putLong(value))
     }
   }
 
@@ -58,9 +62,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Integer.BYTES
 
     override def bytes(value: Int): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putInt(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putInt(value))
     }
   }
 
@@ -68,9 +70,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Short.BYTES
 
     override def bytes(value: Short): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putShort(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putShort(value))
     }
   }
 
@@ -78,9 +78,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Character.BYTES
 
     override def bytes(value: Char): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putChar(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putChar(value))
     }
   }
 
@@ -96,9 +94,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Float.BYTES
 
     override def bytes(value: Float): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putFloat(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putFloat(value))
     }
   }
 
@@ -106,9 +102,7 @@ object ToBytes {
     override def blobSize: Int = java.lang.Double.BYTES
 
     override def bytes(value: Double): ByteString = {
-      val bb = ByteBuffer.allocate(blobSize)
-      bb.putDouble(value)
-      ByteString(bb.array())
+      fromByteBuffer(blobSize)(_.putDouble(value))
     }
   }
 
@@ -144,7 +138,7 @@ object ToBytes {
     override def elementSize: Int = implicitly[ToBytesFixed[T]].blobSize
 
     override def bytes(value: Seq[T]): ByteString = {
-      value.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
+      value.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
     }
   }
 
@@ -152,7 +146,7 @@ object ToBytes {
     override def bytes(value: Seq[T]): ByteString = {
       val arrays = value.map(_.bytes)
       val offsets = computeOffsets(arrays, 0)
-      val header = offsets.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
+      val header = offsets.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
       val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
       header ++ data
     }
@@ -162,7 +156,7 @@ object ToBytes {
     override def bytes(value: Seq[T]): ByteString = {
       val arrays = value.map(_.bytes)
       val offsets = computeOffsets(arrays, 0)
-      val header = offsets.map(_.bytes).foldLeft(value.length.bytes)(_ ++ _)
+      val header = offsets.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
       val data = arrays.foldLeft(offsets.lastOption.map(lastOffset => lastOffset + arrays.last.length).getOrElse(0).bytes)(_ ++ _)
       header ++ data
     }
@@ -170,13 +164,13 @@ object ToBytes {
 
   implicit object StringToBytes extends ToBytesVar[String] {
     override def bytes(value: String): ByteString = {
-      ByteString(value.getBytes(StandardCharsets.UTF_8))
+      ByteString.fromArrayUnsafe(value.getBytes(StandardCharsets.UTF_8))
     }
   }
 
   implicit object BigIntToBytes extends ToBytesVar[BigInt] {
     override def bytes(value: BigInt): ByteString = {
-      ByteString(value.toByteArray)
+      ByteString.fromArrayUnsafe(value.toByteArray)
     }
   }
 
@@ -208,44 +202,44 @@ object ToBytes {
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
 
-      val hashed = value.values.map {
-        case (k, v) =>
-          val kval = strings(k)
-          val hash = KHash.compute(kval)
-          val bucket = (hash / bucketSize).toInt
-          ((k, v), (hash, bucket))
-      }
+      val sortedByHash = value.values
+        .map {
+          case (k, v) =>
+            val kval = strings(k)
+            val hash = KHash.compute(kval)
+            val bucket = (hash / bucketSize).toInt
+            ((k, v), (hash, bucket))
+        }.sortBy(_._2._1)
 
-      val sorted = hashed.sortBy(_._2._1)
-      val data = sorted.map(_._1)
-      val buckets = sorted.map(_._2._2).zipWithIndex
       val noIndex = 65535
       assert(noIndex <= Char.MaxValue)
       val maxIndex = noIndex - 1
 
-      if (sorted.size >= maxIndex) {
+      if (sortedByHash.size >= maxIndex) {
         throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndex")
       }
 
-      val index: mutable.ArrayBuffer[Int] = if (sorted.size <= limit) {
+      val index: mutable.ArrayBuffer[Int] = if (sortedByHash.size <= limit) {
         mutable.ArrayBuffer(noIndex)
       } else {
-        val startIndexes = mutable.ArrayBuffer.fill(bucketCount)(maxIndex)
-        buckets.foreach {
-          case (bucket, index) =>
+        val startIndexes = mutable.ArrayBuffer.fill(bucketCount.toInt)(maxIndex)
+        var index = 0
+        sortedByHash.foreach {
+          case ((_, _), (_, bucket)) =>
             val currentVal = startIndexes(bucket)
             if (currentVal == maxIndex) {
               startIndexes(bucket) = index
             }
+            index += 1
         }
 
-        startIndexes.to(mutable.ArrayBuffer)
+        startIndexes
       }
       assert(index.length == 1 || index.length == bucketCount)
 
       if (index.length == bucketCount) {
-        var last = sorted.size
-        var i = bucketCount - 1;
+        var last = sortedByHash.size
+        var i = bucketCount - 1
         while (i >= 0) {
           if (index(i) == maxIndex) {
             index(i) = last
@@ -271,7 +265,7 @@ object ToBytes {
       assert(
         indexHeader.size == Character.BYTES * bucketCount || indexHeader.size == Character.BYTES
       )
-      indexHeader ++ (data: Seq[(RefVal, Ref)]).bytes
+      indexHeader ++ (sortedByHash.map(_._1): Seq[(RefVal, Ref)]).bytes
     }
   }
 
