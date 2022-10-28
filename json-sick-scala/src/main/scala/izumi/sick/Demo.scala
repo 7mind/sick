@@ -36,8 +36,9 @@ object Demo {
       .map(_.toFile)
       .filter(_.isFile)
       .filter(_.getName.endsWith(".json"))
-      .toList
+      .iterator()
       .asScala
+      .toList
 
     allInputs.foreach {
       input =>

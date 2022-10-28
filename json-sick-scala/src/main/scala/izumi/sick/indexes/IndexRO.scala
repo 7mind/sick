@@ -9,8 +9,6 @@ import java.io.FileOutputStream
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 
-
-
 final class IndexRO(
   val settings: PackSettings,
   val ints: RefTableRO[Int],
@@ -42,42 +40,40 @@ final class IndexRO(
   }
 
   def packFile(f: Path): Packed = {
+    val out = new FileOutputStream(f.toFile, false)
     try {
-      val out = new FileOutputStream(f.toFile, false)
+      val chan = out.getChannel
+      chan.truncate(0)
+      val version = 0
+      val headerLen = (2 + parts.length) * Integer.BYTES + java.lang.Short.BYTES
 
-      try {
-        val chan = out.getChannel
-        chan.truncate(0)
-        val version = 0
-        val headerLen = (2 + parts.length) * Integer.BYTES + java.lang.Short.BYTES
+      val dummyOffsets = new Array[Int](parts.size)
+      // at this point we don't know dummyOffsets yet, so we write zeros
+      import ToBytes.*
+      val header = Seq((Seq(version, parts.length) ++ dummyOffsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes)
 
-        val dummyOffsets = new Array[Int](parts.size)
-        // at this point we don't know dummyOffsets yet, so we write zeros
-        import ToBytes.*
-        val header = Seq((Seq(version, parts.length) ++ dummyOffsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes)
+      out.write(header.foldLeft(ByteString.empty)(_ ++ _).toArray)
 
-        out.write(header.foldLeft(ByteString.empty)(_ ++ _).toArray)
+      val sizes = mutable.ArrayBuffer.empty[Int]
+      parts.foreach {
+        case (p, codec) =>
+          val arr = codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq).toArray
+          out.write(arr)
+          sizes.append(arr.length)
+      }
 
-        val sizes = mutable.ArrayBuffer.empty[Int]
-        parts.foreach {
-          case (p, codec) =>
-            val arr = codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq).toArray
-            out.write(arr)
-            sizes.append(arr.length)
-        }
+      // now we know the lengths, so we can write correct dummyOffsets
+      val realOffsets = computeOffsetsFromSizes(sizes.toSeq, headerLen)
+      assert(dummyOffsets.length == sizes.size)
+      assert(dummyOffsets.length == parts.size)
+      assert(realOffsets.length == parts.size)
+      chan.position(Integer.BYTES * 2)
+      out.write(realOffsets.bytes.drop(Integer.BYTES).toArray)
 
-        // now we know the lengths, so we can write correct dummyOffsets
-        val realOffsets = computeOffsetsFromSizes(sizes.toSeq, headerLen)
-        assert(dummyOffsets.length == sizes.size)
-        assert(dummyOffsets.length == parts.size)
-        assert(realOffsets.length == parts.size)
-        chan.position(Integer.BYTES * 2)
-        out.write(realOffsets.bytes.drop(Integer.BYTES).toArray)
-
-        Packed(version, headerLen, realOffsets, f.toFile.length(), f)
-      } finally if (out != null) out.close()
+      Packed(version, headerLen, realOffsets, f.toFile.length(), f)
+    } finally {
+      if (out != null) out.close()
     }
-
   }
 
   def parts: Seq[(RefTableRO[Any], ToBytes[Seq[Any]])] = {
@@ -101,8 +97,8 @@ object IndexRO {
   final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], length: Long, data: Path)
 }
 
-case class PackSettings(bucketCount: Short, limit: Short)
+final case class PackSettings(bucketCount: Short, limit: Short)
 
 object PackSettings {
-  def default = PackSettings(128, 2)
+  def default: PackSettings = PackSettings(128, 2)
 }
