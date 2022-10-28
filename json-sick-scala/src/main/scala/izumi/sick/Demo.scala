@@ -61,10 +61,11 @@ object Demo {
         }
         println(roIndex.summary)
 
-        val packed = roIndex.pack()
+        val packed = roIndex.packFile()
 
         val level = 20
-        val raw = packed.data.toArray
+        val raw = Files.readAllBytes(packed.data)
+        assert(raw.length == packed.length)
         val compressed = Zstd.compress(raw, level)
 
         println("=" * 80)

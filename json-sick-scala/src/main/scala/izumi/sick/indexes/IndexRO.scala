@@ -5,18 +5,11 @@ import izumi.sick.model.{Arr, Obj, Root, ToBytes}
 import izumi.sick.tables.RefTableRO
 import izumi.sick.thirdparty.akka.util.ByteString
 
-//trait AbstractIndex {
-//  def getInt(index: RefVal): Int
-//  def getLong(index: RefVal): Long
-//  def getBigint(index: RefVal): BigInt
-//  def getFloat(index: RefVal): Float
-//  def getDouble(index: RefVal): Double
-//  def getBigDecimal(index: RefVal): BigDecimal
-//  def getString(index: RefVal): String
-//  def getArr(index: RefVal): Arr
-//  def getObj(index: RefVal): Obj
-//  def getRoot(index: RefVal): Root
-//}
+import java.io.FileOutputStream
+import java.nio.file.{Files, Path}
+import scala.collection.mutable
+
+
 
 final class IndexRO(
   val settings: PackSettings,
@@ -43,15 +36,52 @@ final class IndexRO(
     parts.map(_._1).filterNot(_.isEmpty).mkString("\n\n")
   }
 
-  def pack(): Packed = pack(blobs, settings)
+  def packFile(): Packed = {
+    val f = Files.createTempFile("sick", "bin")
+    packFile(f)
+  }
 
-  private def blobs: Seq[ByteString] = parts.map {
-    case (p, codec) =>
-      codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq)
+  def packFile(f: Path): Packed = {
+    try {
+      val out = new FileOutputStream(f.toFile, false)
+
+      try {
+        val chan = out.getChannel
+        chan.truncate(0)
+        val version = 0
+        val headerLen = (2 + parts.length) * Integer.BYTES + java.lang.Short.BYTES
+
+        val dummyOffsets = new Array[Int](parts.size)
+        // at this point we don't know dummyOffsets yet, so we write zeros
+        import ToBytes.*
+        val header = Seq((Seq(version, parts.length) ++ dummyOffsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes)
+
+        out.write(header.foldLeft(ByteString.empty)(_ ++ _).toArray)
+
+        val sizes = mutable.ArrayBuffer.empty[Int]
+        parts.foreach {
+          case (p, codec) =>
+            val arr = codec.asInstanceOf[ToBytes[Any]].bytes(p.asSeq).toArray
+            out.write(arr)
+            sizes.append(arr.length)
+        }
+
+        // now we know the lengths, so we can write correct dummyOffsets
+        val realOffsets = computeOffsetsFromSizes(sizes.toSeq, headerLen)
+        assert(dummyOffsets.length == sizes.size)
+        assert(dummyOffsets.length == parts.size)
+        assert(realOffsets.length == parts.size)
+        chan.position(Integer.BYTES * 2)
+        out.write(realOffsets.bytes.drop(Integer.BYTES).toArray)
+
+        Packed(version, headerLen, realOffsets, f.toFile.length(), f)
+      } finally if (out != null) out.close()
+    }
+
   }
 
   def parts: Seq[(RefTableRO[Any], ToBytes[Seq[Any]])] = {
-    import izumi.sick.model.ToBytes._
+    import izumi.sick.model.ToBytes.*
     Seq(
       (ints, implicitly[ToBytes[Seq[Int]]]),
       (longs, implicitly[ToBytes[Seq[Long]]]),
@@ -65,23 +95,10 @@ final class IndexRO(
       (roots, implicitly[ToBytes[Seq[Root]]]),
     ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytes[Seq[Any]]]) }
   }
-
-  private def pack(collections: Seq[ByteString], settings: PackSettings): Packed = {
-    import izumi.sick.model.ToBytes._
-    val version = 0
-    val headerLen = (2 + collections.length) * Integer.BYTES + java.lang.Short.BYTES
-
-    val offsets = computeOffsets(collections, headerLen)
-    assert(offsets.size == collections.size)
-
-    val everything = Seq((Seq(version, collections.length) ++ offsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes) ++ collections
-    val blob = everything.foldLeft(ByteString.empty)(_ ++ _)
-    Packed(version, headerLen, offsets, blob)
-  }
 }
 
 object IndexRO {
-  final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], data: ByteString)
+  final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], length: Long, data: Path)
 }
 
 case class PackSettings(bucketCount: Short, limit: Short)

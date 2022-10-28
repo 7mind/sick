@@ -26,14 +26,17 @@ sealed trait ToBytesVarArray[T] extends ToBytes[T]
 @SuppressWarnings(Array("UnsafeTraversableMethods"))
 object ToBytes {
   def computeOffsets(collections: Seq[ByteString], initial: Int): Seq[Int] = {
-    val out = collections
-      .map(_.length)
+    computeOffsetsFromSizes(collections.map(_.length), initial)
+  }
+
+  def computeOffsetsFromSizes(lengths: Seq[Int], initial: Int): Seq[Int] = {
+    val out = lengths
       .foldLeft(Vector(initial)) {
         case (offsets, currentSize) =>
           offsets :+ (offsets.last + currentSize)
       }
       .init
-    assert(out.size == collections.size)
+    assert(out.size == lengths.size)
     out
   }
 
