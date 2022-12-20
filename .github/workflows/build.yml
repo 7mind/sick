@@ -31,8 +31,10 @@ jobs:
 
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
 
+          cd json-sick-scala
+
           if [[ "$GITHUB_REF" == refs/heads/main || "$BRANCH_TAG" =~ ^v.*$ ]] ; then
-            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in secrets.tar.enc -out secrets.tar -d
+            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
             ln -s .secrets/local.sbt local.sbt
             COMMAND="$COMMAND +publishSigned"
@@ -41,7 +43,7 @@ jobs:
             fi
           fi
 
-          cd json-sick-scala
+
           echo $COMMAND
           eval $COMMAND
   build-cs:
@@ -65,11 +67,12 @@ jobs:
           COMMAND="dotnet build"
 
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
+          cd json-sick-csharp
+
           if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
-            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in secrets.tar.enc -out secrets.tar -d
+            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
           fi
 
-          cd json-sick-csharp
           echo $COMMAND
           eval $COMMAND
