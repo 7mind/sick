@@ -3,3 +3,6 @@ output/
 .DS_Store
 .metals
 .vscode
+.secrets
+secrets.tar
+local.sbt

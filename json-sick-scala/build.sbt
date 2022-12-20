@@ -1,26 +1,61 @@
+val circeVersion = "0.14.1"
+
+lazy val root = (project in file("."))
+  .settings(
+    name := "json-sick",
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-core",
+      "io.circe" %% "circe-generic",
+      "io.circe" %% "circe-generic-extras",
+      "io.circe" %% "circe-parser"
+    ).map(_ % circeVersion),
+    libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3"
+  )
+
+ThisBuild / scalacOptions ++= Seq(
+  "-Xsource:3",
+  "-deprecation",
+  "-language:higherKinds"
+)
+
+ThisBuild / organization := "io.7mind.izumi"
+
+ThisBuild / sonatypeProfileName := "io.7mind"
+ThisBuild / sonatypeSessionName := s"[sbt-sonatype] ${name.value} ${version.value} ${java.util.UUID.randomUUID}"
+
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "2.13.8"
 
-lazy val root = (project in file("."))
-  .settings(
-    name := "json-sick"
+ThisBuild / publishTo :=
+  (if (!isSnapshot.value) {
+     sonatypePublishToBundle.value
+   } else {
+     Some(Opts.resolver.sonatypeSnapshots)
+   })
+
+ThisBuild / credentials += Credentials(
+  file(".secrets/credentials.sonatype-nexus.properties")
+)
+ThisBuild / credentials += Credentials(
+  Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
+)
+
+ThisBuild / homepage := Some(url("https://github.com/7mind/sick"))
+ThisBuild / licenses := Seq(
+  "BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php")
+)
+ThisBuild / developers := List(
+  Developer(
+    id = "7mind",
+    name = "Septimal Mind",
+    url = url("https://github.com/7mind"),
+    email = "team@7mind.io"
   )
-
-val circeVersion = "0.14.1"
-
-libraryDependencies ++= Seq(
-  "io.circe" %% "circe-core",
-  "io.circe" %% "circe-generic",
-//  "io.circe" %% "circe-derivation-",
-  "io.circe" %% "circe-generic-extras",
-  "io.circe" %% "circe-parser",
-).map(_ % circeVersion)
-
-libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3"
-
-scalacOptions ++= Seq(
-  "-Xsource:3",
-  "-deprecation",
-  "-language:higherKinds",
+)
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/7mind/sick"),
+    "scm:git:https://github.com/7mind/sick.git"
+  )
 )
