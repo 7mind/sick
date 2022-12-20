@@ -69,6 +69,6 @@ jobs:
             tar xvf secrets.tar
           fi
 
-          cd json-sick-scala
+          cd json-sick-csharp
           echo $COMMAND
           eval $COMMAND
