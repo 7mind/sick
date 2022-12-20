@@ -31,7 +31,7 @@ jobs:
 
           COMMAND="sbt +clean +test"
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
-          if [[ "$GITHUB_REF" == refs/heads/main || "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+          if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
             openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
             ln -s .secrets/local.sbt local.sbt
