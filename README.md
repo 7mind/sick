@@ -1,3 +1,8 @@
+[![Build](https://github.com/7mind/sick/workflows/Build/badge.svg)](https://github.com/7mind/sick/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/tag/7mind/sick.svg)](https://github.com/7mind/sick/releases)
+[![Maven Central](https://img.shields.io/maven-central/v/io.7mind.sick/sick_2.13.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.7mind.sick%22)
+[![Latest version](https://index.scala-lang.org/7mind/sick/latest.svg?color=orange)](https://index.scala-lang.org/7mind/sick)
+
 # SICK: Streams of Independent Constant Keys
 
 `SICK` is an approach to handle `JSON`-like structures and various libraries implementing it.
