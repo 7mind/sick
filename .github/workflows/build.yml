@@ -1,0 +1,45 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build-scala:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: rlespinasse/github-slug-action@v3.x
+      - name: Caches
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+            /usr/local/bin/cs
+          key: ${{ runner.os }}-scala
+      - name: Build and Test
+        # env:
+        #   OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
+        #   OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
+        run: |
+          env
+          if [[ ! -f /usr/local/bin/cs ]]; then
+            sudo curl -Lo /usr/local/bin/cs  https://git.io/coursier-cli-linux && sudo chmod +x /usr/local/bin/cs
+          fi
+
+          cd json-sick-scala
+
+          COMMAND="sbt +clean +test"
+          BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
+          if [[ "$GITHUB_REF" == refs/heads/main || "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in secrets.tar.enc -out secrets.tar -d
+            tar xvf secrets.tar
+            ln -s .secrets/local.sbt local.sbt
+            COMMAND="$COMMAND +publishSigned"
+            if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+              COMMAND="$COMMAND sonatypeBundleRelease"
+            fi
+          fi
+
+          echo $COMMAND
+          eval $COMMAND
