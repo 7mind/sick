@@ -148,7 +148,7 @@ namespace SickSharp.Encoder
         {
             return (Int64)v.Value switch
             {
-                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => new Ref(RefKind.Byte, (byte)i),
+                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => new Ref(RefKind.Byte, (sbyte)i),
                 Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => new Ref(RefKind.Short, (short)i),
                 Int64 i when i <= Int32.MaxValue && i >= Int32.MinValue => addInt(Convert.ToInt32(i)),
                 Int64 i when i <= Int64.MaxValue && i >= Int64.MinValue => addLong(i),
