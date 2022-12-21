@@ -58,7 +58,7 @@ jobs:
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
           cd json-sick-csharp
 
-          cp ../README.md .
+          cp ../README.md ./SickSharp
 
           if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
             dotnet build -c Release
