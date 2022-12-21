@@ -23,7 +23,6 @@ jobs:
           OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
           env
-          which age
           apt search coursier
           apt search age
           if [[ ! -f /usr/local/bin/cs ]]; then
