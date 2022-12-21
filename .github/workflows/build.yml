@@ -22,11 +22,6 @@ jobs:
           OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
           OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
-          env
-          if [[ ! -f /usr/local/bin/cs ]]; then
-            sudo curl -Lo /usr/local/bin/cs  https://git.io/coursier-cli-linux && sudo chmod +x /usr/local/bin/cs
-          fi
-
           COMMAND="sbt +clean +test"
 
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
@@ -61,17 +56,16 @@ jobs:
           OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
           OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
-          env
-
-          COMMAND="dotnet build"
-
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
           cd json-sick-csharp
 
           if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
-            openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
-            tar xvf secrets.tar
+            dotnet build -c Release
+          else
+              dotnet build -c Release --version-suffix "alpha.$GITHUB_RUN_NUMBER"
           fi
 
-          echo $COMMAND
-          eval $COMMAND
+          for TRG in $(find . -name '*.nupkg' -type f -print)
+          do
+            dotnet nuget push $TRG -k $NUGET_TOKEN --source https://api.nuget.org/v3/index.json || exit 1
+          done
