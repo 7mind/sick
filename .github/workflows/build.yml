@@ -23,6 +23,9 @@ jobs:
           OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
           env
+          which age
+          apt search coursier
+          apt search age
           if [[ ! -f /usr/local/bin/cs ]]; then
             sudo curl -Lo /usr/local/bin/cs  https://git.io/coursier-cli-linux && sudo chmod +x /usr/local/bin/cs
           fi
