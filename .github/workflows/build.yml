@@ -53,8 +53,7 @@ jobs:
           key: ${{ runner.os }}-csharp
       - name: Build and Test
         env:
-          OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
-          OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
+          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
         run: |
           BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
           cd json-sick-csharp
@@ -67,5 +66,5 @@ jobs:
 
           for TRG in $(find . -name '*.nupkg' -type f -print)
           do
-            dotnet nuget push $TRG -k $NUGET_TOKEN --source https://api.nuget.org/v3/index.json || exit 1
+            dotnet nuget push $TRG -k ${NUGET_TOKEN} --source https://api.nuget.org/v3/index.json || exit 1
           done
