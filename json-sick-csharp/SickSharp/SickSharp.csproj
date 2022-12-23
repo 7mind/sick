@@ -5,8 +5,10 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9</LangVersion>
 
+    <VersionFile>$(SolutionDir)../version.txt</VersionFile>
+    <VersionPrefix>$([System.IO.File]::ReadAllText($(VersionFile)).Trim())</VersionPrefix>
+
     <PackageId>Izumi.SICK</PackageId>
-    <VersionPrefix>0.0.2</VersionPrefix>
     <Authors>Septimal Mind</Authors>
     <Company>Septimal Mind Ltd</Company>
     <Product>SICK</Product>
@@ -27,7 +29,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
-    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="$(SolutionDir)../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 

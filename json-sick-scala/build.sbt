@@ -1,3 +1,5 @@
+import com.github.sbt.git.SbtGit.GitKeys
+
 val circeVersion = "0.14.1"
 
 lazy val root = (project in file("."))
@@ -23,7 +25,16 @@ ThisBuild / organization := "io.7mind.izumi"
 ThisBuild / sonatypeProfileName := "io.7mind"
 ThisBuild / sonatypeSessionName := s"[sbt-sonatype] ${name.value} ${version.value} ${java.util.UUID.randomUUID}"
 
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := {
+  val versionBase = IO.read(file("../version.txt")).trim()
+  val isStable =
+    GitKeys.gitCurrentTags.value.isEmpty && !GitKeys.gitUncommittedChanges.value
+  if (isStable) {
+    versionBase
+  } else {
+    s"$versionBase-SNAPSHOT"
+  }
+}
 
 ThisBuild / scalaVersion := "2.13.8"
 
