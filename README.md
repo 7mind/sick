@@ -141,6 +141,51 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 
 TODO
 
+#### Supported types
+
+A type marker is represented as a single-byte unsigned integer. The possible values are:
+
+| Marker | Name    | Comment                        | Value Length              |
+| ------ | ------- | ------------------------------ | ------------------------- |
+| 0      | TNul    | Equivalent to `null` in JSON   | N/A, stored in the marker |
+| 1      | TBit    | Boolean                        | N/A, stored in the marker |
+| 2      | TByte   | Byte                           | 1                         |
+| 3      | TShort  |                                | 2                         |
+| 4      | TInt    |                                | 4                         |
+| 5      | TLng    |                                | 8                         |
+| 6      | TBigInt |                                | Variable, prefixed        |
+| 7      | TDbl    |                                | 8                         |
+| 8      | TFlt    |                                | 4                         |
+| 9      | TBigDec |                                | Variable, prefixed        |
+| 10     | TStr    | UTF-8 String                   | Variable, prefixed        |
+| 11     | TArr    | List of array entries          | Variable, prefixed        |
+| 12     | TObj    | List of object entries         | Variable, prefixed        |
+| 15     | TRoot   | Index of the name string (4 bytes) + reference (4+1=5 bytes)                             | 9          |
+
+#### References
+
+TODO 
+
+#### Lists
+
+TODO
+
+#### Array entries
+
+Array entries are just references.
+
+#### Object entries
+
+TODO
+
+#### Object entry skip list and KHash
+ 
+TODO
+
+#### Value tables
+
+TODO
+ 
 ### Limitations
 
 Current implementation has the following limitations:
