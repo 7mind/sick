@@ -137,10 +137,10 @@ In real implementation it's more convenient to just create a separate "root" typ
 
 Currently we provide C# and Scala implementations of SICK indexed binary JSON storage. Currently the code in this repository has no streaming capabilities. That may change in the future. It's not a hard problem to add streaming support, your contributions are welcome.
 
-| Language | Binary Storage Encoder |  Binary Storage Decoder | Stream Encoder |  Stream Decoder | AST   |
-| -------- | ---------------------- | ----------------------- | -------------- | --------------- | ----- |
-| Scala    | Yes                    | No                      | No             | No              | Circe |
-| C#       | Yes                    | Yes                     | No             | No              | JSON.Net, Custom|
+| Language | Binary Storage Encoder |  Binary Storage Decoder | Stream Encoder |  Stream Decoder | Encoder AST   | Decoder AST |
+| -------- | ---------------------- | ----------------------- | -------------- | --------------- | ------------  | ----------- |
+| Scala    | Yes                    | No                      | No             | No              | Circe         | N/A         |
+| C#       | Yes                    | Yes                     | No             | No              | JSON.Net      | Custom      |
 
 ### Efficient Binary Indexed Storage
 
