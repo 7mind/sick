@@ -156,7 +156,7 @@ A type marker is represented as a single-byte unsigned integer. The possible val
 | 6      | TBigInt |                                | Variable, prefixed        |
 | 7      | TDbl    |                                | 8                         |
 | 8      | TFlt    |                                | 4                         |
-| 9      | TBigDec |                                | Variable, prefixed        |
+| 9      | TBigDec | Represented as scale/precision/signum/unscaled quadruple in C#      | Variable, prefixed        |
 | 10     | TStr    | UTF-8 String                   | Variable, prefixed        |
 | 11     | TArr    | List of array entries          | Variable, prefixed        |
 | 12     | TObj    | List of object entries         | Variable, prefixed        |
