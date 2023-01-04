@@ -145,22 +145,22 @@ TODO
 
 A type marker is represented as a single-byte unsigned integer. The possible values are:
 
-| Marker | Name    | Comment                        | Value Length              |
-| ------ | ------- | ------------------------------ | ------------------------- |
-| 0      | TNul    | Equivalent to `null` in JSON   | N/A, stored in the marker |
-| 1      | TBit    | Boolean                        | N/A, stored in the marker |
-| 2      | TByte   | Byte                           | 1                         |
-| 3      | TShort  | Signed 16-bit integer                               | 2                         |
-| 4      | TInt    | Signed 32-bit integer                       | 4                         |
-| 5      | TLng    | Signed 64-bit integer                              | 8                         |
-| 6      | TBigInt |                                | Variable, prefixed        |
-| 7      | TDbl    |                                | 8                         |
-| 8      | TFlt    |                                | 4                         |
-| 9      | TBigDec | Represented as scale/precision/signum/unscaled quadruple in C#      | Variable, prefixed        |
-| 10     | TStr    | UTF-8 String                   | Variable, prefixed        |
-| 11     | TArr    | List of array entries          | Variable, prefixed        |
-| 12     | TObj    | List of object entries         | Variable, prefixed        |
-| 15     | TRoot   | Index of the name string (4 bytes) + reference (4+1=5 bytes)                             | 9          |
+| Marker | Name    | Comment                        | Value Length (bytes)      | C# mapping | Scala Mapping |
+| ------ | ------- | ------------------------------ | ------------------------- | ---------- | --------------|
+| 0      | TNul    | Equivalent to `null` in JSON   | 4, stored in the marker   |            |               |
+| 1      | TBit    | Boolean                        | 4, stored in the marker   |            |               |
+| 2      | TByte   | Byte,                          | 4, stored in the marker   | byte (unsigned)| Byte (signed)               |
+| 3      | TShort  | Signed 16-bit integer          | 4, stored in the marker   |           |               |
+| 4      | TInt    | Signed 32-bit integer          | 4                         |           |               |
+| 5      | TLng    | Signed 64-bit integer          | 8                         |           |               |
+| 6      | TBigInt |                                | Variable, prefixed        |           |               |
+| 7      | TDbl    |                                | 8                         |           |               |
+| 8      | TFlt    |                                | 4                         |           |               |
+| 9      | TBigDec |                                | Variable, prefixed        | Represented as scale/precision/signum/unscaled quadruple in C# | |
+| 10     | TStr    | UTF-8 String                   | Variable, prefixed        |           |               |
+| 11     | TArr    | List of array entries          | Variable, prefixed        |           |               |
+| 12     | TObj    | List of object entries         | Variable, prefixed        |           |               |
+| 15     | TRoot   | Index of the name string (4 bytes) + reference (4+1=5 bytes) | 9          |           |               |
 
 #### References
 
