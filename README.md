@@ -150,9 +150,9 @@ A type marker is represented as a single-byte unsigned integer. The possible val
 | 0      | TNul    | Equivalent to `null` in JSON   | N/A, stored in the marker |
 | 1      | TBit    | Boolean                        | N/A, stored in the marker |
 | 2      | TByte   | Byte                           | 1                         |
-| 3      | TShort  |                                | 2                         |
-| 4      | TInt    |                                | 4                         |
-| 5      | TLng    |                                | 8                         |
+| 3      | TShort  | Signed 16-bit integer                               | 2                         |
+| 4      | TInt    | Signed 32-bit integer                       | 4                         |
+| 5      | TLng    | Signed 64-bit integer                              | 8                         |
 | 6      | TBigInt |                                | Variable, prefixed        |
 | 7      | TDbl    |                                | 8                         |
 | 8      | TFlt    |                                | 4                         |
