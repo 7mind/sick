@@ -10,20 +10,20 @@
 `SICK` allows you to achieve the following:
 
 1. Store `JSON`-like data in efficient indexed binary form
-2. Avoid reading and parsing whole `JSON` files and access the data you need just in time
+2. Avoid reading and parsing whole `JSON` files and access only the data you need just in time
 3. Store multiple `JSON`-like structures in one deduplicating storage
-4. Implement ideal streaming parsers for `JSON`-like data
+4. Implement perfect streaming parsers for `JSON`-like data
 5. Efficiently stream updates for `JSON`-like data
 
 The tradeoff for these benefits is somehow more complicated and less efficient encoder.
 
 ## The problem
 
-`JSON` has a [Type-2](https://en.wikipedia.org/wiki/Chomsky_hierarchy#Type-2_grammars) grammar and requires a pushdown automaton to parse it. So, it's not possible to implement efficient streaming parser for `JSON`. Just imagine a huge hierarchy of nested `JSON` objects: you won't be able to finish parsing the top-level object until the whole file.
+`JSON` has a [Type-2](https://en.wikipedia.org/wiki/Chomsky_hierarchy#Type-2_grammars) grammar and requires a [pushdown automaton](https://en.wikipedia.org/wiki/Pushdown_automaton) to parse it. So, it's not possible to implement efficient streaming parser for `JSON`. Just imagine a huge hierarchy of nested `JSON` objects: you won't be able to finish parsing the top-level object until you process the whole file.
 
-`JSON` is frequently used to store and transfer large amounts of data and these transfers tend to grow over time. Just imagine a typical `JSON` config file for a large enterprise product.
+`JSON` is frequently used to store and transfer large amounts of data and these transfers tend to [grow over time](https://nee.lv/2021/02/28/How-I-cut-GTA-Online-loading-times-by-70/). Just imagine a typical `JSON` config file for a large enterprise product.
 
-The non-streaming nature of almost all the JSON parsers requires a lot of work to be done every time you need to deserialize your a huge chunk of `JSON` data: you need to read it from disk, parse it and, usually, map raw `JSON` tree to object instances.
+The non-streaming nature of almost all the JSON parsers requires a lot of work to be done every time you need to deserialize your a huge chunk of `JSON` data: you need to read it from disk, parse it in memory into an AST representation, and, usually, map raw `JSON` tree to object instances. Even if you use token streams and know the type of your object ahead of time you still have to deal with the Type-2 grammar.
 
 This may be very inefficient and cause unnecessary delays and pauses.
 
@@ -54,7 +54,7 @@ This way we flattened and deduplicated our `JSON`.
 
 ### Streaming
 
-Now we may do manu different things, for example we may stream our table:
+Such representation allows us to do many different things, for example we may stream our table:
 
 ```
 string:0 = "some key"
@@ -73,22 +73,22 @@ string:2 = "file.json"
 root:0=array.0,string:2
 ```
 
-This particular encoding is inefficient but it's streamable and, moreover, we can extend with removal message to support arbitrary updates:
+This particular encoding is inefficient but it's streamable and, moreover, we can add removal message into it thus supporting arbitrary updates:
 
 ```
 array:0[0] = object:1
 array:0[1] = remove
 ```
 
-There is an interesting observation: the initial stream entries (when there is no removals) may be safely reordered, though sometimes the receiver would need to store them until it can sort them out.
+There is an interesting observation: the initial stream entries (when there is no removals) may be safely reordered. Unfortunately, in some usecases the receiver still may need to accumulate them until it can sort them out.
 
 ### Binary storage
 
-We may note that the only complex data structures in our "Value" column are lists and `(type, index)` pairs. Let's call the pairs "references".
+We may note that the only complex data structures in our "Value" column are lists and `(type, index)` pairs. Let's call such pairs "references".
 
 A reference can be represented as a pair of integers, so it would have a fixed byte length.
 
-A list of references can be represented as an integer storing list length followed by all the references' bytes. Let's note that such binary structure is indexed, when we know the index of the element we want to access we can do it immediately.
+A list of references can be represented as an integer storing list length followed by all the references in their binary form. Let's note that such binary structure is indexed, once we know the index of an element we want to access we can do it immediately.
 
 A list of any fixed-size scalar values can be represented the same way.
 
@@ -102,7 +102,6 @@ So, `["a", "bb", "ccc"]` would become something like `3 0 2 3 a b bb ccc` withou
 
 An important fact is that this encoding is indexed too and it can be reused to store any lists of variable-length data.
 
-
 ### Additional capabilities over `JSON`
 
 `SICK` encoding follows compositional principles of `JSON` (a set primitive types plus lists and dictionaries), though it is more powerful: it has "reference" type and allows you to encode custom types.
@@ -114,11 +113,9 @@ An important fact is that this encoding is indexed too and it can be reused to s
 | object | 0     | [string:0, object:1] | No      |
 | object | 1     | [string:1, object:0] | No      |
 
-
 This may be convenient in some complex cases.
 
-(2) Also we may note, that we may happily store multiple json files in one table and have full deduplication over their content. We just need to introduce a separate attribute (`is root`)
-storing either nothing or the name of our "root entry" (`JSON` file).
+(2) Also we may note, that we may happily store multiple json files in one table and have full deduplication over their content. We just need to introduce a separate attribute (`is root`) storing either nothing or the name of our "root entry" (`JSON` file).
 
 In real implementation it's more convenient to just create a separate "root" type, the value of a root type should always be a reference to its name and a reference to the actual `JSON` value we encoded:
 
@@ -138,14 +135,15 @@ In real implementation it's more convenient to just create a separate "root" typ
 
 ## Implementation
 
+Currently we provide C# and Scala SICK implementations for indexed binary JSON storage.
+
+### Efficient Binary Indexed Storage
+
 TODO
 
 ### Streaming
 
-TODO
-### Efficient binary indexed storage
-
-TODO
+Currently the code in this repository has no streaming capabilities. That may change in the future.
 
 ### Limitations
 
