@@ -16,7 +16,7 @@ jobs:
         run: |
           COMMAND="sbt +clean +test"
 
-          BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
+          # BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
 
           cd json-sick-scala
 
@@ -46,7 +46,7 @@ jobs:
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
         run: |
-          BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
+          # BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
           cd json-sick-csharp
 
           # dotnet clean -c Release
