@@ -16,15 +16,13 @@ jobs:
         run: |
           COMMAND="sbt +clean +test"
 
-          printenv
-
           cd json-sick-scala
 
-          if [[ "$GITHUB_REF" == refs/heads/main || "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+          if [[ "$GITHUB_REF" == refs/heads/main || "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
             openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
             COMMAND="$COMMAND +publishSigned"
-            if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+            if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
               COMMAND="$COMMAND sonatypeBundleRelease"
             fi
           fi
@@ -46,11 +44,10 @@ jobs:
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
         run: |
-          # BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
           cd json-sick-csharp
 
           # dotnet clean -c Release
-          if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
+          if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
             dotnet build -c Release
           else
             dotnet build -c Release --version-suffix "alpha.$GITHUB_RUN_NUMBER"
