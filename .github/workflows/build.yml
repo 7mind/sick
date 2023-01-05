@@ -14,7 +14,6 @@ jobs:
           OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
           OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
-          cat $GITHUB_ENV
           COMMAND="sbt +clean +test"
 
           cd json-sick-scala
