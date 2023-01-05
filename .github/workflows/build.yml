@@ -53,7 +53,7 @@ jobs:
           if [[ "$BRANCH_TAG" =~ ^v.*$ ]] ; then
             dotnet build -c Release
           else
-              dotnet build -c Release --version-suffix "alpha.$GITHUB_RUN_NUMBER"
+            dotnet build -c Release --version-suffix "alpha.$GITHUB_RUN_NUMBER"
           fi
 
           for TRG in $(find . -name '*.nupkg' -type f -print)
