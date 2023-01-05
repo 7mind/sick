@@ -6,3 +6,4 @@ output/
 .secrets
 secrets.tar
 local.sbt
+target
