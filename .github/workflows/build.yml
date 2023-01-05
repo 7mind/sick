@@ -32,8 +32,9 @@ jobs:
   build-cs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: rlespinasse/github-slug-action@v3.x
+      - uses: 7mind/github-env@main
+        with:
+          java-enable: false
       - name: Caches
         uses: actions/cache@v3
         with:
