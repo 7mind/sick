@@ -16,7 +16,7 @@ jobs:
         run: |
           COMMAND="sbt +clean +test"
 
-          # BRANCH_TAG="$(git describe --contains | grep v | grep -v '~' | head -n 1 || true)"
+          printenv
 
           cd json-sick-scala
 
