@@ -4,7 +4,7 @@ namespace SickSharp.Format.Tables
     {
         Nul = 0,
         Bit = 1,
-        Byte = 2,
+        SByte = 2,
         Short = 3,
         Int = 4,
         Lng = 5,
