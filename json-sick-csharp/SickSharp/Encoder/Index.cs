@@ -146,23 +146,71 @@ namespace SickSharp.Encoder
 
         private Ref handleInt(JValue v)
         {
-            return (Int64)v.Value switch
+            long val;
+            switch (v.Value)
             {
-                Int64 i when i <= SByte.MaxValue && i >= SByte.MinValue => new Ref(RefKind.Byte, (sbyte)i),
-                Int64 i when i <= Int16.MaxValue && i >= Int16.MinValue => new Ref(RefKind.Short, (short)i),
-                Int64 i when i <= Int32.MaxValue && i >= Int32.MinValue => addInt(Convert.ToInt32(i)),
-                Int64 i when i <= Int64.MaxValue && i >= Int64.MinValue => addLong(i),
-                _ => throw new InvalidDataException($"Unexpected integer: {v}")
-            };
+                case Int64 int64:
+                    val = int64;
+                    break;
+                case Int32 int32:
+                    val = int32;
+                    break;
+                case uint uint32:
+                    val = (long)uint32;
+                    break;
+                case ulong uint64:
+                    val = (long)uint64;
+                    break;
+                case short int16:
+                    val = int16;
+                    break;
+                case ushort uint16:
+                    val = uint16;
+                    break;
+                
+                default:
+                    throw new InvalidDataException($"Unexpected integer: {v.Value}");
+            }
+
+            if (val <= SByte.MaxValue && val >= SByte.MinValue)
+            {
+                return new Ref(RefKind.SByte, (sbyte)val);
+            }
+
+            if (val <= Int16.MaxValue && val >= Int16.MinValue)
+            {
+                return new Ref(RefKind.Short, (short)val);
+            }
+
+            if (val <= Int32.MaxValue && val >= Int32.MinValue)
+            {
+                return addInt(Convert.ToInt32(val));
+            }
+
+            return addLong(val);
         }
+
         private Ref handleFloat(JValue v)
         {
-            return (Double)v.Value switch
+            double val;
+            switch (v.Value)
             {
-                Double i when i <= Single.MaxValue && i >= Single.MinValue => addFloat(Convert.ToSingle(i)),
-                Double i when i <= Double.MaxValue && i >= Double.MinValue => addDouble(i),
-                _ => throw new InvalidDataException($"Unexpected integer: {v}")
-            };
+                case float f:
+                    val = f;
+                    break;
+                case double d:
+                    val = d;
+                    break;
+                default:
+                    throw new InvalidDataException($"Unexpected float: {v}");
+            }
+
+            if (val <= Single.MaxValue && val >= Single.MinValue)
+            {
+                return addFloat(Convert.ToSingle(val));
+            }
+
+            return addDouble(val);
         }
 
         private Ref addString(String s)
