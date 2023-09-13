@@ -126,89 +126,94 @@ namespace SickSharp.Format
             {
                 var currentObj = Objs.Read(reference.Value);
 
-                var lower = 0;
-                var upper = currentObj.Count;
-                    
-                if (currentObj.UseIndex)
-                {
-                    
-                    //BucketStartOffsets = new ushort[settings.BucketCount];
-                    //BucketEndOffsets = new Dictionary<uint, ushort>();
-
-                    uint previousBucketStart = 0;
-                    
-                    var khash = KHash.Compute(field);
-                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
-                    var probablyLower = BucketValue(currentObj, bucket);
-
-                    if (probablyLower == ObjIndexing.MaxIndex)
-                    {
-                        throw new KeyNotFoundException(
-                            $"Field {field} not found in object {currentObj} with id {reference}"
-                        );
-                    }
-                    
-                    if (probablyLower >= currentObj.Count)
-                    {
-                        throw new FormatException(
-                            $"Field {field} in object {currentObj} with id {reference} produced bucket index {probablyLower} which is more than object size {currentObj.Count}"
-                        );
-                    }
-                        
-                    lower = probablyLower;
-
-                    // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
-                    for (uint i = bucket+1; i < Header.Settings.BucketCount; i++)
-                    {
-                        var probablyUpper = BucketValue(currentObj, i);
-                        
-                        if (probablyUpper <= currentObj.Count)
-                        {
-                            upper = probablyUpper;
-                            break;
-                        }
-
-                        if (probablyUpper == ObjIndexing.MaxIndex)
-                        {
-                            continue;
-                        }
-                        
-                        if (probablyUpper > currentObj.Count)
-                        {
-                            throw new FormatException(
-                                $"Field {field} in object {currentObj} with id {reference} produced bucket index {probablyUpper} which is more than object size {currentObj.Count}"
-                            );
-                        }
-                    }
-                }
-
-
-                #if DEBUG_TRAVEL
-                TotalLookups += 1;
-                #endif
-                
-                Debug.Assert(lower <= upper);
-                for (int i = lower; i < upper; i++)
-                {
-                    var k = currentObj.ReadKeyOnly(i);
-                    if (k.Key == field)
-                    {
-                        #if DEBUG_TRAVEL
-                        TotalTravel += (i - lower);
-                        #endif
-                        
-                        var kind = (RefKind)k.Value[sizeof(int)];
-                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-                        return new Ref(kind, value);
-                    }
-                }
-                throw new KeyNotFoundException(
-                    $"Field {field} not found in object {currentObj} with id {reference}"
-                );
+                return ReadObjectFieldRef(field, currentObj);
             }
             
             throw new KeyNotFoundException(
-                $"Tried to find field {field} in entity with id {reference} which should be an object, but it was {reference}"
+                $"Tried to find field {field} in entity with id {reference} which should be an object, but it was {reference.Kind}"
+            );
+        }
+
+        private Ref ReadObjectFieldRef(string field, OneObjTable currentObj)
+        {
+            var lower = 0;
+            var upper = currentObj.Count;
+
+            if (currentObj.UseIndex)
+            {
+                //BucketStartOffsets = new ushort[settings.BucketCount];
+                //BucketEndOffsets = new Dictionary<uint, ushort>();
+
+                uint previousBucketStart = 0;
+
+                var khash = KHash.Compute(field);
+                var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+                var probablyLower = BucketValue(currentObj, bucket);
+
+                if (probablyLower == ObjIndexing.MaxIndex)
+                {
+                    throw new KeyNotFoundException(
+                        $"Field {field} not found in object {currentObj}"
+                    );
+                }
+
+                if (probablyLower >= currentObj.Count)
+                {
+                    throw new FormatException(
+                        $"Field {field} in object {currentObj} produced bucket index {probablyLower} which is more than object size {currentObj.Count}"
+                    );
+                }
+
+                lower = probablyLower;
+
+                // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
+                for (uint i = bucket + 1; i < Header.Settings.BucketCount; i++)
+                {
+                    var probablyUpper = BucketValue(currentObj, i);
+
+                    if (probablyUpper <= currentObj.Count)
+                    {
+                        upper = probablyUpper;
+                        break;
+                    }
+
+                    if (probablyUpper == ObjIndexing.MaxIndex)
+                    {
+                        continue;
+                    }
+
+                    if (probablyUpper > currentObj.Count)
+                    {
+                        throw new FormatException(
+                            $"Field {field} in object {currentObj} produced bucket index {probablyUpper} which is more than object size {currentObj.Count}"
+                        );
+                    }
+                }
+            }
+
+
+#if DEBUG_TRAVEL
+                TotalLookups += 1;
+#endif
+
+            Debug.Assert(lower <= upper);
+            for (int i = lower; i < upper; i++)
+            {
+                var k = currentObj.ReadKeyOnly(i);
+                if (k.Key == field)
+                {
+#if DEBUG_TRAVEL
+                        TotalTravel += (i - lower);
+#endif
+
+                    var kind = (RefKind)k.Value[sizeof(int)];
+                    var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                    return new Ref(kind, value);
+                }
+            }
+
+            throw new KeyNotFoundException(
+                $"Field {field} not found in object {currentObj}"
             );
         }
 
@@ -243,12 +248,7 @@ namespace SickSharp.Format
             var currentQuery = parts.First();
             var next = parts.Skip(1).ToList();
 
-            if (currentQuery.EndsWith("]") && currentQuery.Contains("[") && !currentQuery.StartsWith("["))
-            {
-                var index = currentQuery.Substring(currentQuery.IndexOf('['));
-                currentQuery = currentQuery.Substring(0, currentQuery.IndexOf('['));
-                next.Insert(0, index);
-            }
+            HandleBracketsWithoutDot(ref currentQuery, next);
             
             if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
             {
@@ -285,8 +285,8 @@ namespace SickSharp.Format
                     return new JNull();
                 case RefKind.Bit:
                     return new JBool(reference.Value == 1);
-                case RefKind.Byte:
-                    return new JByte((byte)reference.Value);
+                case RefKind.SByte:
+                    return new JSByte((sbyte)reference.Value);
                 case RefKind.Short:
                     return new JShort((short)reference.Value);
                 case RefKind.Int:
@@ -325,7 +325,7 @@ namespace SickSharp.Format
 
             var version = _stream.ReadInt32BE();
             var tableCount = _stream.ReadInt32BE();
-
+            
             var expectedVersion = 0;
             if (version != expectedVersion)
             {
@@ -355,6 +355,64 @@ namespace SickSharp.Format
             // Console.WriteLine($"Offsets: {String.Join(",", tableOffsets)}, buckets: {bucketCount}" );
             var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
             return header;
+        }
+        
+        public bool TryQuery(JObj @ref, string fullPath, out IJsonVal o)
+        {
+            try
+            {
+                o = Query(@ref, fullPath);
+                return true;
+            }
+            catch
+            {
+                o = default!;
+                return false;
+            }
+        }
+
+        public IJsonVal Query(JObj jObj, string path)
+        {
+            return Query(jObj, path.Split('.').ToList());
+        }
+
+        private IJsonVal Query(JObj jObj, List<string> parts)
+        {
+            if (parts.Count == 0)
+            {
+                return jObj;
+            }
+
+            var currentQuery = parts.First();
+            var next = parts.Skip(1).ToList();
+            HandleBracketsWithoutDot(ref currentQuery, next);
+            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value);
+            return Query(resolvedObj, next);
+        }
+        
+        
+        private static void HandleBracketsWithoutDot(ref string currentQuery, List<string> next)
+        {
+            if (currentQuery.EndsWith(']') && currentQuery.Contains('[') && !currentQuery.StartsWith('['))
+            {
+                var index = currentQuery.Substring(currentQuery.IndexOf('['));
+                currentQuery = currentQuery.Substring(0, currentQuery.IndexOf('['));
+                next.Insert(0, index);
+            }
+        }
+
+        public bool TryQuery(Ref @ref, string fullPath, out IJsonVal o)
+        {
+            try
+            {
+                o = Query(@ref, fullPath);
+                return true;
+            }
+            catch
+            {
+                o = default!;
+                return false;
+            }
         }
     }
 }
