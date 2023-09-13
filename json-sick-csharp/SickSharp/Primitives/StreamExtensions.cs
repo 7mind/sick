@@ -18,7 +18,7 @@ namespace SickSharp.Primitives
             stream.Seek(offset, SeekOrigin.Begin);
             var ret = stream.Read(bytes, 0, count);
             // Debug.Assert(stream.Length >= stream.Position + count);
-            Debug.Assert(ret == count, $"Expected to read {count} bytes but read {ret}");
+            Debug.Assert(ret == count);
             return bytes;
         }
 
