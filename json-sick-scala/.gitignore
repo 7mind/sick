@@ -1,8 +1,8 @@
 .idea
 config.json
 *.bin*
-
 .bsp
+.secrets
 
 # Created by https://www.toptal.com/developers/gitignore/api/java,scala,jetbrains+all,sbt,maven,bloop
 # Edit at https://www.toptal.com/developers/gitignore?templates=java,scala,jetbrains+all,sbt,maven,bloop

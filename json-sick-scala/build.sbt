@@ -11,7 +11,8 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic-extras",
       "io.circe" %% "circe-parser"
     ).map(_ % circeVersion),
-    libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3"
+    libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3",
+    sonatypeProfileName := "io.7mind"
   )
 
 ThisBuild / scalacOptions ++= Seq(
@@ -22,13 +23,12 @@ ThisBuild / scalacOptions ++= Seq(
 
 ThisBuild / organization := "io.7mind.izumi"
 
-ThisBuild / sonatypeProfileName := "io.7mind"
 ThisBuild / sonatypeSessionName := s"[sbt-sonatype] ${name.value} ${version.value} ${java.util.UUID.randomUUID}"
 
 ThisBuild / version := {
   val versionBase = IO.read(file("../version.txt")).trim()
   val isStable =
-    GitKeys.gitCurrentTags.value.isEmpty && !GitKeys.gitUncommittedChanges.value
+    GitKeys.gitCurrentTags.value.nonEmpty && !GitKeys.gitUncommittedChanges.value
   if (isStable) {
     versionBase
   } else {
@@ -46,7 +46,8 @@ ThisBuild / publishTo :=
    })
 
 ThisBuild / credentials ++= {
-  val credTarget = Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
+  val credTarget =
+    Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
   if (credTarget.exists) {
     Seq(Credentials(credTarget))
   } else {
@@ -55,14 +56,14 @@ ThisBuild / credentials ++= {
 }
 
 ThisBuild / credentials ++= {
-  val credTarget = file(".") / ".secrets" / "credentials.sonatype-nexus.properties"
+  val credTarget =
+    file(".") / ".secrets" / "credentials.sonatype-nexus.properties"
   if (credTarget.exists) {
     Seq(Credentials(credTarget))
   } else {
     Seq.empty
   }
 }
-
 
 ThisBuild / homepage := Some(url("https://github.com/7mind/sick"))
 ThisBuild / licenses := Seq(
