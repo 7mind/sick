@@ -45,12 +45,24 @@ ThisBuild / publishTo :=
      Some(Opts.resolver.sonatypeSnapshots)
    })
 
-ThisBuild / credentials += Credentials(
-  file(".secrets/credentials.sonatype-nexus.properties")
-)
-ThisBuild / credentials += Credentials(
-  Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
-)
+ThisBuild / credentials ++= {
+  val credTarget = Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
+  if (credTarget.exists) {
+    Seq(Credentials(credTarget))
+  } else {
+    Seq.empty
+  }
+}
+
+ThisBuild / credentials ++= {
+  val credTarget = file(".") / ".secrets" / "credentials.sonatype-nexus.properties"
+  if (credTarget.exists) {
+    Seq(Credentials(credTarget))
+  } else {
+    Seq.empty
+  }
+}
+
 
 ThisBuild / homepage := Some(url("https://github.com/7mind/sick"))
 ThisBuild / licenses := Seq(
