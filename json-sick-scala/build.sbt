@@ -36,7 +36,7 @@ ThisBuild / version := {
   }
 }
 
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalaVersion := "2.13.11"
 
 ThisBuild / publishTo :=
   (if (!isSnapshot.value) {
@@ -44,6 +44,13 @@ ThisBuild / publishTo :=
    } else {
      Some(Opts.resolver.sonatypeSnapshots)
    })
+
+publishTo := (if (!isSnapshot.value) {
+  sonatypePublishToBundle.value
+} else {
+  Some(Opts.resolver.sonatypeSnapshots)
+})
+
 
 ThisBuild / credentials ++= {
   val credTarget =
@@ -84,4 +91,3 @@ ThisBuild / scmInfo := Some(
   )
 )
 
-publishTo := sonatypePublishToBundle.value
