@@ -8,3 +8,5 @@ secrets.tar
 local.sbt
 target
 .scala-build
+.bsp
+
