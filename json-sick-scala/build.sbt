@@ -45,12 +45,7 @@ ThisBuild / publishTo :=
      Some(Opts.resolver.sonatypeSnapshots)
    })
 
-publishTo := (if (!isSnapshot.value) {
-  sonatypePublishToBundle.value
-} else {
-  Some(Opts.resolver.sonatypeSnapshots)
-})
-
+publishTo := (ThisBuild / publishTo).value
 
 ThisBuild / credentials ++= {
   val credTarget =
