@@ -83,3 +83,5 @@ ThisBuild / scmInfo := Some(
     "scm:git:https://github.com/7mind/sick.git"
   )
 )
+
+publishTo := sonatypePublishToBundle.value
