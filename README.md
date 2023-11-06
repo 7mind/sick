@@ -46,11 +46,11 @@ Let's build a table for every unique value in our `JSON` :
 | ------ | ----- | ------------------------------ | --------------- |
 | string | 0     | "some key"                     | No              |
 | string | 1     | "some value"                   | No              |
-| object | 0     | [string:0, string,1]           | No              |
+| object | 0     | [string:0, string:1]           | No              |
 | object | 1     | [string:1, string:0]           | No              |
 | array  | 0     | [object:0, object:0, object:1] | Yes (file.json) |
 
-This way we flattened and deduplicated our `JSON`.
+We just built a flattened and deduplicated version of our initial `JSON` structure.
 
 ### Streaming
 
@@ -80,7 +80,7 @@ array:0[0] = object:1
 array:0[1] = remove
 ```
 
-There is an interesting observation: the initial stream entries (when there is no removals) may be safely reordered. Unfortunately, in some usecases the receiver still may need to accumulate them until it can sort them out.
+There is an interesting observation: when a stream does not contain removal entries it can be safely reordered. Unfortunately, in some usecases the receiver still may need to accumulate the entries in a buffer until it can sort them out.
 
 ### Binary storage
 
