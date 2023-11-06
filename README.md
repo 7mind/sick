@@ -25,7 +25,7 @@ The tradeoff for these benefits is somehow more complicated and less efficient e
 
 The non-streaming nature of almost all the JSON parsers requires a lot of work to be done every time you need to deserialize a huge chunk of `JSON` data: you need to read it from disk, parse it in memory into an AST representation, and, usually, map raw `JSON` tree to object instances. Even if you use token streams and know the type of your object ahead of time you still have to deal with the Type-2 grammar.
 
-This may be very inefficient and cause unnecessary delays and pauses.
+This may be very inefficient and causes unnecessary delays, pauses, CPU activity and memory consumption spikes.
 
 ## The idea
 
