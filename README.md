@@ -70,7 +70,7 @@ array:0[1] = object:1
 
 string:2 = "file.json"
 
-root:0=array.0,string:2
+root:0=arrayЖ0,string:2
 ```
 
 This particular encoding is inefficient but it's streamable and, moreover, we can add removal message into it thus supporting arbitrary updates:
