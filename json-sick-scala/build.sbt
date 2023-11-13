@@ -7,11 +7,9 @@ lazy val root = (project in file("."))
     name := "json-sick",
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
-      "io.circe" %% "circe-generic",
-      "io.circe" %% "circe-generic-extras",
       "io.circe" %% "circe-parser"
     ).map(_ % circeVersion),
-    libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.2-3",
+    libraryDependencies  += "com.github.luben" % "zstd-jni" % "1.5.2-3" % Test,
     sonatypeProfileName := "io.7mind"
   )
 
@@ -37,6 +35,11 @@ ThisBuild / version := {
 }
 
 ThisBuild / scalaVersion := "2.13.11"
+
+ThisBuild /crossScalaVersions := Seq(
+  "3.2.2",
+  "2.13.11",
+)
 
 ThisBuild / publishTo :=
   (if (!isSnapshot.value) {

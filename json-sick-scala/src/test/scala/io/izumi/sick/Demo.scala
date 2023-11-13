@@ -1,9 +1,9 @@
-package izumi.sick
+package io.izumi.sick
 
 import com.github.luben.zstd.Zstd
 import io.circe.*
 import izumi.sick.indexes.{IndexRW, PackSettings}
-import izumi.sick.model.{ToBytesFixed, ToBytesFixedArray, ToBytesVar, ToBytesVarArray}
+import izumi.sick.model.ToBytesFixed
 import izumi.sick.sickcirce.CirceTraverser.*
 
 import java.nio.charset.StandardCharsets
@@ -17,7 +17,7 @@ object StrTool {
   }
 }
 
-import izumi.sick.StrTool.*
+import io.izumi.sick.StrTool.*
 
 case class Val(value: Int, pad: Int = 8) {
   override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad + 2, ' ')}}"
