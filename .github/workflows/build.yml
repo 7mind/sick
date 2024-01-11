@@ -46,7 +46,7 @@ jobs:
           nuget-enable: true
       - name: Build and Test
         env:
-          NUGET_TOKEN: ${{ secrets.TOKEN_NUGET }}
+          TOKEN_NUGET: ${{ secrets.TOKEN_NUGET }}
         run: |
           cd json-sick-csharp
 
