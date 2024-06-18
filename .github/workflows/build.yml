@@ -17,16 +17,22 @@ jobs:
       - uses: 7mind/github-env@main
         with:
           java-version: 17
+      - uses: bitwarden/sm-action@v1.0.0
+        with:
+          access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
+          secrets: |
+            994f97a2-97a4-4fe1-806a-b1930104435f > SONATYPE_CREDENTIALS_FILE
+            749f4227-9f11-4ceb-9121-b1930110c3a9 > OPENSSL_KEY
+            a2fe5b5b-5f3f-47f8-961c-b1930110cea7 > OPENSSL_IV
       - name: Build and Test
-        env:
-          OPENSSL_IV: ${{ secrets.OPENSSL_IV }}
-          OPENSSL_KEY: ${{ secrets.OPENSSL_KEY }}
         run: |
           COMMAND="sbt +clean +test"
 
           cd json-sick-scala
 
           if [[ "$GITHUB_REF" == refs/heads/main || "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
+            SONATYPE_SECRET=.secrets/credentials.sonatype-nexus.properties
+            echo "$SONATYPE_CREDENTIALS_FILE" > "$SONATYPE_SECRET"
             openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
             COMMAND="$COMMAND +publishSigned"
@@ -44,9 +50,12 @@ jobs:
         with:
           java-enable: false
           nuget-enable: true
+      - uses: bitwarden/sm-action@v1.0.0
+        with:
+          access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
+          secrets: |
+            637c5cad-a680-4ea3-ac8b-b193010bee40 > TOKEN_NUGET
       - name: Build and Test
-        env:
-          TOKEN_NUGET: ${{ secrets.TOKEN_NUGET }}
         run: |
           cd json-sick-csharp
 
