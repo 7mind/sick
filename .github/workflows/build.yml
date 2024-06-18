@@ -17,7 +17,7 @@ jobs:
       - uses: 7mind/github-env@main
         with:
           java-version: 17
-      - uses: bitwarden/sm-action@v1.0.0
+      - uses: bitwarden/sm-action@v2
         with:
           access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
           secrets: |
@@ -50,7 +50,7 @@ jobs:
         with:
           java-enable: false
           nuget-enable: true
-      - uses: bitwarden/sm-action@v1.0.0
+      - uses: bitwarden/sm-action@v2
         with:
           access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
           secrets: |
