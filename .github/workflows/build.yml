@@ -31,8 +31,8 @@ jobs:
           cd json-sick-scala
 
           if [[ "$GITHUB_REF" == refs/heads/main || "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
-            SONATYPE_SECRET=.secrets/credentials.sonatype-nexus.properties
-            echo "$SONATYPE_CREDENTIALS_FILE" > "$SONATYPE_SECRET"
+            mkdir .secrets
+            echo "$SONATYPE_CREDENTIALS_FILE" > ".secrets/credentials.sonatype-nexus.properties"
             openssl aes-256-cbc -K ${OPENSSL_KEY} -iv ${OPENSSL_IV} -in ../secrets.tar.enc -out secrets.tar -d
             tar xvf secrets.tar
             COMMAND="$COMMAND +publishSigned"
