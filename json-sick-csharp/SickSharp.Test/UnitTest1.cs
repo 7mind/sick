@@ -164,11 +164,12 @@ public class Tests
         {
             try
             {
+                var fi = new FileInfo(input);
+                var name = fi.Name;
+                Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
+
                 using (var reader = SickReader.OpenFile(input))
                 {
-                    var fi = new FileInfo(input);
-                    var name = fi.Name;
-                    Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
                     var rootRef = reader.GetRoot(RootName);
                 
                     Stopwatch stopwatch = new Stopwatch();
@@ -207,7 +208,7 @@ public class Tests
             {
                 Console.WriteLine($"Failed on {input}");
                 Console.WriteLine();
-
+                throw;
             }
 
         }

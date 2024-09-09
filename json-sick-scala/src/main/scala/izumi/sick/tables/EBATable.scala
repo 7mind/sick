@@ -10,7 +10,7 @@ class EBATable[V](val name: String, val data: Map[RefVal, V]) {
   def size: RefVal = data.size
 
   @inline final def asIterable: Iterable[V] = {
-    data.view.values
+    (0 until data.size).map(data)
   }
 
   @inline final def forEach(f: V => Unit): Unit = {

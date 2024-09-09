@@ -78,15 +78,11 @@ namespace SickSharp.Format
             Objs = new ObjTable(_stream, Strings, (UInt32)Header.Offsets[8], Header.Settings);
             Roots = new RootTable(_stream, (UInt32)Header.Offsets[9]);
 
-            Console.WriteLine(Roots.Count);
             for (var i = 0; i < Roots.Count; i++)
             {
                 var rootEntry = Roots.Read(i);
                 var rootId = Strings.Read(rootEntry.Key);
                 var root = rootEntry.Reference;
-                Console.WriteLine(rootEntry);
-                Console.WriteLine(rootId);
-                Console.WriteLine(root);
 
                 _roots.Add(rootId, root);
             }

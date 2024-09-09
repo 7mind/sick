@@ -3,10 +3,12 @@
 set -x
 set -e
 
-# pushd .
-# cd ./json-sick-scala
-# sbt +clean +test:compile +test +test:run
-# popd
+git clean -fxd
+
+pushd .
+cd ./json-sick-scala
+sbt +clean +test:compile +test +test:run
+popd
 
 pushd .
 cd ./json-sick-csharp
