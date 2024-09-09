@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path}
 import scala.collection.mutable
 
 final class IndexRO(
-  val settings: PackSettings,
+  val settings: SICKSettings,
   val ints: RefTableRO[Int],
   val longs: RefTableRO[Long],
   val bigints: RefTableRO[BigInt],
@@ -50,7 +50,7 @@ final class IndexRO(
       val dummyOffsets = new Array[Int](parts.size)
       // at this point we don't know dummyOffsets yet, so we write zeros
       import ToBytes.*
-      val header = Seq((Seq(version, parts.length) ++ dummyOffsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.bucketCount.bytes)
+      val header = Seq((Seq(version, parts.length) ++ dummyOffsets).bytes.drop(Integer.BYTES)) ++ Seq(settings.objectIndexBucketCount.bytes)
 
       out.write(header.foldLeft(ByteString.empty)(_ ++ _).toArray)
 
@@ -96,8 +96,11 @@ object IndexRO {
   final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], length: Long, data: Path)
 }
 
-final case class PackSettings(bucketCount: Short, limit: Short)
+final case class SICKSettings(
+                               objectIndexBucketCount: Short,
+                               minObjectKeysBeforeIndexing: Short,
+)
 
-object PackSettings {
-  def default: PackSettings = PackSettings(128, 2)
+object SICKSettings {
+  def default: SICKSettings = SICKSettings(128, 2)
 }

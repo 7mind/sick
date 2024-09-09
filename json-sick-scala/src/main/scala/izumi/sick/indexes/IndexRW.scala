@@ -46,7 +46,7 @@ class IndexRW private (
   roots: RefTableRW[Root],
 ) {
 
-  def freeze(settings: PackSettings): IndexRO = {
+  def freeze(settings: SICKSettings): IndexRO = {
     new IndexRO(
       settings,
       ints.freeze(),
@@ -66,14 +66,14 @@ class IndexRW private (
     Seq(strings, ints, longs, bigints, floats, doubles, bigDecimals, arrs, objs, roots).filterNot(_.isEmpty).mkString("\n\n")
   }
 
-  def rebuild(): IndexRW = {
+  /*def rebuild(): IndexRW = {
     def rebuildSimpleTable[V](table: RefTableRW[V], tpe: RefKind) = {
-      val data = table.all().toSeq.sortBy(_._2._2)(Ordering.Int.reverse).zipWithIndex.map {
-        case ((originalRef, (target, freq)), newRef) =>
-          (originalRef, (newRef, target, freq))
+      val data = table.enumerate().toSeq.zipWithIndex.map {
+        case ((originalRef, (target)), newRef) =>
+          (originalRef, (newRef, target))
       }
       val updated = RefTableRW.fromMonotonic(table.name, data.map(_._2))
-      (updated, data.map { case (origRef, (newRef, _, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
+      (updated, data.map { case (origRef, (newRef, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
     }
 
     val (newInts, intmapMap) = rebuildSimpleTable(ints, RefKind.TInt)
@@ -102,24 +102,16 @@ class IndexRW private (
       newRoots.remap(fullMap),
     )
 
-  }
+  }*/
 
-  def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.add(s))
-  def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.add(s))
-  def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.add(s))
-  def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.add(s))
-  def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.add(s))
-  def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.add(s))
-  def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.add(s))
-  def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.add(s))
-  def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.add(s))
-  def addRoot(s: Root): Ref = {
-    roots.revGet(s) match {
-      case Some(value) =>
-        throw new IllegalStateException(s"Root $s already exists with ref $value")
-      case None =>
-        model.Ref(RefKind.TRoot, roots.add(s))
-    }
-  }
-
+  def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.insert(s))
+  def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.insert(s))
+  def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.insert(s))
+  def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.insert(s))
+  def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.insert(s))
+  def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.insert(s))
+  def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.insert(s))
+  def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.insert(s))
+  def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.insert(s))
+  def addRoot(s: Root): Ref = model.Ref(RefKind.TRoot, roots.insert(s))
 }

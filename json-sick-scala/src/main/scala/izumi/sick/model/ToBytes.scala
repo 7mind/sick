@@ -1,6 +1,6 @@
 package izumi.sick.model
 
-import izumi.sick.indexes.PackSettings
+import izumi.sick.indexes.SICKSettings
 import izumi.sick.model.Ref.RefVal
 import izumi.sick.tables.RefTableRO
 import izumi.sick.thirdparty.akka.util.ByteString
@@ -233,13 +233,13 @@ object ToBytes {
     }
   }
 
-  class ObjToBytes(strings: RefTableRO[String], packSettings: PackSettings) extends ToBytesFixedArray[Obj] {
+  class ObjToBytes(strings: RefTableRO[String], packSettings: SICKSettings) extends ToBytesFixedArray[Obj] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
 
     @SuppressWarnings(Array("UnnecessaryConversion"))
     override def bytes(value: Obj): ByteString = {
-      val bucketCount: Short = packSettings.bucketCount
-      val limit: Short = packSettings.limit
+      val bucketCount: Short = packSettings.objectIndexBucketCount
+      val indexingThreshold: Short = packSettings.minObjectKeysBeforeIndexing
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
 
@@ -252,26 +252,26 @@ object ToBytes {
             ((k, v), (hash, bucket))
         }.sortBy(_._2._1)
 
-      val noIndex = 65535
-      assert(noIndex <= Char.MaxValue)
-      val maxIndex = noIndex - 1
+      val noIndexMarker = 65535
+      assert(noIndexMarker <= Char.MaxValue)
+      val maxIndex = noIndexMarker - 1
 
       if (sortedByHash.size >= maxIndex) {
-        throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndex")
+        throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndexMarker")
       }
 
-      val index: mutable.ArrayBuffer[Int] = if (sortedByHash.size <= limit) {
-        mutable.ArrayBuffer(noIndex)
+      val index: mutable.ArrayBuffer[Int] = if (sortedByHash.size <= indexingThreshold) {
+        mutable.ArrayBuffer(noIndexMarker) // if the object is small, we put an array with one marker element
       } else {
         val startIndexes = mutable.ArrayBuffer.fill(bucketCount.toInt)(maxIndex)
-        var index = 0
+        var idx = 0
         sortedByHash.foreach {
           case ((_, _), (_, bucket)) =>
             val currentVal = startIndexes(bucket)
             if (currentVal == maxIndex) {
-              startIndexes(bucket) = index
+              startIndexes(bucket) = idx
             }
-            index += 1
+            idx += 1
         }
 
         startIndexes
@@ -295,7 +295,7 @@ object ToBytes {
 
       val shortIndex = index.map {
         i =>
-          assert(i >= 0 && i <= noIndex)
+          assert(i >= 0 && i <= noIndexMarker)
           i.toChar
       }.toSeq
       val bytesWithHeader = shortIndex.bytes
@@ -316,17 +316,5 @@ object ToBytes {
     override def bytes(value: Root): ByteString = {
       (value.id, value.ref).bytes
     }
-  }
-}
-
-object KHash {
-  def compute(s: String): Long = {
-    var a: Int = 0x6BADBEEF
-    s.getBytes(StandardCharsets.UTF_8).foreach {
-      b =>
-        a ^= a << 13
-        a += (a ^ b) << 8
-    }
-    Integer.toUnsignedLong(a)
   }
 }

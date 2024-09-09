@@ -2,7 +2,8 @@ package io.izumi.sick
 
 import com.github.luben.zstd.Zstd
 import io.circe.*
-import izumi.sick.indexes.{IndexRW, PackSettings}
+import izumi.sick.SICK
+import izumi.sick.indexes.SICKSettings
 import izumi.sick.model.ToBytesFixed
 import izumi.sick.sickcirce.CirceTraverser.*
 
@@ -22,6 +23,10 @@ import io.izumi.sick.StrTool.*
 case class Val(value: Int, pad: Int = 8) {
   override def toString: String = s"{0x${value.toHexString.padLeft(pad, ' ')}=${value.toString.padLeft(pad + 2, ' ')}}"
 }
+
+
+
+
 
 object Demo {
   val in = Paths.get("..", "samples")
@@ -45,13 +50,14 @@ object Demo {
         println(s"Processing $input")
         val json = Files.readAllBytes(input.toPath)
         val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).toOption.get
-        val rwIndex = IndexRW()
-        val root = rwIndex.append(rootname, parsed)
 
-        val roIndex = rwIndex.rebuild().freeze(PackSettings.default)
+        val eba = SICK.Default.pack(parsed, rootname)
+        val roIndex = eba.index
+        val root = eba.root
+        val rwIndex = eba.source
 
         val newRoot = roIndex.findRoot(rootname).get.ref
-        assert(roIndex.reconstruct(newRoot) == rwIndex.freeze(PackSettings.default).reconstruct(root))
+        assert(roIndex.reconstruct(newRoot) == rwIndex.freeze(SICKSettings.default).reconstruct(root))
 
         println(s"Original root: $root -> $newRoot")
 

@@ -9,4 +9,4 @@ local.sbt
 target
 .scala-build
 .bsp
-
+metals.sbt
