@@ -26,7 +26,7 @@ class QuickRefTableBuilder[V](
 
   def size: Int = content.size
 
-  def freeze(): RefTableRO[V] = new RefTableRO[V](name, content.toMap)
+  def freeze(): EBATable[V] = new EBATable[V](name, content.toMap)
 
   def rewrite(mapping: V => V): QuickRefTableBuilder[V] = {
     new QuickRefTableBuilder[V](

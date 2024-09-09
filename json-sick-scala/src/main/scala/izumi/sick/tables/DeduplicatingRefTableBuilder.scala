@@ -31,7 +31,7 @@ class DeduplicatingRefTableBuilder[V](
 
   def size: Int = reverse.size
 
-  def freeze(): RefTableRO[V] = new RefTableRO[V](name, reverse.map(_.swap).toMap)
+  def freeze(): EBATable[V] = new EBATable[V](name, reverse.map(_.swap).toMap)
 
   def rewrite(mapping: V => V): DeduplicatingRefTableBuilder[V] = {
     new DeduplicatingRefTableBuilder[V](

@@ -2,7 +2,7 @@ package izumi.sick.tables
 
 import izumi.sick.model.Ref.RefVal
 
-class RefTableRO[V](val name: String, val data: Map[RefVal, V]) {
+class EBATable[V](val name: String, val data: Map[RefVal, V]) {
   def apply(k: RefVal): V = data(k)
 
   def isEmpty: Boolean = data.isEmpty

@@ -1,26 +1,26 @@
 package izumi.sick.indexes
 
-import izumi.sick.indexes.IndexRO.Packed
-import izumi.sick.model.{Arr, Obj, Root, ToBytes, ToBytesTable}
-import izumi.sick.tables.RefTableRO
+import izumi.sick.indexes.EBAStructure.Packed
+import izumi.sick.model.{Arr, Obj, Root, SICKWriterParameters, ToBytes, ToBytesTable}
+import izumi.sick.tables.EBATable
 import izumi.sick.thirdparty.akka.util.ByteString
 
 import java.io.FileOutputStream
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 
-final class IndexRO(
+final class EBAStructure(
   val settings: SICKSettings,
-  val ints: RefTableRO[Int],
-  val longs: RefTableRO[Long],
-  val bigints: RefTableRO[BigInt],
-  val floats: RefTableRO[Float],
-  val doubles: RefTableRO[Double],
-  val bigDecimals: RefTableRO[BigDecimal],
-  val strings: RefTableRO[String],
-  val arrs: RefTableRO[Arr],
-  val objs: RefTableRO[Obj],
-  val roots: RefTableRO[Root],
+  val ints: EBATable[Int],
+  val longs: EBATable[Long],
+  val bigints: EBATable[BigInt],
+  val floats: EBATable[Float],
+  val doubles: EBATable[Double],
+  val bigDecimals: EBATable[BigDecimal],
+  val strings: EBATable[String],
+  val arrs: EBATable[Arr],
+  val objs: EBATable[Obj],
+  val roots: EBATable[Root],
 ) {
   def findRoot(str: String): Option[Root] = {
     roots.asIterable.find(r => strings(r.id) == str)
@@ -34,12 +34,12 @@ final class IndexRO(
     parts.map(_._1).filterNot(_.isEmpty).mkString("\n\n")
   }
 
-  def packFile(): Packed = {
+  def packFile(params: SICKWriterParameters): Packed = {
     val f = Files.createTempFile("sick", "bin")
-    packFile(f)
+    packFile(f, params)
   }
 
-  def packFile(f: Path): Packed = {
+  def packFile(f: Path, params: SICKWriterParameters): Packed = {
     val out = new FileOutputStream(f.toFile, false)
 
     try {
@@ -58,7 +58,7 @@ final class IndexRO(
       val sizes = mutable.ArrayBuffer.empty[Int]
       parts.foreach {
         case (p, codec) =>
-          val len = codec.asInstanceOf[ToBytesTable[Any]].write(out, p)
+          val len = codec.asInstanceOf[ToBytesTable[Any]].write(out, p, params)
           sizes.append(len.intValue)
       }
 
@@ -76,7 +76,7 @@ final class IndexRO(
     }
   }
 
-  def parts: Seq[(RefTableRO[Any], ToBytesTable[Seq[Any]])] = {
+  def parts: Seq[(EBATable[Any], ToBytesTable[Seq[Any]])] = {
     import izumi.sick.model.ToBytes.*
     Seq(
       (ints, implicitly[ToBytesTable[Int]]),
@@ -89,17 +89,17 @@ final class IndexRO(
       (arrs, implicitly[ToBytesTable[Arr]]),
       (objs, toBytesFixedSizeArray(new ObjToBytes(strings, settings))),
       (roots, implicitly[ToBytesTable[Root]]),
-    ).map { case (c, codec) => (c.asInstanceOf[RefTableRO[Any]], codec.asInstanceOf[ToBytesTable[Seq[Any]]]) }
+    ).map { case (c, codec) => (c.asInstanceOf[EBATable[Any]], codec.asInstanceOf[ToBytesTable[Seq[Any]]]) }
   }
 }
 
-object IndexRO {
+object EBAStructure {
   final case class Packed(version: Int, headerLen: Int, offsets: Seq[Int], length: Long, data: Path)
 }
 
 final case class SICKSettings(
-                               objectIndexBucketCount: Short,
-                               minObjectKeysBeforeIndexing: Short,
+  objectIndexBucketCount: Short,
+  minObjectKeysBeforeIndexing: Short,
 )
 
 object SICKSettings {

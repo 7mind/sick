@@ -4,7 +4,8 @@ import com.github.luben.zstd.Zstd
 import io.circe.*
 import izumi.sick.SICK
 import izumi.sick.indexes.SICKSettings
-import izumi.sick.model.ToBytesFixed
+import izumi.sick.model.ArrayWriteStrategy.DoublePass
+import izumi.sick.model.{ArrayWriteStrategy, SICKWriterParameters, ToBytesFixed}
 import izumi.sick.sickcirce.CirceTraverser.*
 
 import java.nio.charset.StandardCharsets
@@ -42,64 +43,84 @@ object Demo {
       .toList
       .sortBy(f => f.length())
 
-    allInputs.foreach {
-      input =>
-        println("=" * 80)
-        println(s"Processing $input")
-        val json = Files.readAllBytes(input.toPath)
-        val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).toOption.get
+    def dprint(x: String) = {}
 
-        Seq(true, false).foreach {
-          dedup =>
-            println(s"dedup = $dedup")
-            val before = System.nanoTime()
-            val eba = SICK.Default.pack(parsed, rootname, dedup = dedup)
-            val roIndex = eba.index
-            val root = eba.root
-            val rwIndex = eba.source
-            val packed = roIndex.packFile()
-            val after = System.nanoTime()
+    Seq(ArrayWriteStrategy.DoublePass, ArrayWriteStrategy.SinglePassInMemory, ArrayWriteStrategy.StreamRepositioning).foreach {
+      strategy =>
+        var ccdedup: Int = 0
+        var ccnodedup: Int = 0
+        var sumDedup: Long = 0
+        var sumNodedup: Long = 0
 
-            val newRoot = roIndex.findRoot(rootname).get.ref
-            assert(roIndex.reconstruct(newRoot) == rwIndex.freeze(SICKSettings.default).reconstruct(root))
+        allInputs.foreach {
+          input =>
+            dprint("=" * 80)
+            dprint(s"Processing $input")
+            val json = Files.readAllBytes(input.toPath)
+            val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).toOption.get
 
-            println(s"Original root: $root -> $newRoot")
-            println("Frozen:")
-            roIndex.roots.data.foreach {
-              case (k, v) =>
-                println(s"ROOT ${roIndex.strings.data(k)}: $k->$v")
+            Seq(true, false).foreach {
+              dedup =>
+                dprint(s"dedup = $dedup")
+                val before = System.nanoTime()
+                val eba = SICK.Default.pack(parsed, rootname, dedup = dedup)
+                val roIndex = eba.index
+                val root = eba.root
+                val rwIndex = eba.source
+                val packed = roIndex.packFile(SICKWriterParameters(DoublePass))
+                val after = System.nanoTime()
+
+                val newRoot = roIndex.findRoot(rootname).get.ref
+                assert(roIndex.reconstruct(newRoot) == rwIndex.freeze(SICKSettings.default).reconstruct(root))
+
+                dprint(s"Original root: $root -> $newRoot")
+                dprint("Frozen:")
+                roIndex.roots.data.foreach {
+                  case (k, v) =>
+                    dprint(s"ROOT ${roIndex.strings.data(k)}: $k->$v")
+                }
+                dprint(roIndex.summary)
+
+                dprint(f"packing: dedup=$dedup, time = ${(after - before) / (1000 * 1000.0)}%2.2f msec")
+
+                if (dedup) {
+                  ccdedup += 1
+                  sumDedup += after - before
+                } else {
+                  ccnodedup += 1
+                  sumNodedup += after - before
+                }
+                val level = 20
+                val raw = Files.readAllBytes(packed.data)
+                assert(raw.length == packed.length)
+
+                val cbefore = System.nanoTime()
+                val compressed = Zstd.compress(raw, level)
+                val cafter = System.nanoTime()
+                dprint(
+                  f"compression (zstd=$level): dedup=$dedup, time = ${(cafter - cbefore) / (1000 * 1000.0)}%2.2f msec; ${raw.length}b => ${compressed.length}b (${raw.length / 1024.0}%2.2fkB => ${compressed.length / 1024.0}%2.2fkB)"
+                )
+
+                assert(roIndex.parts.size == packed.offsets.size)
+
+                val fileName = input.getName
+                val basename = if (fileName.indexOf(".") > 0) {
+                  fileName.substring(0, fileName.lastIndexOf("."))
+                } else {
+                  fileName
+                }
+                Files.write(out.resolve(s"$basename-SCALA.bin"), raw)
+                // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
+
+                dprint("")
             }
-            println(roIndex.summary)
 
-            println(f"packing: dedup=$dedup, time = ${(after - before) / (1000 * 1000.0)}%2.2f msec")
-
-            val level = 20
-            val raw = Files.readAllBytes(packed.data)
-            assert(raw.length == packed.length)
-
-            val cbefore = System.nanoTime()
-            val compressed = Zstd.compress(raw, level)
-            val cafter = System.nanoTime()
-            println(
-              f"compression (zstd=$level): dedup=$dedup, time = ${(cafter - cbefore) / (1000 * 1000.0)}%2.2f msec; ${raw.length}b => ${compressed.length}b (${raw.length / 1024.0}%2.2fkB => ${compressed.length / 1024.0}%2.2fkB)"
-            )
-
-            assert(roIndex.parts.size == packed.offsets.size)
-
-            val fileName = input.getName
-            val basename = if (fileName.indexOf(".") > 0) {
-              fileName.substring(0, fileName.lastIndexOf("."))
-            } else {
-              fileName
-            }
-            Files.write(out.resolve(s"$basename-SCALA.bin"), raw)
-            // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
-
-            println()
         }
 
+        println(s"strategy: $strategy")
+        println(s"dedup average: ${sumDedup / ccdedup}")
+        println(s"nodedup average: ${sumNodedup / ccnodedup}")
     }
-
   }
 
 }

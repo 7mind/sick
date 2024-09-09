@@ -4,8 +4,8 @@ import izumi.sick.model
 import izumi.sick.model.*
 import izumi.sick.tables.{DeduplicatingRefTableBuilder, GenericRefTableBuilder}
 
-object IndexRW {
-  def apply(dedup: Boolean): IndexRW = {
+object EBABuilder {
+  def apply(dedup: Boolean): EBABuilder = {
     val strings = GenericRefTableBuilder[String]("Strings", dedup = true)
 
     val ints = GenericRefTableBuilder[Int]("Integers", dedup = true)
@@ -20,7 +20,7 @@ object IndexRW {
     val objs = GenericRefTableBuilder[Obj]("Objects", dedup)
     val roots = GenericRefTableBuilder[Root]("Roots", dedup)
 
-    new IndexRW(
+    new EBABuilder(
       strings,
       ints,
       longs,
@@ -34,7 +34,7 @@ object IndexRW {
     )
   }
 }
-class IndexRW private (
+class EBABuilder private(
   strings: GenericRefTableBuilder[String],
   ints: GenericRefTableBuilder[Int],
   longs: GenericRefTableBuilder[Long],
@@ -47,8 +47,8 @@ class IndexRW private (
   roots: GenericRefTableBuilder[Root],
 ) {
 
-  def freeze(settings: SICKSettings): IndexRO = {
-    new IndexRO(
+  def freeze(settings: SICKSettings): EBAStructure = {
+    new EBAStructure(
       settings,
       ints.freeze(),
       longs.freeze(),

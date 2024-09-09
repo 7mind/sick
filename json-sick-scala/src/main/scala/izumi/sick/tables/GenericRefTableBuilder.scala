@@ -10,7 +10,7 @@ trait GenericRefTableBuilder[V] {
   def enumerate(): Map[RefVal, V]
   def isEmpty: Boolean
   def size: Int
-  def freeze(): RefTableRO[V]
+  def freeze(): EBATable[V]
   def rewrite(mapping: V => V): GenericRefTableBuilder[V]
 }
 
