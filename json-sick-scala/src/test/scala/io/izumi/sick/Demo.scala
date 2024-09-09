@@ -43,7 +43,7 @@ object Demo {
       .toList
       .sortBy(f => f.length())
 
-    def dprint(x: String) = {}
+    def dprint(x: String) = { println(x) }
 
     Seq(ArrayWriteStrategy.DoublePass, ArrayWriteStrategy.SinglePassInMemory, ArrayWriteStrategy.StreamRepositioning).foreach {
       strategy =>
@@ -109,7 +109,7 @@ object Demo {
                 } else {
                   fileName
                 }
-                Files.write(out.resolve(s"$basename-SCALA.bin"), raw)
+                Files.write(out.resolve(s"$basename-SCALA-$strategy-$dedup.bin"), raw)
                 // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
 
                 dprint("")
