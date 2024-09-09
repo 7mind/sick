@@ -1,24 +1,25 @@
 package izumi.sick.indexes
 
 import izumi.sick.model
-import izumi.sick.model._
-import izumi.sick.tables.RefTableRW
+import izumi.sick.model.*
+import izumi.sick.tables.{DeduplicatingRefTableBuilder, GenericRefTableBuilder}
 
 object IndexRW {
-  def apply(): IndexRW = {
-    val strings = RefTableRW[String]("Strings")
+  def apply(dedup: Boolean): IndexRW = {
+    val strings = GenericRefTableBuilder[String]("Strings", dedup = true)
 
-    val ints = RefTableRW[Int]("Integers")
-    val longs = RefTableRW[Long]("Longs")
-    val bigints = RefTableRW[BigInt]("Bigints")
+    val ints = GenericRefTableBuilder[Int]("Integers", dedup = true)
+    val longs = GenericRefTableBuilder[Long]("Longs", dedup = true)
+    val bigints = GenericRefTableBuilder[BigInt]("Bigints", dedup = true)
 
-    val floats = RefTableRW[Float]("Floats")
-    val doubles = RefTableRW[Double]("Doubles")
-    val bigDecimals = RefTableRW[BigDecimal]("BigDecs")
+    val floats = GenericRefTableBuilder[Float]("Floats", dedup = true)
+    val doubles = GenericRefTableBuilder[Double]("Doubles", dedup = true)
+    val bigDecimals = GenericRefTableBuilder[BigDecimal]("BigDecs", dedup = true)
 
-    val arrs = RefTableRW[Arr]("Arrays")
-    val objs = RefTableRW[Obj]("Objects")
-    val roots = RefTableRW[Root]("Roots")
+    val arrs = GenericRefTableBuilder[Arr]("Arrays", dedup)
+    val objs = GenericRefTableBuilder[Obj]("Objects", dedup)
+    val roots = GenericRefTableBuilder[Root]("Roots", dedup)
+
     new IndexRW(
       strings,
       ints,
@@ -34,16 +35,16 @@ object IndexRW {
   }
 }
 class IndexRW private (
-  strings: RefTableRW[String],
-  ints: RefTableRW[Int],
-  longs: RefTableRW[Long],
-  bigints: RefTableRW[BigInt],
-  floats: RefTableRW[Float],
-  doubles: RefTableRW[Double],
-  bigDecimals: RefTableRW[BigDecimal],
-  arrs: RefTableRW[Arr],
-  objs: RefTableRW[Obj],
-  roots: RefTableRW[Root],
+  strings: GenericRefTableBuilder[String],
+  ints: GenericRefTableBuilder[Int],
+  longs: GenericRefTableBuilder[Long],
+  bigints: GenericRefTableBuilder[BigInt],
+  floats: GenericRefTableBuilder[Float],
+  doubles: GenericRefTableBuilder[Double],
+  bigDecimals: GenericRefTableBuilder[BigDecimal],
+  arrs: GenericRefTableBuilder[Arr],
+  objs: GenericRefTableBuilder[Obj],
+  roots: GenericRefTableBuilder[Root],
 ) {
 
   def freeze(settings: SICKSettings): IndexRO = {
@@ -67,12 +68,12 @@ class IndexRW private (
   }
 
   /*def rebuild(): IndexRW = {
-    def rebuildSimpleTable[V](table: RefTableRW[V], tpe: RefKind) = {
+    def rebuildSimpleTable[V](table: GenericRefTableBuilder[V], tpe: RefKind) = {
       val data = table.enumerate().toSeq.zipWithIndex.map {
         case ((originalRef, (target)), newRef) =>
           (originalRef, (newRef, target))
       }
-      val updated = RefTableRW.fromMonotonic(table.name, data.map(_._2))
+      val updated = GenericRefTableBuilder.fromMonotonic(table.name, data.map(_._2))
       (updated, data.map { case (origRef, (newRef, _)) => Ref(tpe, origRef) -> Ref(tpe, newRef) }.toMap)
     }
 

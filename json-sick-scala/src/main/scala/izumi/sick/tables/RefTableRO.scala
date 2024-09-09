@@ -9,12 +9,12 @@ class RefTableRO[V](val name: String, val data: Map[RefVal, V]) {
 
   def size: RefVal = data.size
 
-  def asSeq: Seq[V] = {
-    (0 until data.size).map(data)
+  @inline final def asIterable: Iterable[V] = {
+    data.view.values
   }
 
-  def forEach(f: V => Unit): Unit = {
-    (0 until data.size).foreach(i => f(data(i)))
+  @inline final def forEach(f: V => Unit): Unit = {
+    asIterable.foreach(f)
   }
 
   override def toString: String = {

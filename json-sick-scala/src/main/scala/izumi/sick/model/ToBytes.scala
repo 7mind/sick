@@ -149,14 +149,20 @@ object ToBytes {
     }
 
     override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
-      val before = stream.getChannel.position()
-      stream.write(table.size.bytes.toArray)
+//      val before = stream.getChannel.position()
+
+      val sz = table.size.bytes
+      var added: Long = sz.length
+      stream.write(sz.toArray)
       table.forEach {
         s =>
-          stream.write(s.bytes.toArray)
+          val el = s.bytes
+          stream.write(el.toArray)
+          added += el.size
       }
-      val after = stream.getChannel.position()
-      after - before
+//      val after = stream.getChannel.position()
+//      assert(after - before == added)
+      added
     }
   }
 
@@ -187,7 +193,9 @@ object ToBytes {
     stream.write(lastOffset.bytes.toArray)
 
     assert(afterHeader == stream.getChannel.position())
+
     stream.getChannel.position(after)
+
     after - before
   }
 

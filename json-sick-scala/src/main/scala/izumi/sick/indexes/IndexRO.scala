@@ -23,7 +23,7 @@ final class IndexRO(
   val roots: RefTableRO[Root],
 ) {
   def findRoot(str: String): Option[Root] = {
-    roots.asSeq.find(r => strings(r.id) == str)
+    roots.asIterable.find(r => strings(r.id) == str)
   }
 
   def summary: String =
@@ -41,6 +41,7 @@ final class IndexRO(
 
   def packFile(f: Path): Packed = {
     val out = new FileOutputStream(f.toFile, false)
+
     try {
       val chan = out.getChannel
       chan.truncate(0)

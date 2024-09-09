@@ -6,9 +6,9 @@ import izumi.sick.indexes.{IndexRO, IndexRW, SICKSettings}
 import izumi.sick.model.Ref
 
 trait SICK {
-  def pack(json: Json, name: String, settings: SICKSettings = SICKSettings.default): EBA = {
+  def pack(json: Json, name: String, dedup: Boolean, settings: SICKSettings = SICKSettings.default): EBA = {
     import izumi.sick.sickcirce.CirceTraverser.*
-    val rwIndex = IndexRW()
+    val rwIndex = IndexRW(dedup = dedup)
     val root = rwIndex.append(name, json)
     EBA(rwIndex.freeze(settings), root, rwIndex)
   }
