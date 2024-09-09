@@ -3,7 +3,7 @@
 set -x
 set -e
 
-git clean -fxd
+git clean -fxd -e private
 
 pushd .
 cd ./json-sick-scala
