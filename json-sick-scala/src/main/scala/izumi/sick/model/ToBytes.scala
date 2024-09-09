@@ -12,7 +12,6 @@ import scala.collection.mutable
 
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
-//  def write[V](stream: OutputStream, table: RefTableRO[V])
 }
 
 sealed trait ToBytesFixed[T] extends ToBytes[T] {
@@ -28,7 +27,6 @@ sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
 }
 
 sealed trait ToBytesVar[T] extends ToBytes[T]
-sealed trait ToBytesVarArray[T] extends ToBytes[T]
 
 @SuppressWarnings(Array("UnsafeTraversableMethods"))
 object ToBytes {
@@ -167,36 +165,72 @@ object ToBytes {
   }
 
   private def doWriteArray[T](stream: FileOutputStream, table: RefTableRO[T], codec: ToBytes[T]): Long = {
-    val before = stream.getChannel.position()
+    if (false) {
 
-    val dummyOffsets = new Array[Int](table.size + 1)
-    val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
-    val headerArr = header.toArray
-    stream.write(headerArr)
+      val before = stream.getChannel.position()
 
-    val afterHeader = stream.getChannel.position()
+      val dummyOffsets = new Array[Int](table.size + 1)
+      val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+      val headerArr = header
+      stream.write(headerArr.toArray)
 
-    val sizes = mutable.ArrayBuffer.empty[Int]
-    table.forEach {
-      v =>
-        val arr = codec.bytes(v).toArray
-        stream.write(arr)
-        sizes.append(arr.length)
+      val afterHeader = stream.getChannel.position()
+
+      val sizes = mutable.ArrayBuffer.empty[Int]
+      table.forEach {
+        v =>
+          val arr = codec.bytes(v).toArray
+          stream.write(arr)
+          sizes.append(arr.length)
+      }
+      val after = stream.getChannel.position()
+
+      val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+      val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+      stream.getChannel.position(before)
+      val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+      stream.write(realHeader.toArray)
+      stream.write(lastOffset.bytes.toArray)
+
+      assert(afterHeader == stream.getChannel.position())
+
+      stream.getChannel.position(after)
+
+      after - before
+    } else {
+//      val before = stream.getChannel.position()
+
+      val sizes = mutable.ArrayBuffer.empty[Int]
+      val outputs = mutable.ArrayBuffer.empty[ByteString]
+      table.forEach {
+        v =>
+          val arr = codec.bytes(v)
+          outputs.append(arr)
+          val vlen = arr.length
+          sizes.append(vlen)
+      }
+
+      val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+      val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+
+      val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+      stream.write(realHeader.toArray)
+      val lastOffsetAsBytes = lastOffset.bytes
+      stream.write(lastOffsetAsBytes.toArray)
+
+      var added: Long = realHeader.length + lastOffsetAsBytes.length
+
+      outputs.foreach {
+        o =>
+          stream.write(o.toArray)
+          added += o.length
+      }
+
+//      val after = stream.getChannel.position()
+//      assert(after - before == added, s"${after - before} $added")
+      //    after - before
+      added
     }
-    val after = stream.getChannel.position()
-
-    val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
-    val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
-    stream.getChannel.position(before)
-    val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
-    stream.write(realHeader.toArray)
-    stream.write(lastOffset.bytes.toArray)
-
-    assert(afterHeader == stream.getChannel.position())
-
-    stream.getChannel.position(after)
-
-    after - before
   }
 
   implicit def toBytesVarSize[T: ToBytesVar]: ToBytesTable[T] = new ToBytesTable[T] {
