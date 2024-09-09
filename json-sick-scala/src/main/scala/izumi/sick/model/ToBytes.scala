@@ -1,18 +1,27 @@
 package izumi.sick.model
 
-import izumi.sick.indexes.PackSettings
+import izumi.sick.indexes.SICKSettings
 import izumi.sick.model.Ref.RefVal
-import izumi.sick.tables.RefTableRO
+import izumi.sick.tables.EBATable
 import izumi.sick.thirdparty.akka.util.ByteString
 
-import java.io.{FileOutputStream, OutputStream}
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 
+sealed trait ArrayWriteStrategy
+
+object ArrayWriteStrategy {
+  case object StreamRepositioning extends ArrayWriteStrategy
+  case object SinglePassInMemory extends ArrayWriteStrategy
+  case object DoublePass extends ArrayWriteStrategy
+}
+
+case class SICKWriterParameters(arrayWriteStrategy: ArrayWriteStrategy = ArrayWriteStrategy.StreamRepositioning)
+
 sealed trait ToBytes[T] {
   def bytes(value: T): ByteString
-//  def write[V](stream: OutputStream, table: RefTableRO[V])
 }
 
 sealed trait ToBytesFixed[T] extends ToBytes[T] {
@@ -20,7 +29,7 @@ sealed trait ToBytesFixed[T] extends ToBytes[T] {
 }
 
 sealed trait ToBytesTable[T] {
-  def write(stream: FileOutputStream, table: RefTableRO[T]): Long
+  def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long
 }
 
 sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
@@ -28,7 +37,6 @@ sealed trait ToBytesFixedArray[T] extends ToBytes[T] {
 }
 
 sealed trait ToBytesVar[T] extends ToBytes[T]
-sealed trait ToBytesVarArray[T] extends ToBytes[T]
 
 @SuppressWarnings(Array("UnsafeTraversableMethods"))
 object ToBytes {
@@ -148,58 +156,43 @@ object ToBytes {
       value.foldLeft(value.length.bytes) { case (acc, v) => acc ++ v.bytes }
     }
 
-    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
-      val before = stream.getChannel.position()
-      stream.write(table.size.bytes.toArray)
+    override def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long = {
+      val sz = table.size.bytes
+      var added: Long = sz.length
+      stream.write(sz.toArray)
       table.forEach {
         s =>
-          stream.write(s.bytes.toArray)
+          val el = s.bytes
+          stream.write(el.toArray)
+          added += el.size
       }
-      val after = stream.getChannel.position()
-      after - before
+      added
     }
-  }
 
-  private def doWriteArray[T](stream: FileOutputStream, table: RefTableRO[T], codec: ToBytes[T]): Long = {
-    val before = stream.getChannel.position()
-
-    val dummyOffsets = new Array[Int](table.size + 1)
-    val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
-    val headerArr = header.toArray
-    stream.write(headerArr)
-
-    val afterHeader = stream.getChannel.position()
-
-    val sizes = mutable.ArrayBuffer.empty[Int]
-    table.forEach {
-      v =>
-        val arr = codec.bytes(v).toArray
-        stream.write(arr)
-        sizes.append(arr.length)
-    }
-    val after = stream.getChannel.position()
-
-    val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
-    val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
-    stream.getChannel.position(before)
-    val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
-    stream.write(realHeader.toArray)
-    stream.write(lastOffset.bytes.toArray)
-
-    assert(afterHeader == stream.getChannel.position())
-    stream.getChannel.position(after)
-    after - before
+//    override def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long = {
+//      val before = stream.getChannel.position()
+//      stream.write(table.size.bytes.toArray)
+//
+//      table.forEach {
+//        s =>
+//          stream.write(s.bytes.toArray)
+//
+//      }
+//      val after = stream.getChannel.position()
+//      after - before
+//
+//    }
   }
 
   implicit def toBytesVarSize[T: ToBytesVar]: ToBytesTable[T] = new ToBytesTable[T] {
-    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
-      doWriteArray(stream, table, implicitly[ToBytesVar[T]])
+    override def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long = {
+      doWriteArray(stream, table, implicitly[ToBytesVar[T]], params)
     }
   }
 
   implicit def toBytesFixedSizeArray[T: ToBytesFixedArray]: ToBytesTable[T] = new ToBytesTable[T] {
-    override def write(stream: FileOutputStream, table: RefTableRO[T]): Long = {
-      doWriteArray(stream, table, implicitly[ToBytesFixedArray[T]])
+    override def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long = {
+      doWriteArray(stream, table, implicitly[ToBytesFixedArray[T]], params)
     }
   }
 
@@ -233,13 +226,13 @@ object ToBytes {
     }
   }
 
-  class ObjToBytes(strings: RefTableRO[String], packSettings: PackSettings) extends ToBytesFixedArray[Obj] {
+  class ObjToBytes(strings: EBATable[String], packSettings: SICKSettings) extends ToBytesFixedArray[Obj] {
     override def elementSize: RefVal = implicitly[ToBytesFixed[(RefVal, Ref)]].blobSize
 
     @SuppressWarnings(Array("UnnecessaryConversion"))
     override def bytes(value: Obj): ByteString = {
-      val bucketCount: Short = packSettings.bucketCount
-      val limit: Short = packSettings.limit
+      val bucketCount: Short = packSettings.objectIndexBucketCount
+      val indexingThreshold: Short = packSettings.minObjectKeysBeforeIndexing
       val range = Math.abs(Integer.MIN_VALUE.toLong) + Integer.MAX_VALUE.toLong + 1
       val bucketSize = range / bucketCount
 
@@ -252,26 +245,26 @@ object ToBytes {
             ((k, v), (hash, bucket))
         }.sortBy(_._2._1)
 
-      val noIndex = 65535
-      assert(noIndex <= Char.MaxValue)
-      val maxIndex = noIndex - 1
+      val noIndexMarker = 65535
+      assert(noIndexMarker <= Char.MaxValue)
+      val maxIndex = noIndexMarker - 1
 
       if (sortedByHash.size >= maxIndex) {
-        throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndex")
+        throw new RuntimeException(s"Too many keys in object, object can't contain more than $noIndexMarker")
       }
 
-      val index: mutable.ArrayBuffer[Int] = if (sortedByHash.size <= limit) {
-        mutable.ArrayBuffer(noIndex)
+      val index: mutable.ArrayBuffer[Int] = if (sortedByHash.size <= indexingThreshold) {
+        mutable.ArrayBuffer(noIndexMarker) // if the object is small, we put an array with one marker element
       } else {
         val startIndexes = mutable.ArrayBuffer.fill(bucketCount.toInt)(maxIndex)
-        var index = 0
+        var idx = 0
         sortedByHash.foreach {
           case ((_, _), (_, bucket)) =>
             val currentVal = startIndexes(bucket)
             if (currentVal == maxIndex) {
-              startIndexes(bucket) = index
+              startIndexes(bucket) = idx
             }
-            index += 1
+            idx += 1
         }
 
         startIndexes
@@ -295,7 +288,7 @@ object ToBytes {
 
       val shortIndex = index.map {
         i =>
-          assert(i >= 0 && i <= noIndex)
+          assert(i >= 0 && i <= noIndexMarker)
           i.toChar
       }.toSeq
       val bytesWithHeader = shortIndex.bytes
@@ -317,16 +310,137 @@ object ToBytes {
       (value.id, value.ref).bytes
     }
   }
-}
 
-object KHash {
-  def compute(s: String): Long = {
-    var a: Int = 0x6BADBEEF
-    s.getBytes(StandardCharsets.UTF_8).foreach {
-      b =>
-        a ^= a << 13
-        a += (a ^ b) << 8
+//  private def doWriteArray[T](stream: FileOutputStream, table: EBATable[T], codec: ToBytes[T], params: SICKWriterParameters): Long = {
+//    val before = stream.getChannel.position()
+//
+//    val dummyOffsets = new Array[Int](table.size + 1)
+//    val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+//    val headerArr = header.toArray
+//    stream.write(headerArr)
+//
+//    val afterHeader = stream.getChannel.position()
+//
+//    val sizes = mutable.ArrayBuffer.empty[Int]
+//    table.forEach {
+//      v =>
+//        val arr = codec.bytes(v).toArray
+//        stream.write(arr)
+//        sizes.append(arr.length)
+//    }
+//    val after = stream.getChannel.position()
+//
+//    val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+//    val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+//    stream.getChannel.position(before)
+//    val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+//    stream.write(realHeader.toArray)
+//    stream.write(lastOffset.bytes.toArray)
+//
+//    assert(afterHeader == stream.getChannel.position())
+//
+//    stream.getChannel.position(after)
+//
+//    after - before
+//
+//  }
+
+  private def doWriteArray[T](stream: FileOutputStream, table: EBATable[T], codec: ToBytes[T], params: SICKWriterParameters): Long = {
+
+    params.arrayWriteStrategy match {
+      case ArrayWriteStrategy.StreamRepositioning =>
+        val before = stream.getChannel.position()
+
+        val dummyOffsets = new Array[Int](table.size + 1)
+        val header = dummyOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+        val headerArr = header
+        stream.write(headerArr.toArray)
+
+        val afterHeader = stream.getChannel.position()
+
+        val sizes = mutable.ArrayBuffer.empty[Int]
+        table.forEach {
+          v =>
+            val arr = codec.bytes(v).toArray
+            stream.write(arr)
+            sizes.append(arr.length)
+        }
+        val after = stream.getChannel.position()
+
+        val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+        val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+        stream.getChannel.position(before)
+        val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+        stream.write(realHeader.toArray)
+        stream.write(lastOffset.bytes.toArray)
+
+        assert(afterHeader == stream.getChannel.position())
+
+        stream.getChannel.position(after)
+
+        after - before
+      case ArrayWriteStrategy.SinglePassInMemory =>
+        val sizes = mutable.ArrayBuffer.empty[Int]
+        val outputs = mutable.ArrayBuffer.empty[ByteString]
+        table.forEach {
+          v =>
+            val arr = codec.bytes(v)
+            outputs.append(arr)
+            val vlen = arr.length
+            sizes.append(vlen)
+        }
+
+        val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+        val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+
+        val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+        stream.write(realHeader.toArray)
+        val lastOffsetAsBytes = lastOffset.bytes
+        stream.write(lastOffsetAsBytes.toArray)
+
+        var added: Long = realHeader.length + lastOffsetAsBytes.length
+
+        outputs.foreach {
+          o =>
+            stream.write(o.toArray)
+            added += o.length
+        }
+
+        added
+      case ArrayWriteStrategy.DoublePass =>
+        val sizes = mutable.ArrayBuffer.empty[Int]
+        table.forEach {
+          v =>
+            val arr = codec.bytes(v)
+            val vlen = arr.length
+            sizes.append(vlen)
+        }
+
+        val realOffsets = computeOffsetsFromSizes(sizes.toSeq, 0)
+        val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
+
+        val realHeader = realOffsets.map(_.bytes).foldLeft(table.size.bytes)(_ ++ _)
+        stream.write(realHeader.toArray)
+        val lastOffsetAsBytes = lastOffset.bytes
+        stream.write(lastOffsetAsBytes.toArray)
+
+        var added: Long = realHeader.length + lastOffsetAsBytes.length
+
+        val outputs = mutable.ArrayBuffer.empty[ByteString]
+        table.forEach {
+          v =>
+            val arr = codec.bytes(v)
+            outputs.append(arr)
+        }
+
+        outputs.foreach {
+          o =>
+            stream.write(o.toArray)
+            added += o.length
+        }
+
+        added
+
     }
-    Integer.toUnsignedLong(a)
   }
 }

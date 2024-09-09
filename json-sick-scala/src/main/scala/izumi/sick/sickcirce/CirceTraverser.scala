@@ -1,11 +1,11 @@
 package izumi.sick.sickcirce
 
 import io.circe.Json
-import izumi.sick.indexes.{IndexRO, IndexRW}
+import izumi.sick.indexes.{EBAStructure, EBABuilder}
 import izumi.sick.model.*
 
 object CirceTraverser {
-  implicit class ROIndexExt(index: IndexRO) {
+  implicit class ROIndexExt(index: EBAStructure) {
 
     import index.*
 
@@ -55,7 +55,7 @@ object CirceTraverser {
     }
   }
 
-  implicit class RWIndexExt(index: IndexRW) {
+  implicit class RWIndexExt(index: EBABuilder) {
     import index.*
 
     def append(id: String, j: Json): Ref = {

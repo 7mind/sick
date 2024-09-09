@@ -83,6 +83,7 @@ namespace SickSharp.Format
                 var rootEntry = Roots.Read(i);
                 var rootId = Strings.Read(rootEntry.Key);
                 var root = rootEntry.Reference;
+
                 _roots.Add(rootId, root);
             }
         }

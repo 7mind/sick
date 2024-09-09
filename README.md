@@ -82,7 +82,7 @@ array:0[1] = remove
 
 There is an interesting observation: when a stream does not contain removal entries it can be safely reordered. Unfortunately, in some usecases the receiver still may need to accumulate the entries in a buffer until it can sort them out.
 
-### Binary storage
+### Binary format: EBA (Efficient Binary Aggregate)
 
 We may note that the only complex data structures in our "Value" column are lists and `(type, index)` pairs. Let's call such pairs "references".
 
@@ -101,6 +101,10 @@ A list of variable-size values (e.g. a list of strings) can be represented the f
 So, `["a", "bb", "ccc"]` would become something like `3 0 2 3 a b bb ccc` without spaces.
 
 An important fact is that this encoding is indexed too and it can be reused to store any lists of variable-length data.
+
+#### EBA Structures
+
+TODO: explain the overall EBA structure format, including tables, etc
 
 ### Additional capabilities over `JSON`
 
@@ -142,10 +146,6 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 | Scala    | Yes                    | No                      | No             | No              | Circe         | N/A         |
 | C#       | Yes                    | Yes                     | No             | No              | JSON.Net      | Custom      |
 
-### Efficient Binary Indexed Storage
-
-TODO
-
 #### Supported types
 
 A type marker is represented as a single-byte unsigned integer. The possible values are:
@@ -169,7 +169,7 @@ A type marker is represented as a single-byte unsigned integer. The possible val
 
 #### References
 
-TODO 
+TODO
 
 #### Lists
 
@@ -184,13 +184,13 @@ Array entries are just references.
 TODO
 
 #### Object entry skip list and KHash
- 
+
 TODO
 
 #### Value tables
 
 TODO
- 
+
 ### Limitations
 
 Current implementation has the following limitations:

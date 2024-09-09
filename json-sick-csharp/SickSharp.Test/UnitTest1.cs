@@ -162,44 +162,55 @@ public class Tests
 
         foreach (var input in inputs)
         {
-            using (var reader = SickReader.OpenFile(input))
+            try
             {
                 var fi = new FileInfo(input);
                 var name = fi.Name;
                 Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
-                var rootRef = reader.GetRoot(RootName);
-                
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-                Console.WriteLine($"Going to perform {iters} traverses...");
-                for (int x = 0; x < iters; x++)
-                {
-                    Traverse(rootRef!, reader, 0, 10);
-                }
 
-                stopwatch.Stop();
-                TimeSpan stopwatchElapsed = stopwatch.Elapsed;
-                Console.WriteLine($"Finished in {stopwatchElapsed.TotalSeconds} sec");
-                Console.WriteLine($"Iters/sec {Convert.ToDouble(iters) / stopwatchElapsed.TotalSeconds}");
-                
-                Debug.Assert(rootRef != null, $"No root entry in {name}");
-                Console.WriteLine($"{name}: found {RootName}, ref={rootRef}");
-                
-                switch (rootRef.Kind)
+                using (var reader = SickReader.OpenFile(input))
                 {
-                    case RefKind.Obj:
-                        Console.WriteLine($"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
-                        break;
-                    default: 
-                        break;
-                }
-                Console.WriteLine();
+                    var rootRef = reader.GetRoot(RootName);
+                
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
+                    Console.WriteLine($"Going to perform {iters} traverses...");
+                    for (int x = 0; x < iters; x++)
+                    {
+                        Traverse(rootRef!, reader, 0, 10);
+                    }
+
+                    stopwatch.Stop();
+                    TimeSpan stopwatchElapsed = stopwatch.Elapsed;
+                    Console.WriteLine($"Finished in {stopwatchElapsed.TotalSeconds} sec");
+                    Console.WriteLine($"Iters/sec {Convert.ToDouble(iters) / stopwatchElapsed.TotalSeconds}");
+                
+                    Debug.Assert(rootRef != null, $"No root entry in {name}");
+                    Console.WriteLine($"{name}: found {RootName}, ref={rootRef}");
+                
+                    switch (rootRef.Kind)
+                    {
+                        case RefKind.Obj:
+                            Console.WriteLine($"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
+                            break;
+                        default: 
+                            break;
+                    }
+                    Console.WriteLine();
 
 #if DEBUG_TRAVEL
             Console.WriteLine($"Total travel = {SickReader.TotalTravel}, total index lookups = {SickReader.TotalLookups}, ratio = {Convert.ToDouble(SickReader.TotalTravel) / SickReader.TotalLookups}");
 #endif
                 
+                }
             }
+            catch
+            {
+                Console.WriteLine($"Failed on {input}");
+                Console.WriteLine();
+                throw;
+            }
+
         }
     }
     

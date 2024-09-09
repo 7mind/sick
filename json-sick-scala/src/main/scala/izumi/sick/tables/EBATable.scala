@@ -2,19 +2,19 @@ package izumi.sick.tables
 
 import izumi.sick.model.Ref.RefVal
 
-class RefTableRO[V](val name: String, val data: Map[RefVal, V]) {
+class EBATable[V](val name: String, val data: Map[RefVal, V]) {
   def apply(k: RefVal): V = data(k)
 
   def isEmpty: Boolean = data.isEmpty
 
   def size: RefVal = data.size
 
-  def asSeq: Seq[V] = {
+  @inline final def asIterable: Iterable[V] = {
     (0 until data.size).map(data)
   }
 
-  def forEach(f: V => Unit): Unit = {
-    (0 until data.size).foreach(i => f(data(i)))
+  @inline final def forEach(f: V => Unit): Unit = {
+    asIterable.foreach(f)
   }
 
   override def toString: String = {

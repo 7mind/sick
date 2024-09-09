@@ -11,8 +11,18 @@ on:
 
 
 jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 7mind/github-env@main
+        with:
+          java-version: 17
+      - name: Run test build
+        shell: bash
+        run: bash test.sh
   build-scala:
     runs-on: ubuntu-latest
+    needs: [ build-test ]
     steps:
       - uses: 7mind/github-env@main
         with:
@@ -45,6 +55,7 @@ jobs:
           eval $COMMAND
   build-cs:
     runs-on: ubuntu-latest
+    needs: [ build-test ]
     steps:
       - uses: 7mind/github-env@main
         with:
