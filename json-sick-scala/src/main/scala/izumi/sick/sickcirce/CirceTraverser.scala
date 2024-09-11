@@ -1,7 +1,8 @@
 package izumi.sick.sickcirce
 
 import io.circe.Json
-import izumi.sick.indexes.{EBAStructure, EBABuilder}
+import izumi.sick.eba.EBAStructure
+import izumi.sick.eba.builder.EBABuilder
 import izumi.sick.model.*
 
 object CirceTraverser {

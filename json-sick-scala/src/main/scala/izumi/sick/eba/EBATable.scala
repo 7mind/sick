@@ -1,4 +1,4 @@
-package izumi.sick.tables
+package izumi.sick.eba
 
 import izumi.sick.model.Ref.RefVal
 

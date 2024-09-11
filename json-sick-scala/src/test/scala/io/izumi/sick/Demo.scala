@@ -3,10 +3,11 @@ package io.izumi.sick
 import com.github.luben.zstd.Zstd
 import io.circe.*
 import izumi.sick.SICK
-import izumi.sick.indexes.SICKSettings
+import izumi.sick.eba.SICKSettings
 import izumi.sick.model.ArrayWriteStrategy.DoublePass
-import izumi.sick.model.{ArrayWriteStrategy, SICKWriterParameters, ToBytesFixed}
+import izumi.sick.model.{ArrayWriteStrategy, SICKWriterParameters}
 import izumi.sick.sickcirce.CirceTraverser.*
+import izumi.sick.thirdparty.akka.util.ByteString
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -67,7 +68,16 @@ object Demo {
                 val roIndex = eba.index
                 val root = eba.root
                 val rwIndex = eba.source
-                val packed = roIndex.packFile(SICKWriterParameters(DoublePass))
+                val packed = roIndex.packFile(SICKWriterParameters(strategy))
+
+                val raw = Files.readAllBytes(packed.data)
+
+                strategy match {
+                  case ArrayWriteStrategy.StreamRepositioning =>
+                  case _ =>
+                    val packedBytes = roIndex.packBytes(SICKWriterParameters(strategy))
+                    assert(packedBytes.data == ByteString(raw))
+                }
                 val after = System.nanoTime()
 
                 val newRoot = roIndex.findRoot(rootname).get.ref
@@ -91,7 +101,6 @@ object Demo {
                   sumNodedup += after - before
                 }
                 val level = 20
-                val raw = Files.readAllBytes(packed.data)
                 assert(raw.length == packed.length)
 
                 val cbefore = System.nanoTime()
@@ -101,7 +110,7 @@ object Demo {
                   f"compression (zstd=$level): dedup=$dedup, time = ${(cafter - cbefore) / (1000 * 1000.0)}%2.2f msec; ${raw.length}b => ${compressed.length}b (${raw.length / 1024.0}%2.2fkB => ${compressed.length / 1024.0}%2.2fkB)"
                 )
 
-                assert(roIndex.parts.size == packed.offsets.size)
+                assert(roIndex.components.size == packed.offsets.size)
 
                 val fileName = input.getName
                 val basename = if (fileName.indexOf(".") > 0) {

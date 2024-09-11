@@ -1,5 +1,6 @@
-package izumi.sick.tables
+package izumi.sick.eba.builder
 
+import izumi.sick.eba.EBATable
 import izumi.sick.model.Ref.RefVal
 
 import scala.collection.mutable

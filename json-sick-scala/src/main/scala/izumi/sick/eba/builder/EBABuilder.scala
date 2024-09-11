@@ -1,8 +1,8 @@
-package izumi.sick.indexes
+package izumi.sick.eba.builder
 
+import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.model
 import izumi.sick.model.*
-import izumi.sick.tables.{DeduplicatingRefTableBuilder, GenericRefTableBuilder}
 
 object EBABuilder {
   def apply(dedup: Boolean): EBABuilder = {

@@ -1,8 +1,9 @@
-package izumi.sick.model
+package izumi.sick.tools
 
 import java.nio.charset.StandardCharsets
 
-object KHash {
+// Crappy but fast hash
+object CBFHash {
   def compute(s: String): Long = {
     var a: Int = 0x6BADBEEF
     s.getBytes(StandardCharsets.UTF_8).foreach {
