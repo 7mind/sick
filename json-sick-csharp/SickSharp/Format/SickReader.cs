@@ -12,6 +12,8 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
+    public record FoundRef(Ref result, List<String> query);
+        
     /// <summary>
     ///     <list type="bullet">
     ///         <item>
@@ -116,9 +118,10 @@ namespace SickSharp.Format
             return Query(reference, path.Split('.').ToList());
         }
         
-        public Ref QueryRef(Ref reference, string path)
+        public FoundRef QueryRef(Ref reference, string path)
         {
-            return QueryRef(reference, path.Split('.').ToList());
+            var query = path.Split('.').ToList();
+            return new FoundRef(QueryRef(reference, query), query);
         }
 
         public Ref ReadObjectFieldRef(Ref reference, string field)
