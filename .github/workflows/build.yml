@@ -29,7 +29,12 @@ jobs:
             749f4227-9f11-4ceb-9121-b1930110c3a9 > OPENSSL_KEY
             a2fe5b5b-5f3f-47f8-961c-b1930110cea7 > OPENSSL_IV
       - name: Build and Test
-        run: ./build.sh nix publish-scala
+        run: |
+          mkdir .secrets
+          echo "$SONATYPE_CREDENTIALS_FILE" > ".secrets/credentials.sonatype-nexus.properties"
+          openssl aes-256-cbc -K "${OPENSSL_KEY}" -iv "${OPENSSL_IV}" -in ../secrets.tar.enc -out secrets.tar -d
+          tar xvf secrets.tar
+          ./build.sh nix publish-scala
   build-cs:
     runs-on: ubuntu-latest
     needs: [ build-test ]

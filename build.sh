@@ -20,15 +20,6 @@ for i in "$@"
 do
 case $i in
     nix) ;;
-
-    publish-cs) ./devops/publish-cs.sh ;;
-    publish-scala) ./devops/publish-scala.sh ;;
-
-    test) ./devops/test.sh ;;
-
-    *)
-        echo "Unknown option: $i"
-        exit 1
-    ;;
+    *) "./devops/$i.sh" ;;
 esac
 done
