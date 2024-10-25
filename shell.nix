@@ -1,5 +1,11 @@
-{ pkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/24.05.tar.gz") { } }:
+{ pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell {
-  nativeBuildInputs = with pkgs.buildPackages; [ ncurses graalvm-ce sbt dotnet-sdk_6 git ];
+  nativeBuildInputs = with pkgs.buildPackages; [
+    ncurses
+    graalvm-ce
+    sbt
+    dotnet-sdk_6
+    git
+  ];
 }
