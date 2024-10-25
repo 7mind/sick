@@ -10,7 +10,15 @@
       (system:
         let pkgs = nixpkgs.legacyPackages.${system}; in
         {
-          devShells.default = import ./shell.nix { inherit pkgs; };
+          devShells.default = pkgs.mkShell {
+            nativeBuildInputs = with pkgs.buildPackages; [
+              ncurses
+              graalvm-ce
+              sbt
+              dotnet-sdk_6
+              git
+            ];
+          };
         }
       );
 }
