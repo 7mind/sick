@@ -16,7 +16,7 @@ jobs:
       - uses: 7mind/github-env@minimal
       - name: Run test build
         run: ./build.sh nix test
-  build-scala:
+  publish-scala:
     runs-on: ubuntu-latest
     needs: [ build-test ]
     steps:
@@ -39,7 +39,7 @@ jobs:
           popd
 
           ./build.sh nix publish-scala
-  build-cs:
+  publish-cs:
     runs-on: ubuntu-latest
     needs: [ build-test ]
     steps:
