@@ -46,6 +46,8 @@ jobs:
     needs: [ build-test ]
     steps:
       - uses: 7mind/github-env@minimal
+        with:
+          cache-scala: false
       - uses: bitwarden/sm-action@v2
         with:
           access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
