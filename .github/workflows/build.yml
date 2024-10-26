@@ -30,13 +30,15 @@ jobs:
             a2fe5b5b-5f3f-47f8-961c-b1930110cea7 > OPENSSL_IV
       - name: Build and Test
         run: |
-          pushd .
-          cd json-sick-scala
-          mkdir .secrets
-          echo "$SONATYPE_CREDENTIALS_FILE" > ".secrets/credentials.sonatype-nexus.properties"
-          openssl aes-256-cbc -K "${OPENSSL_KEY}" -iv "${OPENSSL_IV}" -in ../secrets.tar.enc -out secrets.tar -d
-          tar xvf secrets.tar
-          popd
+          if [[ "$CI_PULL_REQUEST" == "false"  ]] ; then
+            pushd .
+            cd json-sick-scala
+            mkdir .secrets
+            echo "$SONATYPE_CREDENTIALS_FILE" > ".secrets/credentials.sonatype-nexus.properties"
+            openssl aes-256-cbc -K "${OPENSSL_KEY}" -iv "${OPENSSL_IV}" -in ../secrets.tar.enc -out secrets.tar -d
+            tar xvf secrets.tar
+            popd
+          fi
 
           ./build.sh nix publish-scala
   publish-cs:

@@ -3,6 +3,10 @@ set -x
 
 cd json-sick-csharp
 
+[[ "$CI_PULL_REQUEST" != "false"  ]] && exit 0
+[[ -z "$TOKEN_NUGET" ]] && exit 0
+[[ -z "$CI_BUILD_UNIQ_SUFFIX" ]] && exit 0
+
 if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
     dotnet build -c Release
 else
