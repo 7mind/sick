@@ -17,6 +17,7 @@
               sbt
               dotnet-sdk_6
               git
+              dotnetPackages.Nuget
             ];
           };
         }
