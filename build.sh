@@ -12,7 +12,19 @@ if [[ "$NIXIFY" == 1 && -z "${IN_NIX_SHELL+x}" ]]; then
     set -x
     nix flake lock
     nix flake metadata
-    exec nix develop --ignore-environment --command bash "$self" "$@"
+    exec nix develop \
+      --ignore-environment \
+      --keep SONATYPE_SECRET \
+      --keep SCALA_VERSION \
+      --keep TOKEN_BITWARDEN_SM \
+      --keep CI_BRANCH \
+      --keep CI_COMMIT \
+      --keep CI_BRANCH_TAG \
+      --keep CI_PULL_REQUEST \
+      --keep CI_BUILD_UNIQ_SUFFIX \
+      --keep CI \
+      --keep HOME \
+      --command bash "$self" "$@"
 fi
 
 set -x
