@@ -13,4 +13,4 @@ else
     dotnet build -c Release --version-suffix "alpha.${CI_BUILD_UNIQ_SUFFIX}"
 fi
 
-find . -name '*.sbt' -type f -print0 | xargs -I % -n 1 -0 dotnet nuget push % -k "${TOKEN_NUGET}" --source https://api.nuget.org/v3/index.json
+find . -name '*.nupkg' -type f -print0 | xargs -I % -n 1 -0 dotnet nuget push % -k "${TOKEN_NUGET}" --source https://api.nuget.org/v3/index.json
