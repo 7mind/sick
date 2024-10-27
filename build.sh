@@ -12,7 +12,7 @@ if [[ "$NIXIFY" == 1 && -z "${IN_NIX_SHELL+x}" ]]; then
     set -x
     nix flake lock
     nix flake metadata
-    exec nix develop --command bash "$self" "$@"
+    exec nix develop --ignore-environment --command bash "$self" "$@"
 fi
 
 set -x
