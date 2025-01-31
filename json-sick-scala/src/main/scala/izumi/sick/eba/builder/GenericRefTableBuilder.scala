@@ -1,6 +1,7 @@
 package izumi.sick.eba.builder
 
 import izumi.sick.eba.EBATable
+import izumi.sick.eba.writer.EBAEncoders.DebugTableName
 import izumi.sick.model.Ref.RefVal
 
 import scala.collection.mutable
@@ -16,13 +17,13 @@ trait GenericRefTableBuilder[V] {
 }
 
 object GenericRefTableBuilder {
-  def apply[V](name: String, dedup: Boolean): GenericRefTableBuilder[V] = {
+  def apply[V](dedup: Boolean)(implicit debugTableName: DebugTableName[V]): GenericRefTableBuilder[V] = {
     if (dedup) {
       val reverse = mutable.HashMap.empty[V, RefVal]
-      new DeduplicatingRefTableBuilder[V](name, reverse)
+      new DeduplicatingRefTableBuilder[V](debugTableName.tableName, reverse)
     } else {
       val content = mutable.HashMap.empty[RefVal, V]
-      new QuickRefTableBuilder[V](name, content)
+      new QuickRefTableBuilder[V](debugTableName.tableName, content)
     }
   }
 }

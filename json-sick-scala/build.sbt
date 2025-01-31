@@ -1,23 +1,58 @@
 import com.github.sbt.git.SbtGit.GitKeys
 
-val circeVersion = "0.14.1"
+val circeVersion = "0.14.10"
 
 lazy val root = (project in file("."))
   .settings(
     name := "json-sick",
     libraryDependencies ++= Seq(
-      "io.circe" %% "circe-core",
-      "io.circe" %% "circe-parser"
-    ).map(_ % circeVersion),
-    libraryDependencies  += "com.github.luben" % "zstd-jni" % "1.5.2-3" % Test,
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-parser" % circeVersion
+    ),
+    libraryDependencies  += "com.github.luben" % "zstd-jni" % "1.5.6-9" % Test,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     sonatypeProfileName := "io.7mind"
   )
 
 ThisBuild / scalacOptions ++= Seq(
-  "-Xsource:3",
+  "-encoding",
+  "UTF-8",
+  "-feature",
+  "-unchecked",
   "-deprecation",
   "-language:higherKinds"
 )
+ThisBuild / scalacOptions ++= {
+  val s = scalaVersion.value
+  if (s.startsWith("2")) {
+    Seq(
+      "-Xsource:3-cross",
+      "-release:8",
+      "-explaintypes",
+      "-Wconf:cat=optimizer:warning",
+      "-Wconf:cat=other-match-analysis:error",
+      "-Vimplicits",
+      "-Vtype-diffs",
+      "-Wdead-code",
+      "-Wextra-implicit",
+      "-Wnumeric-widen",
+      "-Woctal-literal",
+      "-Wvalue-discard",
+      "-Wunused:_",
+      "-Wunused:-synthetics",
+      // inlining
+      "-opt:l:inline",
+      "-opt-inline-from:izumi.sick.**"
+    )
+  } else {
+    Seq(
+      "-language:3.3",
+      "-no-indent",
+      "-explain",
+      "-explain-types",
+    )
+  }
+}
 
 ThisBuild / organization := "io.7mind.izumi"
 
@@ -34,11 +69,12 @@ ThisBuild / version := {
   }
 }
 
-ThisBuild / scalaVersion := "2.13.11"
-
 ThisBuild /crossScalaVersions := Seq(
-  "2.13.11",
+  "3.3.4",
+  "2.13.14",
 )
+
+ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head
 
 ThisBuild / publishTo :=
   (if (!isSnapshot.value) {
@@ -87,4 +123,3 @@ ThisBuild / scmInfo := Some(
     "scm:git:https://github.com/7mind/sick.git"
   )
 )
-

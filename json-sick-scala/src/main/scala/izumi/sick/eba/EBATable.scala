@@ -2,18 +2,21 @@ package izumi.sick.eba
 
 import izumi.sick.model.Ref.RefVal
 
-class EBATable[V](val name: String, val data: Map[RefVal, V]) {
-  def apply(k: RefVal): V = data(k)
+final case class EBATable[+V](
+  name: String,
+  data: Map[RefVal, V],
+) {
+  @inline def apply(k: RefVal): V = data(k)
 
-  def isEmpty: Boolean = data.isEmpty
+  @inline def isEmpty: Boolean = data.isEmpty
 
-  def size: RefVal = data.size
+  @inline def size: Int = data.size
 
-  @inline final def asIterable: Iterable[V] = {
-    (0 until data.size).map(data)
+  @inline def asIterable: Iterable[V] = {
+    (0 until size).map(i => data(RefVal(i)))
   }
 
-  @inline final def forEach(f: V => Unit): Unit = {
+  @inline def forEach(f: V => Unit): Unit = {
     asIterable.foreach(f)
   }
 

@@ -8,10 +8,11 @@ import izumi.sick.model.Ref
 import izumi.sick.sickcirce.CirceTraverser.RWIndexExt
 
 trait SICK {
-  def pack(json: Json, name: String, dedup: Boolean, settings: SICKSettings = SICKSettings.default): EBA = {
-    val rwIndex = EBABuilder(dedup = dedup)
+  def packJson(json: Json, name: String, dedup: Boolean, settings: SICKSettings = SICKSettings.default): EBA = {
+    val rwIndex = EBABuilder(dedup)
     val root = rwIndex.append(name, json)
-    EBA(rwIndex.freeze(settings), root, rwIndex)
+    val structure = rwIndex.freeze(settings)
+    EBA(structure, root, rwIndex)
   }
 }
 

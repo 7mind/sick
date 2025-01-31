@@ -17,8 +17,8 @@ class DeduplicatingRefTableBuilder[V](
       case Some(value) =>
         value
       case None =>
-        val k = count
-        reverse.put(v, k)
+        val k = RefVal(count)
+        reverse.put(v, (k))
         count += 1
         k
     }

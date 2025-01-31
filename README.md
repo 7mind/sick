@@ -141,31 +141,31 @@ In real implementation it's more convenient to just create a separate "root" typ
 
 Currently we provide C# and Scala implementations of SICK indexed binary JSON storage. Currently the code in this repository has no streaming capabilities. That may change in the future. It's not a hard problem to add streaming support, your contributions are welcome.
 
-| Language | Binary Storage Encoder |  Binary Storage Decoder | Stream Encoder |  Stream Decoder | Encoder AST   | Decoder AST |
-| -------- | ---------------------- | ----------------------- | -------------- | --------------- | ------------  | ----------- |
-| Scala    | Yes                    | No                      | No             | No              | Circe         | N/A         |
-| C#       | Yes                    | Yes                     | No             | No              | JSON.Net      | Custom      |
+| Language | Binary Storage Encoder | Binary Storage Decoder | Stream Encoder |  Stream Decoder | Encoder AST   | Decoder AST |
+| -------- | ---------------------- | -----------------------| -------------- | --------------- | ------------  | ----------- |
+| Scala    | Yes                    | Yes                    | No             | No              | Circe         | N/A         |
+| C#       | Yes                    | Yes                    | No             | No              | JSON.Net      | Custom      |
 
 #### Supported types
 
 A type marker is represented as a single-byte unsigned integer. The possible values are:
 
-| Marker | Name    | Comment                        | Value Length (bytes)      | C# mapping | Scala Mapping |
-| ------ | ------- | ------------------------------ | ------------------------- | ---------- | --------------|
-| 0      | TNul    | Equivalent to `null` in JSON   | 4, stored in the marker   |            |               |
-| 1      | TBit    | Boolean                        | 4, stored in the marker   |            |               |
-| 2      | TByte   | Byte,                          | 4, stored in the marker   | byte (unsigned)| Byte (signed)               |
-| 3      | TShort  | Signed 16-bit integer          | 4, stored in the marker   |           |               |
-| 4      | TInt    | Signed 32-bit integer          | 4                         |           |               |
-| 5      | TLng    | Signed 64-bit integer          | 8                         |           |               |
-| 6      | TBigInt |                                | Variable, prefixed        |           |               |
-| 7      | TDbl    |                                | 8                         |           |               |
-| 8      | TFlt    |                                | 4                         |           |               |
-| 9      | TBigDec |                                | Variable, prefixed        | Custom: scale/precision/signum/unscaled quadruple in C# | |
-| 10     | TStr    | UTF-8 String                   | Variable, prefixed        |           |               |
-| 11     | TArr    | List of array entries          | Variable, prefixed        |           |               |
-| 12     | TObj    | List of object entries         | Variable, prefixed        |           |               |
-| 15     | TRoot   | Index of the name string (4 bytes) + reference (4+1=5 bytes) | 9          |           |               |
+| Marker | Name    | Comment                                                      | Value Length (bytes)    | C# mapping                                              | Scala Mapping |
+| ------ | ------- |--------------------------------------------------------------|-------------------------|---------------------------------------------------------|---------------|
+| 0      | TNul    | Equivalent to `null` in JSON                                 | 4, stored in the marker |                                                         |               |
+| 1      | TBit    | Boolean                                                      | 4, stored in the marker |                                                         |               |
+| 2      | TByte   | Byte,                                                        | 4, stored in the marker | byte (unsigned)                                         | Byte (signed) |
+| 3      | TShort  | Signed 16-bit integer                                        | 4, stored in the marker |                                                         |               |
+| 4      | TInt    | Signed 32-bit integer                                        | 4                       |                                                         |               |
+| 5      | TLng    | Signed 64-bit integer                                        | 8                       |                                                         |               |
+| 6      | TBigInt |                                                              | Variable, prefixed      |                                                         |               |
+| 7      | TDbl    |                                                              | 8                       |                                                         |               |
+| 8      | TFlt    |                                                              | 4                       |                                                         |               |
+| 9      | TBigDec |                                                              | Variable, prefixed      | Custom: scale/precision/signum/unscaled quadruple in C# |               |
+| 10     | TStr    | UTF-8 String                                                 | Variable, prefixed      |                                                         |               |
+| 11     | TArr    | List of array entries                                        | Variable, prefixed      |                                                         |               |
+| 12     | TObj    | List of object entries                                       | Variable, prefixed      |                                                         |               |
+| 15     | TRoot   | Index of the name string (4 bytes) + reference (4+1=5 bytes) | 9                       |                                                         |               |
 
 #### References
 
