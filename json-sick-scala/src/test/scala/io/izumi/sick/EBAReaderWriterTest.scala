@@ -16,7 +16,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 import scala.jdk.CollectionConverters.*
-import scala.util.chaining.scalaUtilChainingOps
 
 class EBAReaderWriterTest extends AnyWordSpec {
   private val in: Path = Paths.get("..", "samples")
@@ -122,7 +121,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
 
                 println(s"Incremental reading...")
                 val (incStructure: EBAStructure, incJson: Json) = {
-                  val reader = IncrementalEBAReader.openFile(outFile)
+                  val reader = IncrementalEBAReader.openFile(outFile, eagerOffsets = true)
                   try (reader.readAll(), reader.resolveFull(reader.roots.head._2))
                   finally reader.close()
                 }
@@ -200,7 +199,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
       val fname = fpath.getFileName.toString
       println(s"Processing $fname (${fpath.toFile.length()} bytes) ...")
 
-      val reader = IncrementalEBAReader.openFile(fpath)
+      val reader = IncrementalEBAReader.openFile(fpath, eagerOffsets = false)
       try {
         val rootRef = reader.getRoot(rootname).get
         println(s"$fname: found $rootname, ref=$rootRef")

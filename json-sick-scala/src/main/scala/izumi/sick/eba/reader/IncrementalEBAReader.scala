@@ -14,24 +14,27 @@ import scala.util.Try
 
 object IncrementalEBAReader {
 
-  def openFile(path: Path, inMemoryThreshold: Long = 65536, eagerOffsets: Boolean = true): IncrementalEBAReader = {
+  /** @param eagerOffsets `false` is significantly faster when the structure is not queried extensively */
+  def openFile(path: Path, inMemoryThreshold: Long = 65536, eagerOffsets: Boolean): IncrementalEBAReader = {
     if (Files.size(path) <= inMemoryThreshold) {
-      openBytes(Files.readAllBytes(path))
+      openBytes(Files.readAllBytes(path), eagerOffsets)
     } else {
       val is = new BufferedInputStream(Files.newInputStream(path))
       open(is, eagerOffsets)
     }
   }
 
-  def openBytes(bytes: Array[Byte], eagerOffsets: Boolean = true): IncrementalEBAReader = {
+  /** @param eagerOffsets `false` is significantly faster when the structure is not queried extensively */
+  def openBytes(bytes: Array[Byte], eagerOffsets: Boolean): IncrementalEBAReader = {
     val is = new ByteArrayInputStream(bytes)
     open(is, eagerOffsets)
   }
 
   /**
     * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`)
+    * @param eagerOffsets `false` is significantly faster when the structure is not queried extensively
     */
-  def open(inputStream: InputStream, eagerOffsets: Boolean = true): IncrementalEBAReader = {
+  def open(inputStream: InputStream, eagerOffsets: Boolean): IncrementalEBAReader = {
     if (!inputStream.markSupported()) {
       throw new IllegalArgumentException(s"Cannot read EBA incrementally from a non-seekable inputStream=$inputStream")
     }
