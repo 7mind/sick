@@ -14,16 +14,21 @@ import scala.util.Try
 object IncrementalEBAReader {
 
   def openFile(path: Path, inMemoryThreshold: Long = 65536, eagerOffsets: Boolean = true): IncrementalEBAReader = {
-    val is = if (Files.size(path) <= inMemoryThreshold) {
-      new ByteArrayInputStream(Files.readAllBytes(path))
+    if (Files.size(path) <= inMemoryThreshold) {
+      openBytes(Files.readAllBytes(path))
     } else {
-      new BufferedInputStream(Files.newInputStream(path))
+      val is = new BufferedInputStream(Files.newInputStream(path))
+      open(is, eagerOffsets)
     }
+  }
+
+  def openBytes(bytes: Array[Byte], eagerOffsets: Boolean = true): IncrementalEBAReader = {
+    val is = new ByteArrayInputStream(bytes)
     open(is, eagerOffsets)
   }
 
   /**
-    * @param inputStream must support `mark`/`reset` (e.g. `FileInputStream`)
+    * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`)
     */
   def open(inputStream: InputStream, eagerOffsets: Boolean = true): IncrementalEBAReader = {
     if (!inputStream.markSupported()) {

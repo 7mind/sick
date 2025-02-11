@@ -219,8 +219,10 @@ class EBAReaderWriterTest extends AnyWordSpec {
 
         println(s"Going to perform $iters traverses")
         val begin = System.nanoTime()
-        (0 until iters).foreach {
-          _ => traverse(rootRef, reader, 0, 10)
+        var i = 0
+        while (i < iters) {
+          traverse(rootRef, reader, 0, 10)
+          i += 1
         }
         val end = System.nanoTime()
         val seconds = FiniteDuration(end - begin, NANOSECONDS).toNanos / 1000.0 / 1000.0 / 1000.0
