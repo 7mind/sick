@@ -1,6 +1,7 @@
 package izumi.sick.eba.reader
 
 import io.circe.Json
+import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.eba.reader.incremental.{IncrementalJValue, IncrementalTableFixed, IncrementalTableVar, OneObjTable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, IntCodec, RefCodec, ShortCodec}
 import izumi.sick.model.*
@@ -272,6 +273,21 @@ class IncrementalEBAReader(
       case RefKind.TRoot =>
         resolveFull(rootTable.readElem(ref.ref).ref)
     }
+  }
+
+  def readAll(): EBAStructure = {
+    EBAStructure(
+      intTable.readAllTable(),
+      longTable.readAllTable(),
+      bigIntTable.readAllTable(),
+      floatTable.readAllTable(),
+      doubleTable.readAllTable(),
+      bigDecTable.readAllTable(),
+      strTable.readAllTable(),
+      arrTable.readAllTable().mapValues(arr => Arr(arr.readAll().to(Vector))),
+      objTable.readAllTable().mapValues(_.readAllObj()),
+      rootTable.readAllTable(),
+    )(SICKSettings.default)
   }
 
   override def close(): Unit = {

@@ -121,25 +121,14 @@ class EBAReaderWriterTest extends AnyWordSpec {
                 println(s"Eager reading succeeded")
 
                 println(s"Incremental reading...")
-                val incStructure: EBAStructure = {
+                val (incStructure: EBAStructure, incJson: Json) = {
                   val reader = IncrementalEBAReader.openFile(outFile)
-                  try {
-                    EBAStructure(
-                      reader.intTable.readAllTable(),
-                      reader.longTable.readAllTable(),
-                      reader.bigIntTable.readAllTable(),
-                      reader.floatTable.readAllTable(),
-                      reader.doubleTable.readAllTable(),
-                      reader.bigDecTable.readAllTable(),
-                      reader.strTable.readAllTable(),
-                      reader.arrTable.readAllTable().mapValues(_.readAll().to(Vector).pipe(Arr.apply)),
-                      reader.objTable.readAllTable().mapValues(_.readAllObj()),
-                      reader.rootTable.readAllTable(),
-                    )(SICKSettings.default)
-                  } finally reader.close()
+                  try (reader.readAll(), reader.resolveFull(reader.roots.head._2))
+                  finally reader.close()
                 }
                 assert(incStructure == roIndex)
                 assert(incStructure == readStructure)
+                assert(incJson == parsed)
                 println(s"Incremental reading succeeded")
 
                 println()
@@ -213,7 +202,6 @@ class EBAReaderWriterTest extends AnyWordSpec {
 
       val reader = IncrementalEBAReader.openFile(fpath)
       try {
-
         val rootRef = reader.getRoot(rootname).get
         println(s"$fname: found $rootname, ref=$rootRef")
 
@@ -225,7 +213,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
           i += 1
         }
         val end = System.nanoTime()
-        val seconds = FiniteDuration(end - begin, NANOSECONDS).toNanos / 1000.0 / 1000.0 / 1000.0
+        val seconds = FiniteDuration(end - begin, NANOSECONDS).toNanos / 1000L / 1000.0 / 1000.0
         println(s"Finished in $seconds sec")
         println(s"Iters/sec ${iters.toDouble / seconds}")
         println(s"$fname: found $rootname, ref=$rootRef")
@@ -237,6 +225,10 @@ class EBAReaderWriterTest extends AnyWordSpec {
         }
         println()
 
+        val eba = EagerEBAReader.readEBAFile(fpath)
+        assert(reader.readAll() == eba)
+
+        println("Succeeded comparison with eager reader")
       } catch {
         case ex: Throwable =>
           println(s"Failed on $fpath")

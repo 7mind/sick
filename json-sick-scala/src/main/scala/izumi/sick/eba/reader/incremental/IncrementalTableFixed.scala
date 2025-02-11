@@ -19,7 +19,7 @@ final class IncrementalTableFixed[T] private (
   def length: Int = count
 
   def readElem(index: Int): T = {
-    assert(index < count)
+    assert(index < count, "failed index < count")
     codec.decodeAtOffset(it, dataOffset + index * codec.blobSize)
   }
 

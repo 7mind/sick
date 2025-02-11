@@ -15,7 +15,7 @@ import scala.annotation.unused
 import scala.collection.immutable.{ArraySeq, HashMap}
 import scala.collection.mutable
 import scala.reflect.{ClassTag, classTag}
-import util.computeSizesFromOffsets
+import izumi.sick.eba.writer.codecs.util.computeSizesFromOffsets
 
 @SuppressWarnings(Array("UnsafeTraversableMethods"))
 class EBACodecs(

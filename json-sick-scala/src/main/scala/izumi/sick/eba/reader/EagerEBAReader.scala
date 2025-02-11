@@ -4,9 +4,18 @@ import izumi.sick.eba.writer.codecs.EBACodecs.{ArrCodec, EBADecoderTable, FixedS
 import izumi.sick.eba.{EBAStructure, EBATable, SICKSettings}
 import izumi.sick.model.*
 
-import java.io.{DataInputStream, InputStream}
+import java.io.{ByteArrayInputStream, DataInputStream, InputStream}
+import java.nio.file.{Files, Path}
 
 object EagerEBAReader {
+
+  def readEBAFile(path: Path): EBAStructure = {
+    readEBAStructure(Files.newInputStream(path))
+  }
+
+  def readEBABytes(bytes: Array[Byte]): EBAStructure = {
+    readEBAStructure(new ByteArrayInputStream(bytes))
+  }
 
   def readEBAStructure(inputStream: InputStream): EBAStructure = {
     val it = new DataInputStream(inputStream)

@@ -38,11 +38,11 @@ object util {
   }
 
   def readInt32BE(arr: Array[Byte], offset: Int): Int = {
-    arr(offset) << 24 | (arr(offset + 1) << 16) | (arr(offset + 2) << 8) | arr(offset + 3)
+    (arr(offset) & 0xFF) << 24 | (arr(offset + 1) & 0xFF) << 16 | (arr(offset + 2) & 0xFF) << 8 | (arr(offset + 3) & 0xFF) << 0
   }
 
-  def readUInt16BE(arr: Array[Byte], start: Int): Char = {
-    ((arr(start) << 8) | arr(start + 1)).toChar
+  def readUInt16BE(arr: Array[Byte], offset: Int): Char = {
+    ((arr(offset) & 0xFF) << 8 | (arr(offset + 1) & 0xFF) << 0).toChar
   }
 
   def asEBATable[T: DebugTableName](elems: List[T]): EBATable[T] = {

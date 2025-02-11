@@ -36,6 +36,7 @@ final class OneObjTable private (
       rawIndex
     }
   }
+  assert(count >= 0, "negative OneObj count")
 
   def length: Int = count
 
@@ -56,7 +57,7 @@ final class OneObjTable private (
 
       if (probablyLower >= count) {
         throw new IllegalStateException(
-          s"Field $field in object $this produced bucket index $probablyLower which is more than object size $count"
+          s"Field $field in object $this produced bucket index ${probablyLower.toInt} which is more than object size $count"
         )
       }
 
@@ -76,7 +77,7 @@ final class OneObjTable private (
           if (probablyUpper == ObjConstants.maxIndex) {}
           else if (probablyUpper > count) {
             throw new IllegalStateException(
-              s"Field $field in object $this produced bucket index $probablyUpper which is more than object size $count"
+              s"Field $field in object $this produced bucket index ${probablyUpper.toInt} which is more than object size $count"
             )
           }
 
@@ -85,7 +86,7 @@ final class OneObjTable private (
       }
     }
 
-    assert(lower <= upper)
+    assert(lower <= upper, "failed lower <= upper")
     locally {
       var i = lower
       while (i < upper) {
@@ -105,7 +106,7 @@ final class OneObjTable private (
   }
 
   def readElem(index: Int): (RefVal, Ref) = {
-    assert(index < count)
+    assert(index < count, "failed index < count")
     ObjectEntryCodec.decodeAtOffset(it, dataOffset + index * ObjectEntryCodec.blobSize)
   }
 
