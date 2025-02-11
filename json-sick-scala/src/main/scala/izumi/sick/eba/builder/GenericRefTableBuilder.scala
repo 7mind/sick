@@ -1,7 +1,7 @@
 package izumi.sick.eba.builder
 
 import izumi.sick.eba.EBATable
-import izumi.sick.eba.writer.EBAEncoders.DebugTableName
+import izumi.sick.eba.writer.codecs.EBACodecs.DebugTableName
 import izumi.sick.model.Ref.RefVal
 
 import scala.collection.mutable

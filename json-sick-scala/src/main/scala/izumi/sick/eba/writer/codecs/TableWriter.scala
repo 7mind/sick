@@ -1,8 +1,8 @@
-package izumi.sick.eba.writer
+package izumi.sick.eba.writer.codecs
 
 import izumi.sick.eba.EBATable
-import izumi.sick.eba.writer.EBAEncoders.{EBAEncoder, IntToBytes}
-import izumi.sick.eba.writer.util.computeOffsetsFromSizes
+import izumi.sick.eba.writer.codecs.EBACodecs.{EBAEncoder, IntCodec}
+import izumi.sick.eba.writer.codecs.util.computeOffsetsFromSizes
 import izumi.sick.model.TableWriteStrategy
 import izumi.sick.thirdparty.akka.util.ByteString
 
@@ -30,12 +30,12 @@ private object TableWriter {
       val beforePos = chan.position()
 
       val elemCount = table.size
-      stream.write(IntToBytes.encode(elemCount).toArrayUnsafe())
+      stream.write(IntCodec.encode(elemCount).toArrayUnsafe())
 
       val beforeOffsetsPos = chan.position()
 
       val dummyOffsets = new Array[Int](elemCount + 1)
-      val dummyHeader = dummyOffsets.foldLeft(ByteString.empty)(_ ++ IntToBytes.encode(_))
+      val dummyHeader = dummyOffsets.foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_))
       stream.write(dummyHeader.toArray)
 
       val afterHeader = chan.position()
@@ -53,9 +53,9 @@ private object TableWriter {
       val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
       chan.position(beforeOffsetsPos)
 
-      val realOffsetsBs = realOffsets.foldLeft(ByteString.empty)(_ ++ IntToBytes.encode(_))
+      val realOffsetsBs = realOffsets.foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_))
       stream.write(realOffsetsBs.toArray)
-      stream.write(IntToBytes.encode(lastOffset).toArrayUnsafe())
+      stream.write(IntCodec.encode(lastOffset).toArrayUnsafe())
 
       assert(afterHeader == chan.position())
 
@@ -80,11 +80,11 @@ private object TableWriter {
       val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
 
       val elemCount = table.size
-      val elemCountBs = IntToBytes.encode(elemCount)
+      val elemCountBs = IntCodec.encode(elemCount)
       stream.write(elemCountBs.toArrayUnsafe())
-      val realOffsetsBs = realOffsets.foldLeft(ByteString.empty)(_ ++ IntToBytes.encode(_))
+      val realOffsetsBs = realOffsets.foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_))
       stream.write(realOffsetsBs.toArray)
-      val lastOffsetAsBytes = IntToBytes.encode(lastOffset)
+      val lastOffsetAsBytes = IntCodec.encode(lastOffset)
       stream.write(lastOffsetAsBytes.toArrayUnsafe())
 
       var added: Long = elemCountBs.length.toLong + realOffsetsBs.length + lastOffsetAsBytes.length
@@ -112,11 +112,11 @@ private object TableWriter {
       val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
 
       val elemCount = table.size
-      val elemCountBs = IntToBytes.encode(elemCount)
+      val elemCountBs = IntCodec.encode(elemCount)
       stream.write(elemCountBs.toArrayUnsafe())
-      val realOffsetsBs = realOffsets.map(IntToBytes.encode).foldLeft(ByteString.empty)(_ ++ _)
+      val realOffsetsBs = realOffsets.map(IntCodec.encode).foldLeft(ByteString.empty)(_ ++ _)
       stream.write(realOffsetsBs.toArray)
-      val lastOffsetAsBytes = IntToBytes.encode(lastOffset)
+      val lastOffsetAsBytes = IntCodec.encode(lastOffset)
       stream.write(lastOffsetAsBytes.toArrayUnsafe())
 
       var added: Long = elemCountBs.length.toLong + realOffsetsBs.length + lastOffsetAsBytes.length

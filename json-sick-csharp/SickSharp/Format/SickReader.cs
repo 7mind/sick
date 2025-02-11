@@ -148,7 +148,7 @@ namespace SickSharp.Format
                 //BucketStartOffsets = new ushort[settings.BucketCount];
                 //BucketEndOffsets = new Dictionary<uint, ushort>();
 
-                uint previousBucketStart = 0;
+                // uint previousBucketStart = 0;
 
                 var khash = KHash.Compute(field);
                 var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
@@ -232,12 +232,12 @@ namespace SickSharp.Format
             if (reference.Kind == RefKind.Arr)
             {
                 var currentObj = Arrs.Read(reference.Value);
-                var i = (iindex >= 0)?iindex : currentObj.Count + iindex;
+                var i = (iindex >= 0) ? iindex : currentObj.Count + iindex; // + decrements here because iindex is negative
                 return currentObj.Read(i);
             }
             
             throw new KeyNotFoundException(
-                $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference}"
+                $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference.Kind}"
             );
         }
 

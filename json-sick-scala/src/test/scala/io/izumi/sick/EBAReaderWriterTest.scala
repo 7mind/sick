@@ -3,22 +3,26 @@ package io.izumi.sick
 import com.github.luben.zstd.Zstd
 import io.circe.*
 import izumi.sick.SICK
-import izumi.sick.eba.reader.EBAReader
-import izumi.sick.eba.writer.{EBAEncoders, EBAWriter}
+import izumi.sick.eba.reader.incremental.IncrementalJValue
+import izumi.sick.eba.reader.{EagerEBAReader, IncrementalEBAReader}
+import izumi.sick.eba.writer.EBAWriter
 import izumi.sick.eba.{EBAStructure, SICKSettings}
-import izumi.sick.model.{RefKind, SICKWriterParameters, TableWriteStrategy}
+import izumi.sick.model.*
 import izumi.sick.sickcirce.CirceTraverser.*
 import izumi.sick.thirdparty.akka.util.ByteString
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 import scala.jdk.CollectionConverters.*
+import scala.util.chaining.scalaUtilChainingOps
 
 class EBAReaderWriterTest extends AnyWordSpec {
   private val in: Path = Paths.get("..", "samples")
   private val out: Path = Paths.get("..", "output")
   private val rootname = "sample.json"
+  private val iters = 100_000
 
   "write test" in {
     val allInputs = Files
@@ -51,7 +55,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
               dedup =>
                 println(s"dedup = $dedup")
                 val before = System.nanoTime()
-                val eba = SICK.Default.packJson(parsed, rootname, dedup = dedup)
+                val eba = SICK.packJson(parsed, rootname, dedup = dedup)
                 val roIndex = eba.index
                 val root = eba.root
                 val rwIndex = eba.source
@@ -111,8 +115,32 @@ class EBAReaderWriterTest extends AnyWordSpec {
                 Files.write(outFile, raw)
                 // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
 
-                val readStructure: EBAStructure = EBAReader.readEBAStructure(Files.readAllBytes(outFile), new EBAEncoders(SICKWriterParameters(strategy)))
+                println(s"Eager reading...")
+                val readStructure: EBAStructure = EagerEBAReader.readEBAStructure(Files.newInputStream(outFile))
                 assert(readStructure == roIndex)
+                println(s"Eager reading succeeded")
+
+                println(s"Incremental reading...")
+                val incStructure: EBAStructure = {
+                  val reader = IncrementalEBAReader.openFile(outFile)
+                  try {
+                    EBAStructure(
+                      reader.intTable.readAllTable(),
+                      reader.longTable.readAllTable(),
+                      reader.bigIntTable.readAllTable(),
+                      reader.floatTable.readAllTable(),
+                      reader.doubleTable.readAllTable(),
+                      reader.bigDecTable.readAllTable(),
+                      reader.strTable.readAllTable(),
+                      reader.arrTable.readAllTable().mapValues(_.readAll().to(Vector).pipe(Arr.apply)),
+                      reader.objTable.readAllTable().mapValues(_.readAllObj()),
+                      reader.rootTable.readAllTable(),
+                    )(SICKSettings.default)
+                  } finally reader.close()
+                }
+                assert(incStructure == roIndex)
+                assert(incStructure == readStructure)
+                println(s"Incremental reading succeeded")
 
                 println()
             }
@@ -124,7 +152,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
     }
   }
 
-  "read test" in {
+  "eager read test" in {
     val inputs: Seq[Path] = {
       val ds = Files.newDirectoryStream(out, "*.bin")
       try ds.asScala.toSeq
@@ -139,7 +167,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
       println(s"Processing $fname (${fpath.toFile.length()} bytes) ...")
 
       try {
-        val eba: EBAStructure = EBAReader.readEBAStructure(Files.readAllBytes(fpath), new EBAEncoders(SICKWriterParameters()))
+        val eba: EBAStructure = EagerEBAReader.readEBAStructure(Files.newInputStream(fpath))
 
         val maybeRoot = eba.findRoot(rootname)
         assert(maybeRoot.isDefined, s"No root entry in $fname")
@@ -167,6 +195,98 @@ class EBAReaderWriterTest extends AnyWordSpec {
           throw ex
       }
     }
+  }
+
+  "incremental read test" in {
+    val inputs: Seq[Path] = {
+      val ds = Files.newDirectoryStream(out, "*.bin")
+      try ds.asScala.toSeq
+      finally ds.close()
+    }.sortBy(_.toString)
+
+    //    assert(inputs.exists(_.toString.contains("-CS")), "No file containing '-CS' found!")
+    assert(inputs.exists(_.toString.contains("-SCALA")), "No file containing '-SCALA' found!")
+
+    for (fpath <- inputs) {
+      val fname = fpath.getFileName.toString
+      println(s"Processing $fname (${fpath.toFile.length()} bytes) ...")
+
+      val reader = IncrementalEBAReader.openFile(fpath)
+      try {
+
+        val rootRef = reader.getRoot(rootname).get
+        println(s"$fname: found $rootname, ref=$rootRef")
+
+        println(s"Going to perform $iters traverses")
+        val begin = System.nanoTime()
+        (0 until iters).foreach {
+          _ => traverse(rootRef, reader, 0, 10)
+        }
+        val end = System.nanoTime()
+        val seconds = FiniteDuration(end - begin, NANOSECONDS).toNanos / 1000.0 / 1000.0 / 1000.0
+        println(s"Finished in $seconds sec")
+        println(s"Iters/sec ${iters.toDouble / seconds}")
+        println(s"$fname: found $rootname, ref=$rootRef")
+
+        rootRef.kind match {
+          case RefKind.TObj =>
+            println(s"$fname: object with ${reader.resolve(rootRef).asInstanceOf[IncrementalJValue.JObj].obj.length} elements")
+          case _ =>
+        }
+        println()
+
+      } catch {
+        case ex: Throwable =>
+          println(s"Failed on $fpath")
+          println()
+          throw ex
+      } finally {
+        reader.close()
+      }
+    }
+  }
+
+  def traverse(ref: Ref, reader: IncrementalEBAReader, count: Int, limit: Int): Int = {
+    val readFirst = false
+    val next = count + 1
+    if (count >= limit) {
+      count
+    } else if (ref.kind == RefKind.TArr) {
+      val arr = reader.resolve(ref).asInstanceOf[IncrementalJValue.JArr].arr
+      if (arr.length == 0) {
+        return next
+      }
+
+      val (entry: Ref, index: Int) = {
+        if (readFirst) {
+          (arr.iterator.next(), 0)
+        } else {
+          val index = arr.length / 2
+          (arr.iterator.drop(index).next(), index)
+        }
+      }
+
+      val entryRef = reader.readArrayElementRef(ref, index)
+      assert(entry == entryRef)
+      traverse(entryRef, reader, next, limit)
+    } else if (ref.kind == RefKind.TObj) {
+      val obj = reader.resolve(ref).asInstanceOf[IncrementalJValue.JObj].obj
+      if (obj.length == 0) {
+        return next
+      }
+
+      val (key: String, value: Ref) = {
+        if (readFirst) {
+          obj.iterator.next()
+        } else {
+          val index = obj.length / 2
+          obj.iterator.drop(index).next()
+        }
+      }
+      val fieldVal = reader.readObjectFieldRef(ref, key)
+      assert(fieldVal == value)
+      traverse(value, reader, next, limit)
+    } else count
   }
 
 }

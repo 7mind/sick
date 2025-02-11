@@ -70,8 +70,8 @@ ThisBuild / version := {
 }
 
 ThisBuild /crossScalaVersions := Seq(
-  "3.3.4",
-  "2.13.14",
+  "3.3.5",
+  "2.13.15",
 )
 
 ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head

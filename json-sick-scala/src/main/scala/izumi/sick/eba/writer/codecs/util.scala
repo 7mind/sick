@@ -1,8 +1,8 @@
-package izumi.sick.eba.writer
+package izumi.sick.eba.writer.codecs
 
 import scala.collection.immutable.ArraySeq
 
-private object util {
+private[writer] object util {
 
   def computeOffsetsFromSizes(lengths: collection.Seq[Int], initial: Int): Seq[Int] = {
     val out = lengths

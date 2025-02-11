@@ -20,6 +20,10 @@ final case class EBATable[+V](
     asIterable.foreach(f)
   }
 
+  @inline def mapValues[T](f: V => T): EBATable[T] = {
+    EBATable(name, data.view.mapValues(f).toMap)
+  }
+
   override def toString: String = {
     s"""$name:
        |${data.toSeq.sortBy(_._1).map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
