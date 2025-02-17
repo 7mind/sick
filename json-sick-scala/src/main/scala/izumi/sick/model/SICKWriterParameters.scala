@@ -1,12 +1,13 @@
 package izumi.sick.model
 
-sealed trait ArrayWriteStrategy
+sealed trait TableWriteStrategy
 
-object ArrayWriteStrategy {
-  case object StreamRepositioning extends ArrayWriteStrategy
-  case object SinglePassInMemory extends ArrayWriteStrategy
-  case object DoublePass extends ArrayWriteStrategy
+object TableWriteStrategy {
+  case object StreamRepositioning extends TableWriteStrategy
+  case object SinglePassInMemory extends TableWriteStrategy
+  case object DoublePass extends TableWriteStrategy
 }
 
-
-case class SICKWriterParameters(arrayWriteStrategy: ArrayWriteStrategy = ArrayWriteStrategy.StreamRepositioning)
+final case class SICKWriterParameters(
+  tableWriteStrategy: TableWriteStrategy = TableWriteStrategy.StreamRepositioning
+)

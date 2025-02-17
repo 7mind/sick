@@ -2,6 +2,8 @@ package izumi.sick.model
 
 import izumi.sick.model.Ref.RefVal
 
+import scala.reflect.ClassTag
+
 sealed trait RefKind
 object RefKind {
   sealed trait NonMappable extends RefKind
@@ -26,7 +28,7 @@ object RefKind {
 
   case object TRoot extends Mappable
 
-  implicit class RefKindExt(kind: RefKind) {
+  implicit final class RefKindExt(private val kind: RefKind) extends AnyVal {
     def index: Byte = kind match {
       case TNul => 0
       case TBit => 1
@@ -44,18 +46,51 @@ object RefKind {
       case TStr => 10
       case TArr => 11
       case TObj => 12
+
       case TRoot => 15
+    }
+  }
+
+  def fromIndex(index: Byte): RefKind = {
+    index match {
+      case 0 => RefKind.TNul
+      case 1 => RefKind.TBit
+
+      case 2 => RefKind.TByte
+      case 3 => RefKind.TShort
+      case 4 => RefKind.TInt
+      case 5 => RefKind.TLng
+      case 6 => RefKind.TBigInt
+
+      case 7 => RefKind.TDbl
+      case 8 => RefKind.TFlt
+      case 9 => RefKind.TBigDec
+
+      case 10 => RefKind.TStr
+      case 11 => RefKind.TArr
+      case 12 => RefKind.TObj
+
+      case 15 => RefKind.TRoot
+
+      case x => throw new RuntimeException(s"Unknown RefKind index=$x")
     }
   }
 }
 
 final case class Ref(kind: RefKind, ref: RefVal)
 object Ref {
-  type RefVal = Int
+  type RefVal = RefVal.T
+  object RefVal {
+    private[Ref] type T <: Int
+
+    def apply(i: Int): RefVal = i.asInstanceOf[RefVal]
+
+    implicit val classTag: ClassTag[RefVal] = implicitly[ClassTag[Int]].asInstanceOf[ClassTag[RefVal]]
+  }
 }
 
 final case class Arr(values: Vector[Ref])
 
-final case class Obj(values: Vector[(RefVal, Ref)]) {}
+final case class Obj(values: Map[RefVal, Ref])
 
 final case class Root(id: RefVal, ref: Ref)

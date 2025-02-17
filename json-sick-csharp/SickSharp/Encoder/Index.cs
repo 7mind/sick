@@ -167,7 +167,10 @@ namespace SickSharp.Encoder
                 case ushort uint16:
                     val = uint16;
                     break;
-                
+                case BigInteger bigint:
+                    return addBigInt(bigint);
+                case BigDecimal bigDecimal:
+                    return addBigDec(bigDecimal);
                 default:
                     throw new InvalidDataException($"Unexpected integer: {v.Value}");
             }

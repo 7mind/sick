@@ -23,7 +23,7 @@ namespace SickSharp.Format
             _dataOffset = _sizeOffset + sizeof(int) * (Count + 1);
             if (_readIndexes)
             {
-                _index = Stream.ReadBytes(_sizeOffset, (int)(sizeof(int) * 2 * Count));
+                _index = Stream.ReadBytes(_sizeOffset, (int)(sizeof(int) * (Count + 1)));
             }
 
         }

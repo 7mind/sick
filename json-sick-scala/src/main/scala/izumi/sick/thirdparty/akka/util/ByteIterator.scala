@@ -60,7 +60,7 @@ object ByteIterator {
                 result
               }
             case mbai: MultiByteArrayIterator => this ++: mbai
-            case bi                           => super.++(bi)
+            case bi => super.++(bi)
           }
       case io => super.++(io)
     }
@@ -210,7 +210,7 @@ object ByteIterator {
     @inline private def current: ByteArrayIterator = iterators.head
     @SuppressWarnings(Array("UnsafeTraversableMethods"))
     @inline private def dropCurrent(): Unit = { iterators = iterators.tail }
-    @inline def clear(): Unit               = { iterators = MultiByteArrayIterator.empty.iterators }
+    @inline final def clear(): Unit = { iterators = MultiByteArrayIterator.empty.iterators }
 
     @inline final def hasNext: Boolean = current.hasNext
 
@@ -264,7 +264,7 @@ object ByteIterator {
     /** For performance sensitive code, call take() directly on ByteString (it's optimised there) */
     @SuppressWarnings(Array("UnsafeTraversableMethods"))
     final override def take(n: Int): this.type = {
-      var rest    = n
+      var rest = n
       val builder = new ListBuffer[ByteArrayIterator]
       while ((rest > 0) && iterators.nonEmpty) {
         current.take(rest)
@@ -290,7 +290,7 @@ object ByteIterator {
       } else this
 
     final override def takeWhile(p: Byte => Boolean): this.type = {
-      var stop    = false
+      var stop = false
       val builder = new ListBuffer[ByteArrayIterator]
       while (!stop && iterators.nonEmpty) {
         val lastLen = current.len
@@ -312,7 +312,7 @@ object ByteIterator {
       } else this
 
     final override def copyToArray[B >: Byte](xs: Array[B], start: Int, len: Int): Int = {
-      var pos  = start
+      var pos = start
       var rest = len
       while ((rest > 0) && iterators.nonEmpty && pos < xs.length) {
         val n = 0 max ((xs.length - pos) min current.len min rest)
@@ -407,7 +407,7 @@ object ByteIterator {
             if (!isEmpty) {
               val m = current.asInputStream.skip(n)
               normalize()
-              val newN       = n - m
+              val newN = n - m
               val newSkipped = skipped + m
               if (newN > 0) skipImpl(newN, newSkipped)
               else newSkipped
@@ -497,10 +497,10 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
     if (found) index else -1
   }
 
-  def indexOf(elem: Byte): Int            = indexOf(elem, 0)
+  def indexOf(elem: Byte): Int = indexOf(elem, 0)
   def indexOf(elem: Byte, from: Int): Int = indexWhere(_ == elem, from)
 
-  override def indexOf[B >: Byte](elem: B): Int            = indexOf(elem, 0)
+  override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
   override def indexOf[B >: Byte](elem: B, from: Int): Int = indexWhere(_ == elem, from)
 
   def toByteString: ByteString
@@ -547,14 +547,14 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
   def getInt(implicit byteOrder: ByteOrder): Int = {
     if (byteOrder == ByteOrder.BIG_ENDIAN)
       ((next() & 0xFF) << 24
-      | (next() & 0xFF) << 16
-      | (next() & 0xFF) << 8
-      | (next() & 0xFF) << 0)
+        | (next() & 0xFF) << 16
+        | (next() & 0xFF) << 8
+        | (next() & 0xFF) << 0)
     else if (byteOrder == ByteOrder.LITTLE_ENDIAN)
       ((next() & 0xFF) << 0
-      | (next() & 0xFF) << 8
-      | (next() & 0xFF) << 16
-      | (next() & 0xFF) << 24)
+        | (next() & 0xFF) << 8
+        | (next() & 0xFF) << 16
+        | (next() & 0xFF) << 24)
     else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
 
@@ -564,22 +564,22 @@ abstract class ByteIterator extends BufferedIterator[Byte] {
   def getLong(implicit byteOrder: ByteOrder): Long = {
     if (byteOrder == ByteOrder.BIG_ENDIAN)
       ((next().toLong & 0xFF) << 56
-      | (next().toLong & 0xFF) << 48
-      | (next().toLong & 0xFF) << 40
-      | (next().toLong & 0xFF) << 32
-      | (next().toLong & 0xFF) << 24
-      | (next().toLong & 0xFF) << 16
-      | (next().toLong & 0xFF) << 8
-      | (next().toLong & 0xFF) << 0)
+        | (next().toLong & 0xFF) << 48
+        | (next().toLong & 0xFF) << 40
+        | (next().toLong & 0xFF) << 32
+        | (next().toLong & 0xFF) << 24
+        | (next().toLong & 0xFF) << 16
+        | (next().toLong & 0xFF) << 8
+        | (next().toLong & 0xFF) << 0)
     else if (byteOrder == ByteOrder.LITTLE_ENDIAN)
       ((next().toLong & 0xFF) << 0
-      | (next().toLong & 0xFF) << 8
-      | (next().toLong & 0xFF) << 16
-      | (next().toLong & 0xFF) << 24
-      | (next().toLong & 0xFF) << 32
-      | (next().toLong & 0xFF) << 40
-      | (next().toLong & 0xFF) << 48
-      | (next().toLong & 0xFF) << 56)
+        | (next().toLong & 0xFF) << 8
+        | (next().toLong & 0xFF) << 16
+        | (next().toLong & 0xFF) << 24
+        | (next().toLong & 0xFF) << 32
+        | (next().toLong & 0xFF) << 40
+        | (next().toLong & 0xFF) << 48
+        | (next().toLong & 0xFF) << 56)
     else throw new IllegalArgumentException("Unknown byte order " + byteOrder)
   }
 

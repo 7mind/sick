@@ -160,6 +160,9 @@ public class Tests
         var inputs = Directory.EnumerateFiles(PathOut, "*.bin", SearchOption.TopDirectoryOnly).ToList();
         inputs.Sort();
 
+        Assert.IsNotNull(inputs.Find(x => x.Contains("-CS")), "No file containing `-CS` found!");
+        Assert.IsNotNull(inputs.Find(x => x.Contains("-SCALA")), "No file containing `-SCALA` found! Run Scala tests to generate");
+
         foreach (var input in inputs)
         {
             try

@@ -4,37 +4,8 @@ import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.model
 import izumi.sick.model.*
 
-object EBABuilder {
-  def apply(dedup: Boolean): EBABuilder = {
-    val strings = GenericRefTableBuilder[String]("Strings", dedup = true)
-
-    val ints = GenericRefTableBuilder[Int]("Integers", dedup = true)
-    val longs = GenericRefTableBuilder[Long]("Longs", dedup = true)
-    val bigints = GenericRefTableBuilder[BigInt]("Bigints", dedup = true)
-
-    val floats = GenericRefTableBuilder[Float]("Floats", dedup = true)
-    val doubles = GenericRefTableBuilder[Double]("Doubles", dedup = true)
-    val bigDecimals = GenericRefTableBuilder[BigDecimal]("BigDecs", dedup = true)
-
-    val arrs = GenericRefTableBuilder[Arr]("Arrays", dedup)
-    val objs = GenericRefTableBuilder[Obj]("Objects", dedup)
-    val roots = GenericRefTableBuilder[Root]("Roots", dedup)
-
-    new EBABuilder(
-      strings,
-      ints,
-      longs,
-      bigints,
-      floats,
-      doubles,
-      bigDecimals,
-      arrs,
-      objs,
-      roots,
-    )
-  }
-}
-class EBABuilder private(
+/** RW index */
+class EBABuilder private (
   strings: GenericRefTableBuilder[String],
   ints: GenericRefTableBuilder[Int],
   longs: GenericRefTableBuilder[Long],
@@ -49,7 +20,6 @@ class EBABuilder private(
 
   def freeze(settings: SICKSettings): EBAStructure = {
     new EBAStructure(
-      settings,
       ints.freeze(),
       longs.freeze(),
       bigints.freeze(),
@@ -60,7 +30,7 @@ class EBABuilder private(
       arrs.freeze(),
       objs.freeze(),
       roots.freeze(),
-    )
+    )(settings)
   }
 
   override def toString: String = {
@@ -115,4 +85,35 @@ class EBABuilder private(
   def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.insert(s))
   def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.insert(s))
   def addRoot(s: Root): Ref = model.Ref(RefKind.TRoot, roots.insert(s))
+}
+
+object EBABuilder {
+  def apply(dedup: Boolean): EBABuilder = {
+    val strings = GenericRefTableBuilder[String](dedup = true)
+
+    val ints = GenericRefTableBuilder[Int](dedup = true)
+    val longs = GenericRefTableBuilder[Long](dedup = true)
+    val bigints = GenericRefTableBuilder[BigInt](dedup = true)
+
+    val floats = GenericRefTableBuilder[Float](dedup = true)
+    val doubles = GenericRefTableBuilder[Double](dedup = true)
+    val bigDecimals = GenericRefTableBuilder[BigDecimal](dedup = true)
+
+    val arrs = GenericRefTableBuilder[Arr](dedup)
+    val objs = GenericRefTableBuilder[Obj](dedup)
+    val roots = GenericRefTableBuilder[Root](dedup)
+
+    new EBABuilder(
+      strings,
+      ints,
+      longs,
+      bigints,
+      floats,
+      doubles,
+      bigDecimals,
+      arrs,
+      objs,
+      roots,
+    )
+  }
 }

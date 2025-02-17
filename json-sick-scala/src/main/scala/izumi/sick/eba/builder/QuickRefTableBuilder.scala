@@ -13,7 +13,7 @@ class QuickRefTableBuilder[V](
   private var count = 0
 
   def insert(v: V): RefVal = {
-    val k = count
+    val k = RefVal(count)
     content.put(k, v)
     count += 1
     k

@@ -7,7 +7,7 @@ git clean -fxd -e private -e .idea
 
 pushd .
 cd ./json-sick-scala
-sbt +clean +test:compile +test +test:run
+sbt +clean +test:compile +test
 popd
 
 pushd .
