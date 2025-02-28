@@ -8,7 +8,12 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem
       (system:
-        let pkgs = nixpkgs.legacyPackages.${system}; in
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in
         {
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = with pkgs.buildPackages; [
@@ -18,8 +23,9 @@
               dotnet-sdk_9
 
               git
+              jetbrains.rider
             ];
-            #            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+            # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
 
           };
         }
