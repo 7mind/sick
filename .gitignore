@@ -10,3 +10,4 @@ target
 .scala-build
 .bsp
 metals.sbt
+.direnv

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 using SickSharp.Format.Tables;
 using SickSharp.Primitives;
 
@@ -279,6 +280,45 @@ namespace SickSharp.Format
             }
 
             return value;
+        }
+
+        public JToken ToJson(Ref reference)
+        {
+            switch (reference.Kind)
+            {
+                case RefKind.Nul:
+                    return JValue.CreateNull();
+                case RefKind.Bit:
+                    return new JValue(reference.Value == 1);
+                case RefKind.SByte:
+                    return new JValue((sbyte)reference.Value);
+                case RefKind.Short:
+                    return new JValue((short)reference.Value);
+                case RefKind.Int:
+                    return new JValue(Ints.Read(reference.Value));
+                case RefKind.Lng:
+                    return new JValue(Longs.Read(reference.Value));
+                case RefKind.BigInt:
+                    return new JValue(BigInts.Read(reference.Value));
+                case RefKind.Flt:
+                    return new JValue(Floats.Read(reference.Value));
+                case RefKind.Dbl:
+                    return new JValue(Doubles.Read(reference.Value));
+                case RefKind.BigDec:
+                    return new JValue(BigDecimals.Read(reference.Value));
+                case RefKind.Str:
+                    return new JValue(Strings.Read(reference.Value));
+                case RefKind.Arr:
+                    return new JArray(new SingleShotEnumerable<Ref>(Arrs.Read(reference.Value).GetEnumerator())
+                        .Select(ToJson).ToArray<object>());
+                case RefKind.Obj:
+                    return new JObject(new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value).GetEnumerator())
+                        .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>());
+                case RefKind.Root:
+                    return ToJson(Roots.Read(reference.Value).Reference);
+                default:
+                    throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
+            }  
         }
         
         public IJsonVal Resolve(Ref reference)

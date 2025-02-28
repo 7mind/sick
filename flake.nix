@@ -1,7 +1,7 @@
 {
   description = "SICK build environment";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/24.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
@@ -15,9 +15,12 @@
               ncurses
               graalvm-ce
               sbt
-              dotnet-sdk_6
+              dotnet-sdk_9
+
               git
             ];
+            #            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+
           };
         }
       );

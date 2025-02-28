@@ -56,6 +56,8 @@ public class Tests
 
     public int Traverse(Ref reference, SickReader reader, int count, short limit)
     {
+        // Console.WriteLine(reader.ToJson(reference));
+        
         var readFirst = false;
         var next = count + 1;
         if (count >= limit)
