@@ -107,7 +107,7 @@ namespace SickSharp.Format.Tables
             if (Count >= ObjIndexing.MaxIndex)
             {
                 throw new FormatException(
-                    $"Object size is {Count} but max index is {ObjIndexing.MaxIndex}, object offset was {offset}"
+                    $"Structural failure: object size is {Count} but max index is {ObjIndexing.MaxIndex}, object offset was {offset}"
                 );
             }
         }

@@ -237,7 +237,7 @@ namespace SickSharp.Encoder
             {
                 if (value.Count >= ObjIndexing.MaxIndex)
                 {
-                    throw new ArgumentException($"Too many values in an object, the limit is {ObjIndexing.MaxIndex}");
+                    throw new ArgumentException($"BUG: Too many values in an object, the limit is {ObjIndexing.MaxIndex}");
                 }
                 var toIndex = new List<ObjIndexEntry>(); 
                 foreach (var objEntry in value)
@@ -350,9 +350,10 @@ namespace SickSharp.Encoder
     {
         public byte[] Bytes(BigDecimal value)
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Cannot encode C# BigDecimal");
         }
     }
+    
     public class Variable
     {
         public static IVarByteEncoder<String> StringEncoder = new StringEncoder();

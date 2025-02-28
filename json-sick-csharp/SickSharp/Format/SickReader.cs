@@ -130,15 +130,15 @@ namespace SickSharp.Format
             {
                 var currentObj = Objs.Read(reference.Value);
 
-                return ReadObjectFieldRef(field, currentObj);
+                return ReadObjectFieldRef(field, currentObj, $"lookup in ReadObjectFieldRef starting with `{reference}`");
             }
             
             throw new KeyNotFoundException(
-                $"Tried to find field {field} in entity with id {reference} which should be an object, but it was {reference.Kind}"
+                $"Tried to find field `{field}` in entity with id `{reference}` which should be an object, but it was `{reference.Kind}`"
             );
         }
 
-        private Ref ReadObjectFieldRef(string field, OneObjTable currentObj)
+        private Ref ReadObjectFieldRef(string field, OneObjTable currentObj, String clue)
         {
             var lower = 0;
             var upper = currentObj.Count;
@@ -157,14 +157,14 @@ namespace SickSharp.Format
                 if (probablyLower == ObjIndexing.MaxIndex)
                 {
                     throw new KeyNotFoundException(
-                        $"Field {field} not found in object {currentObj}"
+                        $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
                     );
                 }
 
                 if (probablyLower >= currentObj.Count)
                 {
                     throw new FormatException(
-                        $"Field {field} in object {currentObj} produced bucket index {probablyLower} which is more than object size {currentObj.Count}"
+                        $"Structural failure: Field `{field}` in object `{currentObj}` produced bucket index `{probablyLower}` which is more than object size `{currentObj.Count}`. Context: {clue}"
                     );
                 }
 
@@ -189,7 +189,7 @@ namespace SickSharp.Format
                     if (probablyUpper > currentObj.Count)
                     {
                         throw new FormatException(
-                            $"Field {field} in object {currentObj} produced bucket index {probablyUpper} which is more than object size {currentObj.Count}"
+                            $"Field `{field}` in object `{currentObj}` produced bucket index `{probablyUpper}` which is more than object size `{currentObj.Count}`. Context: {clue}"
                         );
                     }
                 }
@@ -217,7 +217,7 @@ namespace SickSharp.Format
             }
 
             throw new KeyNotFoundException(
-                $"Field {field} not found in object {currentObj}"
+                $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
             );
         }
 
@@ -237,7 +237,7 @@ namespace SickSharp.Format
             }
             
             throw new KeyNotFoundException(
-                $"Tried to find element {iindex} in entity with id {reference} which should be an array, but it was {reference.Kind}"
+                $"Tried to find element `{iindex}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
             );
         }
 
@@ -274,7 +274,7 @@ namespace SickSharp.Format
             if (value == null)
             {
                 throw new KeyNotFoundException(
-                    $"Failed to query '{reference}' lookup result was '{result}' but it failed to resolve. The query was '{String.Join("->", parts)}'"
+                    $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", parts)}`"
                     );
             }
 
@@ -314,7 +314,7 @@ namespace SickSharp.Format
                 case RefKind.Root:
                     return new JRoot(Roots.Read(reference.Value));
                 default:
-                    throw new InvalidDataException($"Unknown reference: {reference}");
+                    throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
             }
         }
 
@@ -333,13 +333,13 @@ namespace SickSharp.Format
             var expectedVersion = 0;
             if (version != expectedVersion)
             {
-                throw new FormatException($"SICK version expected to be {expectedVersion}, got {version}");
+                throw new FormatException($"Structural failure: SICK version expected to be {expectedVersion}, got {version}");
             }
 
             var expectedTableCount = 10;
             if (tableCount != expectedTableCount)
             {
-                throw new FormatException($"SICK table count expected to be {expectedTableCount}, got {tableCount}");
+                throw new FormatException($"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
             }
 
             var tableOffsets = new List<int>();
@@ -349,14 +349,14 @@ namespace SickSharp.Format
                 var next = _stream.ReadInt32BE();
                 if (t > 0 && next <= tableOffsets[t - 1])
                 {
-                    throw new FormatException($"SICK: wrong format, {next} expected to be more than {tableOffsets[t - 1]}");
+                    throw new FormatException($"Structural failure: wrong SICK format, table offset {next} expected to be more than previous table offset {tableOffsets[t - 1]}");
                 }
                 tableOffsets.Add(next);
             }
 
             var bucketCount = _stream.ReadUInt16BE();
             
-            // Console.WriteLine($"Offsets: {String.Join(",", tableOffsets)}, buckets: {bucketCount}" );
+            // Console.WriteLine($"Offsets: {String.Join(",", tables)}, b SICKuckets: {bucketCount}" );
             var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
             return header;
         }
@@ -377,10 +377,10 @@ namespace SickSharp.Format
 
         public IJsonVal Query(JObj jObj, string path)
         {
-            return Query(jObj, path.Split('.').ToList());
+            return Query(jObj, path.Split('.').ToList(), jObj, path);
         }
 
-        private IJsonVal Query(JObj jObj, List<string> parts)
+        private IJsonVal Query(JObj jObj, List<string> parts, JObj initialObj, string initialQuery)
         {
             if (parts.Count == 0)
             {
@@ -390,7 +390,7 @@ namespace SickSharp.Format
             var currentQuery = parts.First();
             var next = parts.Skip(1).ToList();
             HandleBracketsWithoutDot(ref currentQuery, next);
-            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value);
+            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value, $"query `{initialQuery}` on object `{initialObj}`");
             return Query(resolvedObj, next);
         }
         

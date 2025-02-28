@@ -112,7 +112,7 @@ namespace SickSharp.Encoder
             var rootRef = traverse(json);
             var root = new Root(idRef.Value, rootRef);
             return _roots.RevGet(root).Match(
-                Some: some => throw new InvalidDataException(), 
+                Some: some => throw new InvalidDataException($"Cannot find root '{root}'"), 
                 None: () => new Ref(RefKind.Root, _roots.Add(root))
                 );
         }
@@ -136,11 +136,11 @@ namespace SickSharp.Encoder
                         JTokenType.Boolean => new Ref(RefKind.Bit, Convert.ToInt32((bool)v.Value)),
                         JTokenType.Null => new Ref(RefKind.Nul, 0),
                         JTokenType.Date => addString(((DateTime)v.Value).ToString()),
-                        _ => throw new NotImplementedException($"failure: {v}")
+                        _ => throw new NotImplementedException($"BUG: unknown value `{v}`")
                     ,
                     },
                 _ => 
-                    throw new NotImplementedException(),
+                    throw new NotImplementedException($"BUG: unknown token `{json}`"),
             };
         }
 
@@ -172,7 +172,7 @@ namespace SickSharp.Encoder
                 case BigDecimal bigDecimal:
                     return addBigDec(bigDecimal);
                 default:
-                    throw new InvalidDataException($"Unexpected integer: {v.Value}");
+                    throw new InvalidDataException($"BUG: Unexpected integer: `{v.Value}`");
             }
 
             if (val <= SByte.MaxValue && val >= SByte.MinValue)
@@ -205,7 +205,7 @@ namespace SickSharp.Encoder
                     val = d;
                     break;
                 default:
-                    throw new InvalidDataException($"Unexpected float: {v}");
+                    throw new InvalidDataException($"BUG: Unexpected float: `{v}`");
             }
 
             if (val <= Single.MaxValue && val >= Single.MinValue)
