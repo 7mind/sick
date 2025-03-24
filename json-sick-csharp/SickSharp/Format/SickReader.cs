@@ -14,7 +14,7 @@ using SickSharp.Primitives;
 namespace SickSharp.Format
 {
     public record FoundRef(Ref result, List<String> query);
-        
+
     /// <summary>
     ///     <list type="bullet">
     ///         <item>
@@ -33,7 +33,7 @@ namespace SickSharp.Format
     {
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly Stream _stream;
-        
+
         public static bool LoadIndexes { get; set; }
 
         static SickReader()
@@ -46,22 +46,29 @@ namespace SickSharp.Format
             }
         }
 
-        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536)
+        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536, bool pageCached = true, int cachePageSize = 4192)
         {
             var info = new FileInfo(path);
             var loadIntoMemory = info.Length <= inMemoryThreshold;
+            
+            Stream stream;
             if (loadIntoMemory)
             {
-                var stream = new MemoryStream(File.ReadAllBytes(path)); 
+                stream = new MemoryStream(File.ReadAllBytes(path));
+            }
+            else if (pageCached)
+            {
+                stream = new PageCachedStream(path, cachePageSize);
                 return new SickReader(stream);
             }
             else
             {
-                var stream = File.Open(path, FileMode.Open);
-                return new SickReader(stream);
+                stream = File.Open(path, FileMode.Open);
             }
+
+            return new SickReader(stream);
         }
-        
+
         public SickReader(Stream stream)
         {
             _stream = stream;
@@ -103,11 +110,11 @@ namespace SickSharp.Format
         public ObjTable Objs { get; }
         public RootTable Roots { get; }
 
-        #if DEBUG_TRAVEL
+#if DEBUG_TRAVEL
         public static volatile int TotalLookups = 0;
         public static volatile int TotalTravel = 0;
-        #endif
-        
+#endif
+
         public Ref? GetRoot(string id)
         {
             Ref? value;
@@ -118,7 +125,7 @@ namespace SickSharp.Format
         {
             return Query(reference, path.Split('.').ToList());
         }
-        
+
         public FoundRef QueryRef(Ref reference, string path)
         {
             var query = path.Split('.').ToList();
@@ -131,9 +138,10 @@ namespace SickSharp.Format
             {
                 var currentObj = Objs.Read(reference.Value);
 
-                return ReadObjectFieldRef(field, currentObj, $"lookup in ReadObjectFieldRef starting with `{reference}`");
+                return ReadObjectFieldRef(field, currentObj,
+                    $"lookup in ReadObjectFieldRef starting with `{reference}`");
             }
-            
+
             throw new KeyNotFoundException(
                 $"Tried to find field `{field}` in entity with id `{reference}` which should be an object, but it was `{reference.Kind}`"
             );
@@ -227,22 +235,24 @@ namespace SickSharp.Format
         {
             return table.RawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
         }
-        
+
         public Ref ReadArrayElementRef(Ref reference, int iindex)
         {
             if (reference.Kind == RefKind.Arr)
             {
                 var currentObj = Arrs.Read(reference.Value);
-                var i = (iindex >= 0) ? iindex : currentObj.Count + iindex; // + decrements here because iindex is negative
+                var i = (iindex >= 0)
+                    ? iindex
+                    : currentObj.Count + iindex; // + decrements here because iindex is negative
                 return currentObj.Read(i);
             }
-            
+
             throw new KeyNotFoundException(
                 $"Tried to find element `{iindex}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
             );
         }
 
-        
+
         private Ref QueryRef(Ref reference, List<string> parts)
         {
             if (parts.Count == 0)
@@ -254,7 +264,7 @@ namespace SickSharp.Format
             var next = parts.Skip(1).ToList();
 
             HandleBracketsWithoutDot(ref currentQuery, next);
-            
+
             if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
             {
                 var index = currentQuery.Substring(1, currentQuery.Length - 2);
@@ -263,11 +273,11 @@ namespace SickSharp.Format
                 var resolvedArr = ReadArrayElementRef(reference, iindex);
                 return QueryRef(resolvedArr, next);
             }
-            
+
             var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
             return QueryRef(resolvedObj, next);
         }
-        
+
         private IJsonVal Query(Ref reference, List<string> parts)
         {
             var result = QueryRef(reference, parts);
@@ -276,7 +286,7 @@ namespace SickSharp.Format
             {
                 throw new KeyNotFoundException(
                     $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", parts)}`"
-                    );
+                );
             }
 
             return value;
@@ -312,15 +322,16 @@ namespace SickSharp.Format
                     return new JArray(new SingleShotEnumerable<Ref>(Arrs.Read(reference.Value).GetEnumerator())
                         .Select(ToJson).ToArray<object>());
                 case RefKind.Obj:
-                    return new JObject(new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value).GetEnumerator())
-                        .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>());
+                    return new JObject(
+                        new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value).GetEnumerator())
+                            .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>());
                 case RefKind.Root:
                     return ToJson(Roots.Read(reference.Value).Reference);
                 default:
                     throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
-            }  
+            }
         }
-        
+
         public IJsonVal Resolve(Ref reference)
         {
             switch (reference.Kind)
@@ -362,24 +373,26 @@ namespace SickSharp.Format
         {
             _stream.Close();
         }
-        
+
         private Header ReadHeader()
         {
             _stream.Position = 0;
 
             var version = _stream.ReadInt32BE();
             var tableCount = _stream.ReadInt32BE();
-            
+
             var expectedVersion = 0;
             if (version != expectedVersion)
             {
-                throw new FormatException($"Structural failure: SICK version expected to be {expectedVersion}, got {version}");
+                throw new FormatException(
+                    $"Structural failure: SICK version expected to be {expectedVersion}, got {version}");
             }
 
             var expectedTableCount = 10;
             if (tableCount != expectedTableCount)
             {
-                throw new FormatException($"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
+                throw new FormatException(
+                    $"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
             }
 
             var tableOffsets = new List<int>();
@@ -389,18 +402,20 @@ namespace SickSharp.Format
                 var next = _stream.ReadInt32BE();
                 if (t > 0 && next <= tableOffsets[t - 1])
                 {
-                    throw new FormatException($"Structural failure: wrong SICK format, table offset {next} expected to be more than previous table offset {tableOffsets[t - 1]}");
+                    throw new FormatException(
+                        $"Structural failure: wrong SICK format, table offset {next} expected to be more than previous table offset {tableOffsets[t - 1]}");
                 }
+
                 tableOffsets.Add(next);
             }
 
             var bucketCount = _stream.ReadUInt16BE();
-            
+
             // Console.WriteLine($"Offsets: {String.Join(",", tables)}, b SICKuckets: {bucketCount}" );
             var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
             return header;
         }
-        
+
         public bool TryQuery(JObj @ref, string fullPath, out IJsonVal o)
         {
             try
@@ -430,11 +445,12 @@ namespace SickSharp.Format
             var currentQuery = parts.First();
             var next = parts.Skip(1).ToList();
             HandleBracketsWithoutDot(ref currentQuery, next);
-            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value, $"query `{initialQuery}` on object `{initialObj}`");
+            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value,
+                $"query `{initialQuery}` on object `{initialObj}`");
             return Query(resolvedObj, next);
         }
-        
-        
+
+
         private static void HandleBracketsWithoutDot(ref string currentQuery, List<string> next)
         {
             if (currentQuery.EndsWith(']') && currentQuery.Contains('[') && !currentQuery.StartsWith('['))
