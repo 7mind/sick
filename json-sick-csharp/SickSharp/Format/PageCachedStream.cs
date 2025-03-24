@@ -148,7 +148,6 @@ namespace SickSharp.Format
                     spanSize =(int)( Length - offset);
                     Debug.Assert(spanSize < PageSize);
                 }
-                Debug.WriteLine($"offset={offset} sz={spanSize}, sum={offset+spanSize} max={Length}");
                 var span = Buf.AsSpan((int)offset, spanSize);
                 var res = Underlying.Read(span);
                 Debug.Assert(res > 0);
