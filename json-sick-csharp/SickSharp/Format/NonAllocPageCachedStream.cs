@@ -89,7 +89,7 @@ namespace SickSharp.Format
             
             for (long i = curPage; i < maxPage; i++)
             {
-                var page = _buf[curPage];
+                var page = _buf[i];
                 var toRead = Math.Min(left, _pageSize - pageOffset);
                 
                 var dest = buffer.AsSpan(dstPos, toRead);
