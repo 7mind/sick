@@ -24,6 +24,7 @@ function nixify() {
         --keep CI_PULL_REQUEST \
         --keep CI_BUILD_UNIQ_SUFFIX \
         --keep CI \
+        --keep TOKEN_NUGET \
         "${args[@]}" \
         --command bash "$self" "$@"
   fi
