@@ -46,7 +46,7 @@ namespace SickSharp.Format
             }
         }
 
-        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536, bool pageCached = true, int cachePageSize = 4192)
+        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536, bool pageCached = true, bool nonAllocPageCache = true, int cachePageSize = 4192)
         {
             var info = new FileInfo(path);
             var loadIntoMemory = info.Length <= inMemoryThreshold;
@@ -58,7 +58,14 @@ namespace SickSharp.Format
             }
             else if (pageCached)
             {
-                stream = new PageCachedStream(path, cachePageSize);
+                if (nonAllocPageCache)
+                {
+                    stream = new NonAllocPageCachedStream(path, cachePageSize);
+                }
+                else
+                {
+                    stream = new PageCachedStream(path, cachePageSize);
+                }
                 return new SickReader(stream);
             }
             else

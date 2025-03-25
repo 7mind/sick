@@ -6,34 +6,34 @@ using System.Threading.Tasks;
 
 namespace SickSharp.Format
 {
-    public sealed class PageCachedStream : Stream, ICachedStream
+    public sealed class NonAllocPageCachedStream : Stream, ICachedStream
     {
         private long _realPosition;
 
         private readonly int _pageSize;
-        private readonly byte[] _buf;
-        private readonly bool[] _loadedPagesIndex;
+        private readonly byte[][] _buf;
         private readonly FileStream _underlying;
         private readonly long _totalPages;
 
-        public PageCachedStream(string path, int pageSize)
+        public NonAllocPageCachedStream(string path, int pageSize)
         {
             var info = new FileInfo(path);
             Length = info.Length;
-            _buf = new byte[Length];
             _realPosition = 0;
             _pageSize = pageSize;
             _totalPages = (Length + _pageSize - 1) / _pageSize;
-            _loadedPagesIndex = new bool[_totalPages];
+            
+            _buf = new byte[_totalPages][];
+            
             for (int i = 0; i < _totalPages; i++)
             {
-                _loadedPagesIndex[i] = false;
+                Debug.Assert(_buf[i] == null);
             }
             
             _underlying = File.Open(path, FileMode.Open);
         }
 
-        ~PageCachedStream()
+        ~NonAllocPageCachedStream()
         {
             Dispose(false);
         }
@@ -43,7 +43,7 @@ namespace SickSharp.Format
             var cc = 0.0;
             for (int i = 0; i < _totalPages; i++)
             {
-                if (_loadedPagesIndex[i])
+                if (_buf[i] != null)
                 {
                     cc += 1.0;
                 }
@@ -51,7 +51,7 @@ namespace SickSharp.Format
             return cc / _totalPages;
         }
 
-        protected sealed override void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
@@ -66,7 +66,7 @@ namespace SickSharp.Format
             if (_underlying != null) await _underlying.DisposeAsync();
         }
 
-        public override async ValueTask DisposeAsync()
+        public sealed override async ValueTask DisposeAsync()
         {
             await DisposeAsyncCore();
             await base.DisposeAsync();
@@ -76,17 +76,31 @@ namespace SickSharp.Format
         public override int Read(byte[] buffer, int offset, int count)
         {
             var curPage = _realPosition / _pageSize;
-            var maxPage = (_realPosition + count) / _pageSize;           
+            var maxPage = (_realPosition + count + _pageSize - 1) / _pageSize;           
             
-            for (long i = curPage; i <= maxPage; i++)
+            for (long i = curPage; i < maxPage; i++)
             {
                 EnsurePageLoadedByIdx((int)i);
             }
-
             
-            var dest = buffer.AsSpan(offset, count);
-            var src = _buf.AsSpan((int)_realPosition, count);
-            src.CopyTo(dest);
+            var left = count;
+            var dstPos = offset;
+            var pageOffset = (int) (_realPosition % _pageSize);
+            
+            for (long i = curPage; i < maxPage; i++)
+            {
+                var page = _buf[curPage];
+                var toRead = Math.Min(left, _pageSize - pageOffset);
+                
+                var dest = buffer.AsSpan(dstPos, toRead);
+                var src = page.AsSpan(pageOffset, toRead);
+                src.CopyTo(dest);
+                
+                dstPos += toRead;
+                left -= toRead;
+                pageOffset = 0;
+            }
+            
             Position += count;
             return count;
         }
@@ -150,9 +164,7 @@ namespace SickSharp.Format
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsurePageLoadedByIdx(int page)
         {
-            Debug.Assert(page < _loadedPagesIndex.Length, $"page {page}, max={_loadedPagesIndex.Length}, size={_pageSize}, len={Length}");
-            
-            if (!_loadedPagesIndex[page])
+            if (_buf[page] == null)
             {
                 var offset = page * _pageSize;
                 _underlying.Seek(offset, SeekOrigin.Begin);
@@ -163,10 +175,11 @@ namespace SickSharp.Format
                     spanSize =(int)( Length - offset);
                     Debug.Assert(spanSize < _pageSize);
                 }
-                var span = _buf.AsSpan((int)offset, spanSize);
-                var res = _underlying.Read(span);
+
+                var pagebuf = new byte[_pageSize];
+                _buf[page] = pagebuf;
+                var res = _underlying.Read(pagebuf);
                 Debug.Assert(res > 0);
-                _loadedPagesIndex[page] = true;
             }
         }
     }
