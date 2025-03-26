@@ -30,7 +30,7 @@ namespace SickSharp.Format
                 Debug.Assert(_buf[i] == null);
             }
             
-            _underlying = File.Open(path, FileMode.Open);
+            _underlying = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
         ~NonAllocPageCachedStream()

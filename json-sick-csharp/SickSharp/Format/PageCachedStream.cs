@@ -30,7 +30,7 @@ namespace SickSharp.Format
                 _loadedPagesIndex[i] = false;
             }
             
-            _underlying = File.Open(path, FileMode.Open);
+            _underlying = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
         ~PageCachedStream()

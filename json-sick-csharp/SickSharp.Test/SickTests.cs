@@ -8,8 +8,7 @@ using Index = SickSharp.Encoder.Index;
 
 namespace SickSharp.Test;
 
-
-public class Tests
+public class SickTests
 {
     private const string PathOut = "../../../../../output";
     private const string PathInput = "../../../../../samples";

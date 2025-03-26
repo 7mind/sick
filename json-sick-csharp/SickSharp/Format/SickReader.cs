@@ -70,7 +70,7 @@ namespace SickSharp.Format
             }
             else
             {
-                stream = File.Open(path, FileMode.Open);
+                stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             }
 
             return new SickReader(stream);
