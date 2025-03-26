@@ -76,11 +76,10 @@ namespace SickSharp.Format
         public override int Read(byte[] buffer, int offset, int count)
         {
             var curPage = _realPosition / _pageSize;
-            var maxPage = Math.Min((_realPosition + count + _pageSize - 1) / _pageSize, _totalPages) ;           
-            //var maxPage = (_realPosition + count) / _pageSize;           
+            var maxPage = Math.Min((_realPosition + count) / _pageSize, _totalPages - 1) ;           
 
             for (long i = curPage; i <= maxPage; i++)
-            {
+            {            
                 EnsurePageLoadedByIdx((int)i);
             }
 
@@ -90,7 +89,7 @@ namespace SickSharp.Format
             var dstPos = offset;
             var pageOffset = (int) (_realPosition % _pageSize);
             
-            for (long i = curPage; i < maxPage; i++)
+            for (long i = curPage; i <= maxPage; i++)
             {
                 var page = _buf[i];
                 var toRead = Math.Min(left, _pageSize - pageOffset);

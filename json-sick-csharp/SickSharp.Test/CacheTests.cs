@@ -143,6 +143,6 @@ public class CacheTests
     {
         var a1 = ReadBytesFromFileStream(f1, offset, count);
         var a2 = ReadBytesFromFileStream(f2, offset, count);
-        Assert.IsTrue(a1.SequenceEqual(a2));
+        Assert.IsTrue(a1.SequenceEqual(a2), $"offset={offset} count={count}");
     }
 }
