@@ -76,19 +76,20 @@ namespace SickSharp.Format
         public override int Read(byte[] buffer, int offset, int count)
         {
             var curPage = _realPosition / _pageSize;
-            var maxPage = (_realPosition + count) / _pageSize;           
+            var maxPage = Math.Min((_realPosition + count) / _pageSize, _totalPages);           
             
             for (long i = curPage; i <= maxPage; i++)
             {
                 EnsurePageLoadedByIdx((int)i);
             }
 
+            var realCount = (int)Math.Min(count, Length - _realPosition);
             
-            var dest = buffer.AsSpan(offset, count);
-            var src = _buf.AsSpan((int)_realPosition, count);
+            var dest = buffer.AsSpan(offset, realCount);
+            var src = _buf.AsSpan((int)_realPosition, realCount);
             src.CopyTo(dest);
-            Position += count;
-            return count;
+            Position += realCount;
+            return realCount;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -150,7 +151,10 @@ namespace SickSharp.Format
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsurePageLoadedByIdx(int page)
         {
-            Debug.Assert(page < _loadedPagesIndex.Length, $"page {page}, max={_loadedPagesIndex.Length}, size={_pageSize}, len={Length}");
+            if (page >= _totalPages)
+            {
+                return;
+            }
             
             if (!_loadedPagesIndex[page])
             {

@@ -63,7 +63,19 @@ public class CacheTests
         var f2 = new NonAllocPageCachedStream(tempFilePath, 4192);
 
         CheckCorrectness(f1, f2);
+
+        CheckCopy(f2);
     }
+
+    private static void CheckCopy(Stream f2)
+    {
+        using (MemoryStream ms = new MemoryStream())
+        {
+            f2.Seek(0, SeekOrigin.Begin);
+            f2.CopyTo(ms);
+        }
+    }
+
 
     [Test]
     public void Test_AllocCache()
@@ -75,8 +87,10 @@ public class CacheTests
         var f2 = new PageCachedStream(tempFilePath, 4192);
 
         CheckCorrectness(f1, f2);
+        CheckCopy(f2);
     }
 
+    
     
     public void CheckCorrectness(Stream f1, Stream f2)
     {
