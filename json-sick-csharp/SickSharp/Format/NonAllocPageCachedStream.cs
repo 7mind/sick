@@ -79,7 +79,7 @@ namespace SickSharp.Format
             var maxPage = Math.Min((_realPosition + count + _pageSize - 1) / _pageSize, _totalPages) ;           
             //var maxPage = (_realPosition + count) / _pageSize;           
 
-            for (long i = curPage; i < maxPage; i++)
+            for (long i = curPage; i <= maxPage; i++)
             {
                 EnsurePageLoadedByIdx((int)i);
             }
