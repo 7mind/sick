@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -11,9 +12,10 @@ namespace SickSharp.Format
         private long _realPosition;
 
         private readonly int _pageSize;
-        private readonly byte[][] _buf;
-        private readonly FileStream _underlying;
+        private readonly byte[]?[] _buf;
+        private FileStream? _underlying;
         private readonly long _totalPages;
+        private int _allocatedPages;
 
         public NonAllocPageCachedStream(string path, int pageSize)
         {
@@ -22,6 +24,7 @@ namespace SickSharp.Format
             _realPosition = 0;
             _pageSize = pageSize;
             _totalPages = (Length + _pageSize - 1) / _pageSize;
+            _allocatedPages = 0;
             
             _buf = new byte[_totalPages][];
             
@@ -37,18 +40,10 @@ namespace SickSharp.Format
         {
             Dispose(false);
         }
-
+        
         public double CacheSaturation()
         {
-            var cc = 0.0;
-            for (int i = 0; i < _totalPages; i++)
-            {
-                if (_buf[i] != null)
-                {
-                    cc += 1.0;
-                }
-            }
-            return cc / _totalPages;
+            return ((double) _allocatedPages) / _totalPages;
         }
 
         protected override void Dispose(bool disposing)
@@ -174,12 +169,12 @@ namespace SickSharp.Format
             if (_buf[page] == null)
             {
                 var offset = page * _pageSize;
+                Debug.Assert(_underlying != null, nameof(_underlying) + " != null");
                 _underlying.Seek(offset, SeekOrigin.Begin);
-                var spanSize = _pageSize;
                 var max = offset + _pageSize;
                 if (max > Length)
                 {
-                    spanSize =(int)( Length - offset);
+                    var spanSize = (int)( Length - offset);
                     Debug.Assert(spanSize < _pageSize);
                 }
 
@@ -187,7 +182,20 @@ namespace SickSharp.Format
                 _buf[page] = pagebuf;
                 var res = _underlying.Read(pagebuf);
                 Debug.Assert(res > 0);
+                _allocatedPages += 1;
+                CloseUnderlyingWhenCacheFull();
             }
         }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CloseUnderlyingWhenCacheFull()
+        {
+            if (_totalPages == _allocatedPages)
+            {
+                _underlying?.Close();
+                _underlying = null;
+            }
+        }
+
     }
 }

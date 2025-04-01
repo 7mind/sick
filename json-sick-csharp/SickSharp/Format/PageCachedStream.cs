@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -13,8 +14,9 @@ namespace SickSharp.Format
         private readonly int _pageSize;
         private readonly byte[] _buf;
         private readonly bool[] _loadedPagesIndex;
-        private readonly FileStream _underlying;
+        private FileStream? _underlying;
         private readonly long _totalPages;
+        private int _allocatedPages;
 
         public PageCachedStream(string path, int pageSize)
         {
@@ -40,15 +42,7 @@ namespace SickSharp.Format
 
         public double CacheSaturation()
         {
-            var cc = 0.0;
-            for (int i = 0; i < _totalPages; i++)
-            {
-                if (_loadedPagesIndex[i])
-                {
-                    cc += 1.0;
-                }
-            }
-            return cc / _totalPages;
+            return ((double) _allocatedPages) / _totalPages;
         }
 
         protected sealed override void Dispose(bool disposing)
@@ -159,6 +153,7 @@ namespace SickSharp.Format
             if (!_loadedPagesIndex[page])
             {
                 var offset = page * _pageSize;
+                Debug.Assert(_underlying != null, nameof(_underlying) + " != null");
                 _underlying.Seek(offset, SeekOrigin.Begin);
                 var spanSize = _pageSize;
                 var max = offset + _pageSize;
@@ -171,6 +166,18 @@ namespace SickSharp.Format
                 var res = _underlying.Read(span);
                 Debug.Assert(res > 0);
                 _loadedPagesIndex[page] = true;
+                _allocatedPages += 1;
+                CloseUnderlyingWhenCacheFull();
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CloseUnderlyingWhenCacheFull()
+        {
+            if (_totalPages == _allocatedPages)
+            {
+                _underlying?.Close();
+                _underlying = null;
             }
         }
     }
