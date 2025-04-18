@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: 7mind/github-env@minimal
       - name: Run test build
-        run: ./build.sh nix test
+        run: ./run --nix :test
   publish-scala:
     runs-on: ubuntu-latest
     needs: [ build-test ]
@@ -40,7 +40,7 @@ jobs:
             popd
           fi
 
-          ./build.sh nix publish-scala
+          ./run --nix :publish-scala
   publish-cs:
     runs-on: ubuntu-latest
     needs: [ build-test ]
@@ -54,5 +54,5 @@ jobs:
           secrets: |
             637c5cad-a680-4ea3-ac8b-b193010bee40 > TOKEN_NUGET
       - name: Build and Test
-        run: ./build.sh nix publish-cs
+        run: ./run --nix :publish-cs
 
