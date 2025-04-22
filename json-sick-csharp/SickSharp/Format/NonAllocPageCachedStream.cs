@@ -2,92 +2,52 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace SickSharp.Format
 {
     public sealed class NonAllocPageCachedStream : Stream, ICachedStream
     {
         private long _realPosition;
+        private readonly PageCachedFile _pcf;
 
-        private readonly int _pageSize;
-        private readonly byte[]?[] _buf;
-        private FileStream? _underlying;
-        private readonly long _totalPages;
-        private int _allocatedPages;
-
-        public NonAllocPageCachedStream(string path, int pageSize)
+        public NonAllocPageCachedStream(PageCachedFile file)
         {
-            var info = new FileInfo(path);
-            Length = info.Length;
+            _pcf = file;
+            Length = _pcf.Length;
             _realPosition = 0;
-            _pageSize = pageSize;
-            _totalPages = (Length + _pageSize - 1) / _pageSize;
-            _allocatedPages = 0;
-            
-            _buf = new byte[_totalPages][];
-            
-            for (int i = 0; i < _totalPages; i++)
-            {
-                Debug.Assert(_buf[i] == null);
-            }
-            
-            _underlying = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
         ~NonAllocPageCachedStream()
         {
             Dispose(false);
         }
-        
+
         public double CacheSaturation()
         {
-            return ((double) _allocatedPages) / _totalPages;
+            return _pcf.CacheSaturation();
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _underlying?.Dispose();
-            }
-
-            base.Dispose(disposing);
-        }
-
-        private async ValueTask DisposeAsyncCore()
-        {
-            if (_underlying != null) await _underlying.DisposeAsync();
-        }
-
-        public sealed override async ValueTask DisposeAsync()
-        {
-            await DisposeAsyncCore();
-            await base.DisposeAsync();
-            GC.SuppressFinalize(this);
-        }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            var curPage = _realPosition / _pageSize;
-            var maxPage = Math.Min((_realPosition + count) / _pageSize, _totalPages - 1) ;           
+            var curPage = (int)(_realPosition / _pcf.PageSize);
+            var maxPage = Math.Min((_realPosition + count) / _pcf.PageSize, _pcf.TotalPages - 1) ;           
 
-            for (long i = curPage; i <= maxPage; i++)
-            {            
-                EnsurePageLoadedByIdx((int)i);
-            }
+            // for (long i = curPage; i <= maxPage; i++)
+            // {            
+            //     _pcf.EnsurePageLoadedByIdx((int)i);
+            // }
 
             var realCount = (int)Math.Min(count, Length - _realPosition);
 
             var left = realCount;
             var dstPos = offset;
-            var pageOffset = (int) (_realPosition % _pageSize);
+            var pageOffset = (int) (_realPosition % _pcf.PageSize);
             
-            for (long i = curPage; i <= maxPage; i++)
+            for (int i = curPage; i <= maxPage; i++)
             {
-                var page = _buf[i];
-                var toRead = Math.Min(left, _pageSize - pageOffset);
+                var page = _pcf.GetPage(i);
+                var toRead = Math.Min(left, _pcf.PageSize - pageOffset);
                 
                 var dest = buffer.AsSpan(dstPos, toRead);
                 var src = page.AsSpan(pageOffset, toRead);
@@ -118,7 +78,7 @@ namespace SickSharp.Format
                     break;
             }
             Debug.Assert(pos <= Length, $"pos {pos} len={Length}");
-            EnsurePageLoadedByOffset(pos);
+            // _pcf.EnsurePageLoadedByOffset(pos);
             _realPosition = pos;
             return _realPosition;
         }
@@ -149,53 +109,7 @@ namespace SickSharp.Format
             set => Seek(value, SeekOrigin.Begin);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsurePageLoadedByOffset(long pos)
-        {
-            
-            var page = pos / _pageSize;
-            Debug.Assert(pos <= Length, $"offset {pos}, max {Length}");
-            EnsurePageLoadedByIdx((int)page);
-        }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsurePageLoadedByIdx(int page)
-        {
-            if (page >= _totalPages)
-            {
-                return;
-            }
-            
-            if (_buf[page] == null)
-            {
-                var offset = page * _pageSize;
-                Debug.Assert(_underlying != null, nameof(_underlying) + " != null");
-                _underlying.Seek(offset, SeekOrigin.Begin);
-                var max = offset + _pageSize;
-                if (max > Length)
-                {
-                    var spanSize = (int)( Length - offset);
-                    Debug.Assert(spanSize < _pageSize);
-                }
-
-                var pagebuf = new byte[_pageSize];
-                _buf[page] = pagebuf;
-                var res = _underlying.Read(pagebuf);
-                Debug.Assert(res > 0);
-                _allocatedPages += 1;
-                CloseUnderlyingWhenCacheFull();
-            }
-        }
-        
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CloseUnderlyingWhenCacheFull()
-        {
-            if (_totalPages == _allocatedPages)
-            {
-                _underlying?.Close();
-                _underlying = null;
-            }
-        }
 
     }
 }

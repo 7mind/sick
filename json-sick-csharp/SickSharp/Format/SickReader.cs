@@ -13,6 +13,26 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
+    public interface ISickCacheManager
+    {
+        PageCachedFile Provide(string path, int pageSize);
+
+        private static readonly ISickCacheManager DummyInstance = new DummySickCacheManager();
+        public static ISickCacheManager Dummy()
+        {
+            return DummyInstance;
+        }
+    }
+    
+    public class DummySickCacheManager : ISickCacheManager
+    {
+        public PageCachedFile Provide(string path, int pageSize)
+        {
+            return new PageCachedFile(path, pageSize);
+        }
+    }
+
+
     public record FoundRef(Ref result, List<String> query);
 
     /// <summary>
@@ -46,7 +66,13 @@ namespace SickSharp.Format
             }
         }
 
-        public static SickReader OpenFile(string path, long inMemoryThreshold = 65536, bool pageCached = true, bool nonAllocPageCache = true, int cachePageSize = 4192)
+        public static SickReader OpenFile(
+            string path,
+            ISickCacheManager cacheManager,
+            long inMemoryThreshold = 65536, 
+            bool pageCached = true, 
+            int cachePageSize = 4192
+            )
         {
             var info = new FileInfo(path);
             var loadIntoMemory = info.Length <= inMemoryThreshold;
@@ -58,15 +84,7 @@ namespace SickSharp.Format
             }
             else if (pageCached)
             {
-                if (nonAllocPageCache)
-                {
-                    stream = new NonAllocPageCachedStream(path, cachePageSize);
-                }
-                else
-                {
-                    stream = new PageCachedStream(path, cachePageSize);
-                }
-                return new SickReader(stream);
+                stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize));
             }
             else
             {

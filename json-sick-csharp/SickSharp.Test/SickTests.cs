@@ -172,7 +172,7 @@ public class SickTests
                 var name = fi.Name;
                 Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
 
-                using (var reader = SickReader.OpenFile(input, inMemoryThreshold:32768))
+                using (var reader = SickReader.OpenFile(input, ISickCacheManager.Dummy(),  inMemoryThreshold:32768))
                 {
                     var rootRef = reader.GetRoot(RootName);
                 

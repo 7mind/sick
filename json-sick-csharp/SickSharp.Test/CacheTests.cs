@@ -60,7 +60,7 @@ public class CacheTests
         WriteRandomFile(tempFilePath, _fileSize);
 
         var f1  = File.Open(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var f2 = new NonAllocPageCachedStream(tempFilePath, 4192);
+        var f2 = new NonAllocPageCachedStream(new PageCachedFile(tempFilePath, 4192));
 
         CheckCorrectness(f1, f2);
 
@@ -75,22 +75,6 @@ public class CacheTests
             f2.CopyTo(ms);
         }
     }
-
-
-    [Test]
-    public void Test_AllocCache()
-    {
-        var tempFilePath = Path.GetTempFileName();
-        WriteRandomFile(tempFilePath, _fileSize);
-        
-        var f1  = File.Open(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var f2 = new PageCachedStream(tempFilePath, 4192);
-
-        CheckCorrectness(f1, f2);
-        CheckCopy(f2);
-    }
-
-    
     
     public void CheckCorrectness(Stream f1, Stream f2)
     {
