@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace SickSharp.Format
 {
@@ -30,19 +31,20 @@ namespace SickSharp.Format
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            var curPage = (int)(_realPosition / _pcf.PageSize);
-            var maxPage = Math.Min((_realPosition + count) / _pcf.PageSize, _pcf.TotalPages - 1) ;           
+            var pos = Volatile.Read(ref _realPosition);
+            var curPage = (int)(pos / _pcf.PageSize);
+            var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1) ;           
 
             // for (long i = curPage; i <= maxPage; i++)
             // {            
             //     _pcf.EnsurePageLoadedByIdx((int)i);
             // }
 
-            var realCount = (int)Math.Min(count, Length - _realPosition);
+            var realCount = (int)Math.Min(count, Length - pos);
 
             var left = realCount;
             var dstPos = offset;
-            var pageOffset = (int) (_realPosition % _pcf.PageSize);
+            var pageOffset = (int) (pos % _pcf.PageSize);
             
             for (int i = curPage; i <= maxPage; i++)
             {
@@ -71,7 +73,7 @@ namespace SickSharp.Format
                     pos = offset;
                     break;
                 case SeekOrigin.Current:
-                    pos = _realPosition + offset;
+                    pos = Volatile.Read(ref _realPosition) + offset;
                     break;
                 case SeekOrigin.End:
                     pos = Length - offset;
@@ -79,7 +81,7 @@ namespace SickSharp.Format
             }
             Debug.Assert(pos <= Length, $"pos {pos} len={Length}");
             // _pcf.EnsurePageLoadedByOffset(pos);
-            _realPosition = pos;
+            Volatile.Write(ref _realPosition, pos);
             return _realPosition;
         }
 
