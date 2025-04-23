@@ -88,31 +88,117 @@ namespace SickSharp.Format
                 throw new ObjectDisposedException($"Cache is being disposed, refusing to provide page {page}");
             }
 
-
             if (page < 0 || page >= TotalPages)
             {
                 throw new ArgumentOutOfRangeException(nameof(page));
             }
 
-            // if it fails, we will throw, next call will reattempt loading
-            EnsurePageLoadedByIdx(page);
+            var status = Volatile.Read(ref _status[page]);
 
-            if (_disposed)
+            if (status == (int)CachePageStatus.Loaded)
             {
-                throw new ObjectDisposedException($"Cache is being disposed, page {page} was loaded won't be returned");
+                var result = Volatile.Read(ref _buf[page]);
+                Debug.Assert(result != null);
+                return result;
             }
 
-            Debug.Assert(Volatile.Read(ref _status[page]) == 2 && Volatile.Read(ref _buf[page]) != null);
-
-            return Volatile.Read(ref _buf[page]);
+            EnsurePageLoadedByIdx(page);
+            
+            status = Volatile.Read(ref _status[page]);
+            
+            return status switch
+            {
+                (int)CachePageStatus.Loaded => 
+                    Volatile.Read(ref _buf[page])!,
+                (int)CachePageStatus.Dead => 
+                    throw new ObjectDisposedException(
+                        $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"),
+                _ => 
+                    throw new InvalidOperationException($"Unexpected page state after loading: {status}")
+            };
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsurePageLoadedByIdx(int page)
         {
             if (page < 0 || page >= TotalPages) return;
 
-            if (Volatile.Read(ref _status[page]) == 2) return;
+            var currentStatus = Interlocked.CompareExchange(
+                ref _status[page],
+                (int)CachePageStatus.Loading,
+                (int)CachePageStatus.Missing
+            );
+            
+            switch (currentStatus)
+            {
+                case (int)CachePageStatus.Loaded:
+                    return;
+
+                case (int)CachePageStatus.Missing:
+                    try
+                    {
+                        LoadPageSynchronously(page);
+                        _pageLoadedLatches[page].TrySetResult(true);
+                    }
+                    catch (Exception t)
+                    {
+                        Interlocked.Exchange(ref _status[page], (int)CachePageStatus.Dead);
+                        // here we fail existing waiting threads
+                        _pageLoadedLatches[page].TrySetException(t);
+                        throw;
+                    }
+                    break;
+
+                case (int)CachePageStatus.Loading:
+                    _pageLoadedLatches[page].Task.Wait();
+                    break;
+
+                case (int)CachePageStatus.Dead:
+                    throw new ObjectDisposedException(
+                        $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception");
+            }
+        }
+
+        public async Task<byte[]?> GetPageAsync(int page)
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException($"Cache is being disposed, refusing to provide page {page}");
+            }
+
+            if (page < 0 || page >= TotalPages)
+            {
+                throw new ArgumentOutOfRangeException(nameof(page));
+            }
+
+            var status = Volatile.Read(ref _status[page]);
+
+            if (status == (int)CachePageStatus.Loaded)
+            {
+                var result = Volatile.Read(ref _buf[page]);
+                Debug.Assert(result != null);
+                return result;
+            }
+
+            await EnsurePageLoadedByIdxAsync(page).ConfigureAwait(false);
+            status = Volatile.Read(ref _status[page]);
+            
+            return status switch
+            {
+                (int)CachePageStatus.Loaded => 
+                    Volatile.Read(ref _buf[page])!,
+                (int)CachePageStatus.Dead => 
+                    throw new ObjectDisposedException(
+                    $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"),
+                _ => 
+                    throw new InvalidOperationException($"Unexpected page state after loading: {status}")
+            };
+        }
+
+        private async Task EnsurePageLoadedByIdxAsync(int page)
+        {
+            if (page < 0 || page >= TotalPages) return;
 
             var currentStatus = Interlocked.CompareExchange(
                 ref _status[page],
@@ -120,71 +206,78 @@ namespace SickSharp.Format
                 (int)CachePageStatus.Missing
             );
 
-            if (currentStatus == (int)CachePageStatus.Missing)
+            switch ((CachePageStatus)currentStatus)
             {
-                try
-                {
-                    Debug.Assert(_underlying != null);
-                    var offset = page * PageSize;
-                    var newPage = new byte[PageSize];
+                case CachePageStatus.Loaded:
+                    return;
 
-                    int read;
-                    lock (_lock)
+                case CachePageStatus.Missing:
+                    try
                     {
-                        _underlying!.Seek(offset, SeekOrigin.Begin);
-                        read = _underlying!.Read(newPage, 0, newPage.Length);
+                        // Offload synchronous file IO to threadpool
+                        await Task.Run(() => LoadPageSynchronously(page)).ConfigureAwait(false);
+                        _pageLoadedLatches[page].TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Exchange(ref _status[page], (int)CachePageStatus.Dead);
+                        _pageLoadedLatches[page].TrySetException(ex);
+                        throw;
                     }
 
-                    Debug.Assert(read > 0);
+                    break;
 
-                    if (read < PageSize)
-                    {
-                        newPage = newPage[..read];
-                    }
+                case CachePageStatus.Loading:
+                    await _pageLoadedLatches[page].Task.ConfigureAwait(false);
+                    break;
 
-                    Interlocked.CompareExchange(ref _buf[page], newPage, null);
-                    Interlocked.Increment(ref _processedPages);
-
-                    var statusBeforeUpdate = Interlocked.CompareExchange(
-                        ref _status[page],
-                        (int)CachePageStatus.Loaded,
-                        (int)CachePageStatus.Loading
-                    );
-
-                    // disposal may set status concurrently, so we have to check again
-                    if (statusBeforeUpdate == (int)CachePageStatus.Loading)
-                    {
-                        if (Volatile.Read(ref _processedPages) == TotalPages)
-                        {
-                            lock (_lock)
-                            {
-                                _underlying.Dispose();
-                                _underlying = null;
-                            }
-                        }
-                    }
-
-                    _pageLoadedLatches[page].TrySetResult(true);
-                }
-                catch (Exception t)
-                {
-                    Interlocked.Exchange(ref _status[page], (int)CachePageStatus.Dead);
-                    // here we fail existing waiting threads
-                    _pageLoadedLatches[page].TrySetException(t);
-
-                    throw;
-                }
-            }
-            else if (currentStatus == (int)CachePageStatus.Loading)
-            {
-                _pageLoadedLatches[page].Task.Wait();
-            }
-            else if (currentStatus == (int)CachePageStatus.Dead)
-            {
-                throw new ObjectDisposedException($"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception");
+                case CachePageStatus.Dead:
+                    throw new ObjectDisposedException(
+                        $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception");
             }
         }
 
+        private void LoadPageSynchronously(int page)
+        {
+            Debug.Assert(_underlying != null);
+            var offset = page * PageSize;
+            var newPage = new byte[PageSize];
+
+            int read;
+            lock (_lock)
+            {
+                if (_underlying == null)
+                    throw new ObjectDisposedException($"Cache is being disposed, page {page} won't be loaded");
+
+                _underlying.Seek(offset, SeekOrigin.Begin);
+                read = _underlying.Read(newPage, 0, newPage.Length);
+            }
+
+            if (read < PageSize)
+            {
+                newPage = newPage[..read];
+            }
+
+            var pageBeforeUpdate = Interlocked.CompareExchange(ref _buf[page], newPage, null);
+
+            if (pageBeforeUpdate == null)
+            {
+                Interlocked.CompareExchange(
+                    ref _status[page],
+                    (int)CachePageStatus.Loaded,
+                    (int)CachePageStatus.Loading
+                );
+
+                if (Interlocked.Increment(ref _processedPages) == TotalPages)
+                {
+                    lock (_lock)
+                    {
+                        _underlying?.Dispose();
+                        _underlying = null;
+                    }
+                }
+            }
+        }
 
         public void Dispose()
         {
@@ -204,8 +297,8 @@ namespace SickSharp.Format
 
                 for (int i = 0; i < TotalPages; i++)
                 {
-                    Interlocked.Exchange(ref _status[i], -1);
-                    Interlocked.Exchange(ref _buf[i], null);
+                    Interlocked.Exchange(ref _status[i], (int)CachePageStatus.Dead);
+                    // we don't clean _buf in order to prevent NPEs in user threads
                     _pageLoadedLatches[i].TrySetCanceled();
                 }
 
