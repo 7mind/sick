@@ -107,8 +107,8 @@ namespace SickSharp.Format
         public override long Length { get; }
         public override long Position
         {
-            get => _realPosition;
-            set => Seek(value, SeekOrigin.Begin);
+            get => Volatile.Read(ref _realPosition);
+            set => Volatile.Write(ref _realPosition, value);
         }
 
 

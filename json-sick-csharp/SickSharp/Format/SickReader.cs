@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -18,9 +19,16 @@ namespace SickSharp.Format
         PageCachedFile Provide(string path, int pageSize);
 
         private static readonly ISickCacheManager DummyInstance = new DummySickCacheManager();
+        
         public static ISickCacheManager Dummy()
         {
             return DummyInstance;
+        }
+        
+        private static readonly ISickCacheManager GlobalPerFileInstance = new PerFileSickCacheManager();
+        public static ISickCacheManager GlobalPerFile()
+        {
+            return GlobalPerFileInstance;
         }
     }
     
@@ -32,6 +40,15 @@ namespace SickSharp.Format
         }
     }
 
+    public class PerFileSickCacheManager : ISickCacheManager
+    {
+        private ConcurrentDictionary<string, PageCachedFile> _cache = new();
+
+        public PageCachedFile Provide(string path, int pageSize)
+        {
+            return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize));
+        }
+    }
 
     public record FoundRef(Ref result, List<String> query);
 

@@ -8,83 +8,102 @@ using System.Threading.Tasks;
 
 namespace SickSharp.Format
 {
+    public enum CachePageStatus : int
+    {
+        Missing = 0,
+        Loading = 1,
+        Loaded = 2,
+        Dead = -1
+    }
+
     public sealed class PageCachedFile : IDisposable
     {
         public int PageSize { get; }
         public int TotalPages { get; }
         public long Length { get; }
-        
+
         private readonly byte[]?[] _buf;
-        private readonly int[] _status; // 0 -> missing, 1 -> loading, 2 -> loaded
-        
+        private readonly int[] _status;
+
         private FileStream? _underlying;
         private readonly object _lock = new();
-        
+
         private int _processedPages;
         private volatile bool _disposed;
-        
-        private readonly TaskCompletionSource<bool>[] _latches;  
-        
-        private void ThrowIfDisposed() {
-            if (_disposed) throw new ObjectDisposedException(nameof(PageCachedFile));
+
+        private readonly TaskCompletionSource<bool>[] _pageLoadedLatches;
+
+        public CachePageStatus GetPageStatus(int page)
+        {
+            var id = Volatile.Read(ref _status[page]);
+            return (CachePageStatus)id;
         }
-        
+
         public PageCachedFile(string path, int pageSize)
         {
             Debug.Assert(pageSize > 0);
-            
+
             var info = new FileInfo(path);
             Length = info.Length;
-            
+
             PageSize = pageSize;
             var fullSize = (Length + PageSize - 1) / PageSize;
             Debug.Assert(fullSize <= Int32.MaxValue);
             TotalPages = (int)(fullSize);
             _processedPages = 0;
-            
+
             _buf = new byte[TotalPages][];
             _status = new int[TotalPages];
-            _latches = new TaskCompletionSource<bool>[TotalPages];
+            _pageLoadedLatches = new TaskCompletionSource<bool>[TotalPages];
 
             if (TotalPages > 0)
             {
                 for (int i = 0; i < TotalPages; i++)
                 {
-                    _status[i] = 0;
+                    _status[i] = (int)CachePageStatus.Missing;
                     // I have no idea if TaskCreationOptions.RunContinuationsAsynchronously is necessary 
-                    _latches[i] = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _pageLoadedLatches[i] =
+                        new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                     Debug.Assert(_buf[i] == null);
                 }
-            
-                _underlying = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);    
+
+                _underlying = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             }
             else
             {
                 _underlying = null;
             }
-            
         }
-        
+
         public double CacheSaturation()
         {
             var currentlyAllocated = Volatile.Read(ref _processedPages);
-            return TotalPages == 0 ? 1.0 : ((double) currentlyAllocated) / TotalPages;
+            return TotalPages == 0 ? 1.0 : ((double)currentlyAllocated) / TotalPages;
         }
 
         public byte[]? GetPage(int page)
         {
-            ThrowIfDisposed();
-            
+            if (_disposed)
+            {
+                throw new ObjectDisposedException($"Cache is being disposed, refusing to provide page {page}");
+            }
+
+
             if (page < 0 || page >= TotalPages)
             {
                 throw new ArgumentOutOfRangeException(nameof(page));
             }
-            
+
             // if it fails, we will throw, next call will reattempt loading
             EnsurePageLoadedByIdx(page);
-            
+
+            if (_disposed)
+            {
+                throw new ObjectDisposedException($"Cache is being disposed, page {page} was loaded won't be returned");
+            }
+
             Debug.Assert(Volatile.Read(ref _status[page]) == 2 && Volatile.Read(ref _buf[page]) != null);
-            
+
             return Volatile.Read(ref _buf[page]);
         }
 
@@ -92,66 +111,77 @@ namespace SickSharp.Format
         private void EnsurePageLoadedByIdx(int page)
         {
             if (page < 0 || page >= TotalPages) return;
-            
+
             if (Volatile.Read(ref _status[page]) == 2) return;
 
-            var currentStatus = Interlocked.CompareExchange(ref _status[page], 1, 0);
-            if (currentStatus == 0)
-            {
-                // page reads will be serialized, that's fine, there is no easy fix because Files are thread-unsafe
-                // an async version with ReadAsync is possible though
-                lock (_lock) 
-                {
-                    if (Interlocked.CompareExchange(ref _status[page], 1, 1) == 1)
-                    {
-                        try
-                        {
-                            ThrowIfDisposed();
-                            Debug.Assert(_underlying != null);
-                            var offset = page * PageSize;
-                            var newPage = new byte[PageSize];
-                            
-                            _underlying!.Seek(offset, SeekOrigin.Begin);
-                            var read = _underlying!.Read(newPage, 0, newPage.Length);
-                            Debug.Assert(read > 0);
+            var currentStatus = Interlocked.CompareExchange(
+                ref _status[page],
+                (int)CachePageStatus.Loading,
+                (int)CachePageStatus.Missing
+            );
 
-                            if (read < PageSize)
+            if (currentStatus == (int)CachePageStatus.Missing)
+            {
+                try
+                {
+                    Debug.Assert(_underlying != null);
+                    var offset = page * PageSize;
+                    var newPage = new byte[PageSize];
+
+                    int read;
+                    lock (_lock)
+                    {
+                        _underlying!.Seek(offset, SeekOrigin.Begin);
+                        read = _underlying!.Read(newPage, 0, newPage.Length);
+                    }
+
+                    Debug.Assert(read > 0);
+
+                    if (read < PageSize)
+                    {
+                        newPage = newPage[..read];
+                    }
+
+                    Interlocked.CompareExchange(ref _buf[page], newPage, null);
+                    Interlocked.Increment(ref _processedPages);
+
+                    var statusBeforeUpdate = Interlocked.CompareExchange(
+                        ref _status[page],
+                        (int)CachePageStatus.Loaded,
+                        (int)CachePageStatus.Loading
+                    );
+
+                    // disposal may set status concurrently, so we have to check again
+                    if (statusBeforeUpdate == (int)CachePageStatus.Loading)
+                    {
+                        if (Volatile.Read(ref _processedPages) == TotalPages)
+                        {
+                            lock (_lock)
                             {
-                                newPage = newPage[..read];
-                            }
-                            
-                            Volatile.Write(ref _buf[page], newPage);
-                            Interlocked.Increment(ref _processedPages);
-                            Volatile.Write(ref _status[page], 2);
-                            
-                            if (Volatile.Read(ref _processedPages) == TotalPages)
-                            {
-                                _underlying.Close();
                                 _underlying.Dispose();
                                 _underlying = null;
                             }
-                            
-                            _latches[page].TrySetResult(true);
-                        }
-                        catch (Exception t)
-                        {
-                            // we will re-attempt loading
-                            Volatile.Write(ref _status[page], 0);
-
-                            // we will create new latch for threads which will wait for further attempts
-                            var existingLatch = Interlocked.Exchange(ref _latches[page], new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
-                            
-                            // here we fail existing waiting threads
-                            existingLatch.TrySetException(t);
-                            
-                            throw;
                         }
                     }
+
+                    _pageLoadedLatches[page].TrySetResult(true);
+                }
+                catch (Exception t)
+                {
+                    Interlocked.Exchange(ref _status[page], (int)CachePageStatus.Dead);
+                    // here we fail existing waiting threads
+                    _pageLoadedLatches[page].TrySetException(t);
+
+                    throw;
                 }
             }
-            else if (currentStatus == 1)
+            else if (currentStatus == (int)CachePageStatus.Loading)
             {
-                _latches[page].Task.Wait();
+                _pageLoadedLatches[page].Task.Wait();
+            }
+            else if (currentStatus == (int)CachePageStatus.Dead)
+            {
+                throw new ObjectDisposedException($"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception");
             }
         }
 
@@ -162,18 +192,23 @@ namespace SickSharp.Format
             {
                 return;
             }
-            
+
             lock (_lock)
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 _disposed = true;
 
                 for (int i = 0; i < TotalPages; i++)
                 {
-                    Interlocked.Exchange(ref _status[i], 0);
+                    Interlocked.Exchange(ref _status[i], -1);
                     Interlocked.Exchange(ref _buf[i], null);
-                    _latches[i].TrySetCanceled();
+                    _pageLoadedLatches[i].TrySetCanceled();
                 }
-                
+
                 _underlying?.Dispose();
             }
         }
