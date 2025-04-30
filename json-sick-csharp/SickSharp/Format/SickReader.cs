@@ -50,7 +50,7 @@ namespace SickSharp.Format
         }
     }
 
-    public record FoundRef(Ref result, List<String> query);
+    public record FoundRef(Ref result, string[] query);
 
     /// <summary>
     ///     <list type="bullet">
@@ -162,18 +162,7 @@ namespace SickSharp.Format
             Ref? value;
             return _roots.TryGetValue(id, out value) ? value : null;
         }
-
-        public IJsonVal Query(Ref reference, string path)
-        {
-            return Query(reference, path.Split('.').ToList());
-        }
-
-        public FoundRef QueryRef(Ref reference, string path)
-        {
-            var query = path.Split('.').ToList();
-            return new FoundRef(QueryRef(reference, query), query);
-        }
-
+        
         public Ref ReadObjectFieldRef(Ref reference, string field)
         {
             if (reference.Kind == RefKind.Obj)
@@ -294,46 +283,7 @@ namespace SickSharp.Format
             );
         }
 
-
-        private Ref QueryRef(Ref reference, List<string> parts)
-        {
-            if (parts.Count == 0)
-            {
-                return reference;
-            }
-
-            var currentQuery = parts.First();
-            var next = parts.Skip(1).ToList();
-
-            HandleBracketsWithoutDot(ref currentQuery, next);
-
-            if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
-            {
-                var index = currentQuery.Substring(1, currentQuery.Length - 2);
-                var iindex = Int32.Parse(index);
-
-                var resolvedArr = ReadArrayElementRef(reference, iindex);
-                return QueryRef(resolvedArr, next);
-            }
-
-            var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
-            return QueryRef(resolvedObj, next);
-        }
-
-        private IJsonVal Query(Ref reference, List<string> parts)
-        {
-            var result = QueryRef(reference, parts);
-            var value = Resolve(result);
-            if (value == null)
-            {
-                throw new KeyNotFoundException(
-                    $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", parts)}`"
-                );
-            }
-
-            return value;
-        }
-
+        
         public JToken ToJson(Ref reference)
         {
             switch (reference.Kind)
@@ -471,38 +421,7 @@ namespace SickSharp.Format
                 return false;
             }
         }
-
-        public IJsonVal Query(JObj jObj, string path)
-        {
-            return Query(jObj, path.Split('.').ToList(), jObj, path);
-        }
-
-        private IJsonVal Query(JObj jObj, List<string> parts, JObj initialObj, string initialQuery)
-        {
-            if (parts.Count == 0)
-            {
-                return jObj;
-            }
-
-            var currentQuery = parts.First();
-            var next = parts.Skip(1).ToList();
-            HandleBracketsWithoutDot(ref currentQuery, next);
-            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value,
-                $"query `{initialQuery}` on object `{initialObj}`");
-            return Query(resolvedObj, next);
-        }
-
-
-        private static void HandleBracketsWithoutDot(ref string currentQuery, List<string> next)
-        {
-            if (currentQuery.EndsWith(']') && currentQuery.Contains('[') && !currentQuery.StartsWith('['))
-            {
-                var index = currentQuery.Substring(currentQuery.IndexOf('['));
-                currentQuery = currentQuery.Substring(0, currentQuery.IndexOf('['));
-                next.Insert(0, index);
-            }
-        }
-
+        
         public bool TryQuery(Ref @ref, string fullPath, out IJsonVal o)
         {
             try
@@ -515,6 +434,107 @@ namespace SickSharp.Format
                 o = default!;
                 return false;
             }
+        }
+        
+               public IJsonVal Query(Ref reference, string path)
+        {
+            return Query(reference, path.Split('.'));
+        }
+        
+        public FoundRef QueryRef(Ref reference, string path)
+        {
+            var query = path.Split('.');
+            return new FoundRef(QueryRef(reference, query), query);
+        }
+
+        
+        public IJsonVal Query(Ref reference, Span<string> path)
+        {
+            var result = QueryRef(reference, path);
+            var value = Resolve(result);
+            if (value == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", path.ToArray())}`"
+                );
+            }
+
+            return value;
+        }
+        
+        public IJsonVal Query(JObj jObj, string path)
+        {
+            return Query(jObj, path.Split('.'), jObj, path);
+        }
+
+        
+        public Ref QueryRef(Ref reference, Span<string> path)
+        {
+            if (path.Length == 0)
+            {
+                return reference;
+            }
+
+            var currentQuery = path[0];
+            var next = HandleBracketsWithoutDot(ref currentQuery, path);
+
+            if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
+            {
+                var index = currentQuery.Substring(1, currentQuery.Length - 2);
+                var iindex = Int32.Parse(index);
+
+                var resolvedArr = ReadArrayElementRef(reference, iindex);
+                return QueryRef(resolvedArr, next.ToArray());
+            }
+            
+            var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
+            
+            return QueryRef(resolvedObj, next);
+        }
+        
+        private IJsonVal Query(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
+        {
+            if (path.Length == 0)
+            {
+                return jObj;
+            }
+
+            var currentQuery = path[0];
+            var next = HandleBracketsWithoutDot(ref currentQuery, path);
+            
+            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value, $"query `{initialQuery}` on object `{initialObj}`");
+            
+            return Query(resolvedObj, next);
+        }
+
+
+        private static Span<string> HandleBracketsWithoutDot(ref string currentQuery, Span<string> current)
+        {
+            var span = current.Slice(1, current.Length-1);
+
+            var index = ExtractIndex(ref currentQuery);
+            if (index != null)
+            {
+                var tmp = span.ToArray().ToList();
+                tmp.Insert(0, index);
+                span = tmp.ToArray();
+            }
+
+            return span;
+        }
+        
+        private static string? ExtractIndex(ref string currentQuery)
+        {
+            string? result = null;
+            var indexStart = currentQuery.IndexOf('[');
+            // we have [ but not as the first symbol
+            if (indexStart > 0 && currentQuery.EndsWith(']'))
+            {
+                var index = currentQuery.Substring(indexStart);
+                currentQuery = currentQuery.Substring(0, indexStart);
+                result = index;
+            }
+            return result;
         }
     }
 }
