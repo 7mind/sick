@@ -36,6 +36,32 @@ public class SickTests
         }
     }
     
+    [Test]
+    public void Test1_Queries()
+    {
+        var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
+        
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), inMemoryThreshold: 32768))
+        {
+            var rootRef = reader.GetRoot(RootName);
+            
+            var o1 = (JStr)reader.Query(rootRef, "info.version");
+            Assert.That(o1.Value, Is.EqualTo("1.0.0"));
+            
+            var o2 = (JStr)reader.Query(rootRef, "swagger");
+            Assert.That(o2.Value, Is.EqualTo("2.0"));
+
+            var o3 = (JStr)reader.Query(rootRef, "schemes[0]");
+            Assert.That(o3.Value, Is.EqualTo("http"));
+            
+            var o4 = (JStr)reader.Query(rootRef, "schemes.[0]");
+            Assert.That(o4.Value, Is.EqualTo("http"));
+            
+            var o5 = (JStr)reader.Query(rootRef, "schemes.[-1]");
+            Assert.That(o5.Value, Is.EqualTo("http"));
+        }
+    }
+    //
     // [Test]
     // public void Test3_repro()
     // {
