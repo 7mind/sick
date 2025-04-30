@@ -506,35 +506,37 @@ namespace SickSharp.Format
             
             return Query(resolvedObj, next);
         }
-
-
+        
         private static Span<string> HandleBracketsWithoutDot(ref string currentQuery, Span<string> current)
         {
-            var span = current.Slice(1, current.Length-1);
+            var span = current.Slice(1);
 
-            var index = ExtractIndex(ref currentQuery);
-            if (index != null)
+            var maybeIndex = ExtractIndex(ref currentQuery);
+            if (maybeIndex != null)
             {
-                var tmp = span.ToArray().ToList();
-                tmp.Insert(0, index);
-                span = tmp.ToArray();
+                var newArray = new string[span.Length + 1];
+                newArray[0] = maybeIndex;
+                span.CopyTo(newArray.AsSpan(1));
+                span = newArray;
             }
-
+    
             return span;
         }
         
         private static string? ExtractIndex(ref string currentQuery)
         {
-            string? result = null;
             var indexStart = currentQuery.IndexOf('[');
             // we have [ but not as the first symbol
             if (indexStart > 0 && currentQuery.EndsWith(']'))
             {
                 var index = currentQuery.Substring(indexStart);
                 currentQuery = currentQuery.Substring(0, indexStart);
-                result = index;
+                return index;
             }
-            return result;
+            return null;
         }
+        
+
+        
     }
 }
