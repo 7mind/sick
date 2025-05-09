@@ -16,13 +16,13 @@ public class SickTests
     private const uint iters = 100_000;
 
     private List<string> _files;
-    
+
 
     [SetUp]
     public void Setup()
     {
         Directory.CreateDirectory(PathOut);
-         _files = Directory.EnumerateFiles(PathInput, "*.json", SearchOption.AllDirectories).ToList();
+        _files = Directory.EnumerateFiles(PathInput, "*.json", SearchOption.AllDirectories).ToList();
     }
 
     [Test]
@@ -35,28 +35,29 @@ public class SickTests
             DoWrite(file, Path.Combine(PathOut, $"{name}-CS.bin"));
         }
     }
-    
+
     [Test]
     public void Test1_Queries()
     {
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
-        
-        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), inMemoryThreshold: 32768))
+
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
+                   inMemoryThreshold: 32768))
         {
-            var rootRef = reader.GetRoot(RootName);
-            
+            var rootRef = reader.GetRoot(RootName)!;
+
             var o1 = (JStr)reader.Query(rootRef, "info.version");
             Assert.That(o1.Value, Is.EqualTo("1.0.0"));
-            
+
             var o2 = (JStr)reader.Query(rootRef, "swagger");
             Assert.That(o2.Value, Is.EqualTo("2.0"));
 
             var o3 = (JStr)reader.Query(rootRef, "schemes[0]");
             Assert.That(o3.Value, Is.EqualTo("http"));
-            
+
             var o4 = (JStr)reader.Query(rootRef, "schemes.[0]");
             Assert.That(o4.Value, Is.EqualTo("http"));
-            
+
             var o5 = (JStr)reader.Query(rootRef, "schemes.[-1]");
             Assert.That(o5.Value, Is.EqualTo("http"));
         }
@@ -82,13 +83,14 @@ public class SickTests
     public int Traverse(Ref reference, SickReader reader, int count, short limit)
     {
         // Console.WriteLine(reader.ToJson(reference));
-        
+
         var readFirst = false;
         var next = count + 1;
         if (count >= limit)
         {
             return count;
         }
+
         if (reference.Kind == RefKind.Arr)
         {
             var arr = ((JArr)reader.Resolve(reference)).Value;
@@ -96,7 +98,7 @@ public class SickTests
             {
                 return next;
             }
-    
+
             Ref entry;
             int index;
             if (readFirst)
@@ -114,7 +116,7 @@ public class SickTests
             Debug.Assert(entry == entryRef);
             return Traverse(entryRef, reader, next, limit);
         }
-    
+
         if (reference.Kind == RefKind.Obj)
         {
             var obj = ((JObj)reader.Resolve(reference)).Value;
@@ -122,7 +124,7 @@ public class SickTests
             {
                 return next;
             }
-    
+
             KeyValuePair<string, Ref> entry;
             int index;
             if (readFirst)
@@ -135,14 +137,15 @@ public class SickTests
                 index = obj.Count / 2;
                 entry = obj.Content().ElementAt(index);
             }
+
             var fieldVal = reader.ReadObjectFieldRef(reference, entry.Key);
             Debug.Assert(fieldVal == entry.Value);
             return Traverse(entry.Value, reader, next, limit);
         }
-    
+
         return count;
     }
-    
+
     // public int Traverse(Ref reference, SickReader reader, int count, short limit)
     // {
     //     var next = count + 1;
@@ -188,7 +191,8 @@ public class SickTests
         inputs.Sort();
 
         Assert.IsNotNull(inputs.Find(x => x.Contains("-CS")), "No file containing `-CS` found!");
-        Assert.IsNotNull(inputs.Find(x => x.Contains("-SCALA")), "No file containing `-SCALA` found! Run Scala tests to generate");
+        Assert.IsNotNull(inputs.Find(x => x.Contains("-SCALA")),
+            "No file containing `-SCALA` found! Run Scala tests to generate");
 
         foreach (var input in inputs)
         {
@@ -198,10 +202,11 @@ public class SickTests
                 var name = fi.Name;
                 Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
 
-                using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(),  inMemoryThreshold:32768))
+                using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
+                           inMemoryThreshold: 32768))
                 {
                     var rootRef = reader.GetRoot(RootName);
-                
+
                     Stopwatch stopwatch = new Stopwatch();
                     stopwatch.Start();
                     Console.WriteLine($"Going to perform {iters} traverses...");
@@ -214,24 +219,25 @@ public class SickTests
                     TimeSpan stopwatchElapsed = stopwatch.Elapsed;
                     Console.WriteLine($"Finished in {stopwatchElapsed.TotalSeconds} sec");
                     Console.WriteLine($"Iters/sec {Convert.ToDouble(iters) / stopwatchElapsed.TotalSeconds}");
-                
+
                     Debug.Assert(rootRef != null, $"No root entry in {name}");
                     Console.WriteLine($"{name}: found {RootName}, ref={rootRef}");
-                
+
                     switch (rootRef.Kind)
                     {
                         case RefKind.Obj:
-                            Console.WriteLine($"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
+                            Console.WriteLine(
+                                $"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
                             break;
-                        default: 
+                        default:
                             break;
                     }
+
                     Console.WriteLine();
 
 #if DEBUG_TRAVEL
             Console.WriteLine($"Total travel = {SickReader.TotalTravel}, total index lookups = {SickReader.TotalLookups}, ratio = {Convert.ToDouble(SickReader.TotalTravel) / SickReader.TotalLookups}");
 #endif
-                
                 }
             }
             catch
@@ -240,26 +246,26 @@ public class SickTests
                 Console.WriteLine();
                 throw;
             }
-
         }
     }
-    
+
     public void DoWrite(string inPath, string outPath)
     {
         using var sr = new StreamReader(inPath);
         using var jreader = new JsonTextReader(sr);
         jreader.DateParseHandling = DateParseHandling.None;
-        
+
         var loaded = JToken.Load(jreader);
         var index = Index.Create();
         var root = index.append(RootName, loaded);
-        
-        using (BinaryWriter binWriter =  
+
+        using (BinaryWriter binWriter =
                new BinaryWriter(File.Open(outPath, FileMode.Create)))
         {
             var data = index.Serialize().data;
-            Console.WriteLine($"Serialized with {index.Settings.BucketCount} buckets and {index.Settings.Limit} limit, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
-            binWriter.Write(data);  
+            Console.WriteLine(
+                $"Serialized with {index.Settings.BucketCount} buckets and {index.Settings.Limit} limit, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
+            binWriter.Write(data);
         }
     }
 }

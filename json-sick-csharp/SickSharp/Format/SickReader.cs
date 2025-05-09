@@ -14,42 +14,6 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
-    public interface ISickCacheManager
-    {
-        PageCachedFile Provide(string path, int pageSize);
-
-        private static readonly ISickCacheManager DummyInstance = new DummySickCacheManager();
-        
-        public static ISickCacheManager Dummy()
-        {
-            return DummyInstance;
-        }
-        
-        private static readonly ISickCacheManager GlobalPerFileInstance = new PerFileSickCacheManager();
-        public static ISickCacheManager GlobalPerFile()
-        {
-            return GlobalPerFileInstance;
-        }
-    }
-    
-    public class DummySickCacheManager : ISickCacheManager
-    {
-        public PageCachedFile Provide(string path, int pageSize)
-        {
-            return new PageCachedFile(path, pageSize);
-        }
-    }
-
-    public class PerFileSickCacheManager : ISickCacheManager
-    {
-        private ConcurrentDictionary<string, PageCachedFile> _cache = new();
-
-        public PageCachedFile Provide(string path, int pageSize)
-        {
-            return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize));
-        }
-    }
-
     public record FoundRef(Ref result, string[] query);
 
     /// <summary>
@@ -70,8 +34,10 @@ namespace SickSharp.Format
     {
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly Stream _stream;
+        private readonly ISickProfiler _profiler;
 
         public static bool LoadIndexes { get; set; }
+
 
         static SickReader()
         {
@@ -83,37 +49,10 @@ namespace SickSharp.Format
             }
         }
 
-        public static SickReader OpenFile(
-            string path,
-            ISickCacheManager cacheManager,
-            long inMemoryThreshold = 65536, 
-            bool pageCached = true, 
-            int cachePageSize = 4192
-            )
-        {
-            var info = new FileInfo(path);
-            var loadIntoMemory = info.Length <= inMemoryThreshold;
-            
-            Stream stream;
-            if (loadIntoMemory)
-            {
-                stream = new MemoryStream(File.ReadAllBytes(path));
-            }
-            else if (pageCached)
-            {
-                stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize));
-            }
-            else
-            {
-                stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            }
-
-            return new SickReader(stream);
-        }
-
-        public SickReader(Stream stream)
+        public SickReader(Stream stream, ISickProfiler profiler)
         {
             _stream = stream;
+            _profiler = profiler;
             Header = ReadHeader();
 
             Ints = new IntTable(_stream, (UInt32)Header.Offsets[0]);
@@ -140,6 +79,35 @@ namespace SickSharp.Format
             }
         }
 
+        public static SickReader OpenFile(
+            string path,
+            ISickCacheManager cacheManager,
+            ISickProfiler profiler,
+            long inMemoryThreshold = 65536,
+            bool pageCached = true,
+            int cachePageSize = 4192
+        )
+        {
+            var info = new FileInfo(path);
+            var loadIntoMemory = info.Length <= inMemoryThreshold;
+
+            Stream stream;
+            if (loadIntoMemory)
+            {
+                stream = new MemoryStream(File.ReadAllBytes(path));
+            }
+            else if (pageCached)
+            {
+                stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize));
+            }
+            else
+            {
+                stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+
+            return new SickReader(stream, profiler);
+        }
+
         public Header Header { get; }
         public IntTable Ints { get; }
         public LongTable Longs { get; }
@@ -159,106 +127,115 @@ namespace SickSharp.Format
 
         public Ref? GetRoot(string id)
         {
-            Ref? value;
-            return _roots.TryGetValue(id, out value) ? value : null;
+            using (var cp = _profiler.OnInvoke("GetRoot", id))
+            {
+                Ref? value;
+                return cp.OnReturn(_roots.TryGetValue(id, out value) ? value : null);
+            }
         }
-        
+
         public Ref ReadObjectFieldRef(Ref reference, string field)
         {
-            if (reference.Kind == RefKind.Obj)
+            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))
             {
-                var currentObj = Objs.Read(reference.Value);
+                if (reference.Kind == RefKind.Obj)
+                {
+                    var currentObj = Objs.Read(reference.Value);
 
-                return ReadObjectFieldRef(field, currentObj,
-                    $"lookup in ReadObjectFieldRef starting with `{reference}`");
+                    return cp.OnReturn(ReadObjectFieldRef(field, currentObj,
+                        $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+                }
+
+                throw new KeyNotFoundException(
+                    $"Tried to find field `{field}` in entity with id `{reference}` which should be an object, but it was `{reference.Kind}`"
+                );
             }
-
-            throw new KeyNotFoundException(
-                $"Tried to find field `{field}` in entity with id `{reference}` which should be an object, but it was `{reference.Kind}`"
-            );
         }
 
         private Ref ReadObjectFieldRef(string field, OneObjTable currentObj, String clue)
         {
-            var lower = 0;
-            var upper = currentObj.Count;
-
-            if (currentObj.UseIndex)
+            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", field, currentObj, clue))
             {
-                //BucketStartOffsets = new ushort[settings.BucketCount];
-                //BucketEndOffsets = new Dictionary<uint, ushort>();
+                var lower = 0;
+                var upper = currentObj.Count;
 
-                // uint previousBucketStart = 0;
-
-                var khash = KHash.Compute(field);
-                var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
-                var probablyLower = BucketValue(currentObj, bucket);
-
-                if (probablyLower == ObjIndexing.MaxIndex)
+                if (currentObj.UseIndex)
                 {
-                    throw new KeyNotFoundException(
-                        $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
-                    );
-                }
+                    //BucketStartOffsets = new ushort[settings.BucketCount];
+                    //BucketEndOffsets = new Dictionary<uint, ushort>();
 
-                if (probablyLower >= currentObj.Count)
-                {
-                    throw new FormatException(
-                        $"Structural failure: Field `{field}` in object `{currentObj}` produced bucket index `{probablyLower}` which is more than object size `{currentObj.Count}`. Context: {clue}"
-                    );
-                }
+                    // uint previousBucketStart = 0;
 
-                lower = probablyLower;
+                    var khash = KHash.Compute(field);
+                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+                    var probablyLower = BucketValue(currentObj, bucket);
 
-                // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
-                for (uint i = bucket + 1; i < Header.Settings.BucketCount; i++)
-                {
-                    var probablyUpper = BucketValue(currentObj, i);
-
-                    if (probablyUpper <= currentObj.Count)
+                    if (probablyLower == ObjIndexing.MaxIndex)
                     {
-                        upper = probablyUpper;
-                        break;
-                    }
-
-                    if (probablyUpper == ObjIndexing.MaxIndex)
-                    {
-                        continue;
-                    }
-
-                    if (probablyUpper > currentObj.Count)
-                    {
-                        throw new FormatException(
-                            $"Field `{field}` in object `{currentObj}` produced bucket index `{probablyUpper}` which is more than object size `{currentObj.Count}`. Context: {clue}"
+                        throw new KeyNotFoundException(
+                            $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
                         );
                     }
+
+                    if (probablyLower >= currentObj.Count)
+                    {
+                        throw new FormatException(
+                            $"Structural failure: Field `{field}` in object `{currentObj}` produced bucket index `{probablyLower}` which is more than object size `{currentObj.Count}`. Context: {clue}"
+                        );
+                    }
+
+                    lower = probablyLower;
+
+                    // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
+                    for (uint i = bucket + 1; i < Header.Settings.BucketCount; i++)
+                    {
+                        var probablyUpper = BucketValue(currentObj, i);
+
+                        if (probablyUpper <= currentObj.Count)
+                        {
+                            upper = probablyUpper;
+                            break;
+                        }
+
+                        if (probablyUpper == ObjIndexing.MaxIndex)
+                        {
+                            continue;
+                        }
+
+                        if (probablyUpper > currentObj.Count)
+                        {
+                            throw new FormatException(
+                                $"Field `{field}` in object `{currentObj}` produced bucket index `{probablyUpper}` which is more than object size `{currentObj.Count}`. Context: {clue}"
+                            );
+                        }
+                    }
                 }
-            }
 
 
 #if DEBUG_TRAVEL
                 TotalLookups += 1;
 #endif
 
-            Debug.Assert(lower <= upper);
-            for (int i = lower; i < upper; i++)
-            {
-                var k = currentObj.ReadKeyOnly(i);
-                if (k.Key == field)
+                Debug.Assert(lower <= upper);
+                for (int i = lower; i < upper; i++)
                 {
+                    var k = currentObj.ReadKeyOnly(i);
+                    if (k.Key == field)
+                    {
 #if DEBUG_TRAVEL
                         TotalTravel += (i - lower);
 #endif
 
-                    var kind = (RefKind)k.Value[sizeof(int)];
-                    var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-                    return new Ref(kind, value);
+                        var kind = (RefKind)k.Value[sizeof(int)];
+                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        return cp.OnReturn(new Ref(kind, value));
+                    }
                 }
-            }
 
-            throw new KeyNotFoundException(
-                $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
-            );
+                throw new KeyNotFoundException(
+                    $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
+                );
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -269,95 +246,106 @@ namespace SickSharp.Format
 
         public Ref ReadArrayElementRef(Ref reference, int iindex)
         {
-            if (reference.Kind == RefKind.Arr)
+            using (var cp = _profiler.OnInvoke("ReadArrayElementRef", reference, iindex))
             {
-                var currentObj = Arrs.Read(reference.Value);
-                var i = (iindex >= 0)
-                    ? iindex
-                    : currentObj.Count + iindex; // + decrements here because iindex is negative
-                return currentObj.Read(i);
-            }
+                if (reference.Kind == RefKind.Arr)
+                {
+                    var currentObj = Arrs.Read(reference.Value);
+                    var i = (iindex >= 0)
+                        ? iindex
+                        : currentObj.Count + iindex; // + decrements here because iindex is negative
+                    return cp.OnReturn(currentObj.Read(i));
+                }
 
-            throw new KeyNotFoundException(
-                $"Tried to find element `{iindex}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
-            );
+                throw new KeyNotFoundException(
+                    $"Tried to find element `{iindex}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
+                );
+            }
         }
 
-        
+
         public JToken ToJson(Ref reference)
         {
-            switch (reference.Kind)
+            using (var cp = _profiler.OnInvoke("ToJson", reference))
             {
-                case RefKind.Nul:
-                    return JValue.CreateNull();
-                case RefKind.Bit:
-                    return new JValue(reference.Value == 1);
-                case RefKind.SByte:
-                    return new JValue((sbyte)reference.Value);
-                case RefKind.Short:
-                    return new JValue((short)reference.Value);
-                case RefKind.Int:
-                    return new JValue(Ints.Read(reference.Value));
-                case RefKind.Lng:
-                    return new JValue(Longs.Read(reference.Value));
-                case RefKind.BigInt:
-                    return new JValue(BigInts.Read(reference.Value));
-                case RefKind.Flt:
-                    return new JValue(Floats.Read(reference.Value));
-                case RefKind.Dbl:
-                    return new JValue(Doubles.Read(reference.Value));
-                case RefKind.BigDec:
-                    return new JValue(BigDecimals.Read(reference.Value));
-                case RefKind.Str:
-                    return new JValue(Strings.Read(reference.Value));
-                case RefKind.Arr:
-                    return new JArray(new SingleShotEnumerable<Ref>(Arrs.Read(reference.Value).GetEnumerator())
-                        .Select(ToJson).ToArray<object>());
-                case RefKind.Obj:
-                    return new JObject(
-                        new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value).GetEnumerator())
-                            .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>());
-                case RefKind.Root:
-                    return ToJson(Roots.Read(reference.Value).Reference);
-                default:
-                    throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
+                switch (reference.Kind)
+                {
+                    case RefKind.Nul:
+                        return cp.OnReturn(JValue.CreateNull());
+                    case RefKind.Bit:
+                        return cp.OnReturn(new JValue(reference.Value == 1));
+                    case RefKind.SByte:
+                        return cp.OnReturn(new JValue((sbyte)reference.Value));
+                    case RefKind.Short:
+                        return new JValue((short)reference.Value);
+                    case RefKind.Int:
+                        return cp.OnReturn(new JValue(Ints.Read(reference.Value)));
+                    case RefKind.Lng:
+                        return cp.OnReturn(new JValue(Longs.Read(reference.Value)));
+                    case RefKind.BigInt:
+                        return cp.OnReturn(new JValue(BigInts.Read(reference.Value)));
+                    case RefKind.Flt:
+                        return cp.OnReturn(new JValue(Floats.Read(reference.Value)));
+                    case RefKind.Dbl:
+                        return cp.OnReturn(new JValue(Doubles.Read(reference.Value)));
+                    case RefKind.BigDec:
+                        return cp.OnReturn(new JValue(BigDecimals.Read(reference.Value)));
+                    case RefKind.Str:
+                        return cp.OnReturn(new JValue(Strings.Read(reference.Value)));
+                    case RefKind.Arr:
+                        return cp.OnReturn(new JArray(
+                            new SingleShotEnumerable<Ref>(Arrs.Read(reference.Value).GetEnumerator())
+                                .Select(ToJson).ToArray<object>()));
+                    case RefKind.Obj:
+                        return cp.OnReturn(new JObject(
+                            new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value)
+                                    .GetEnumerator())
+                                .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>()));
+                    case RefKind.Root:
+                        return cp.OnReturn(ToJson(Roots.Read(reference.Value).Reference));
+                    default:
+                        throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
+                }
             }
         }
 
         public IJsonVal Resolve(Ref reference)
         {
-            switch (reference.Kind)
+            using (var cp = _profiler.OnInvoke("Resolve", reference))
             {
-                case RefKind.Nul:
-                    return new JNull();
-                case RefKind.Bit:
-                    return new JBool(reference.Value == 1);
-                case RefKind.SByte:
-                    return new JSByte((sbyte)reference.Value);
-                case RefKind.Short:
-                    return new JShort((short)reference.Value);
-                case RefKind.Int:
-                    return new JInt(Ints.Read(reference.Value));
-                case RefKind.Lng:
-                    return new JLong(Longs.Read(reference.Value));
-                case RefKind.BigInt:
-                    return new JBigInt(BigInts.Read(reference.Value));
-                case RefKind.Flt:
-                    return new JSingle(Floats.Read(reference.Value));
-                case RefKind.Dbl:
-                    return new JDouble(Doubles.Read(reference.Value));
-                case RefKind.BigDec:
-                    return new JBigDecimal(BigDecimals.Read(reference.Value));
-                case RefKind.Str:
-                    return new JStr(Strings.Read(reference.Value));
-                case RefKind.Arr:
-                    return new JArr(Arrs.Read(reference.Value));
-                case RefKind.Obj:
-                    return new JObj(Objs.Read(reference.Value));
-                case RefKind.Root:
-                    return new JRoot(Roots.Read(reference.Value));
-                default:
-                    throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
+                switch (reference.Kind)
+                {
+                    case RefKind.Nul:
+                        return cp.OnReturn(new JNull());
+                    case RefKind.Bit:
+                        return cp.OnReturn(new JBool(reference.Value == 1));
+                    case RefKind.SByte:
+                        return cp.OnReturn(new JSByte((sbyte)reference.Value));
+                    case RefKind.Short:
+                        return cp.OnReturn(new JShort((short)reference.Value));
+                    case RefKind.Int:
+                        return cp.OnReturn(new JInt(Ints.Read(reference.Value)));
+                    case RefKind.Lng:
+                        return cp.OnReturn(new JLong(Longs.Read(reference.Value)));
+                    case RefKind.BigInt:
+                        return cp.OnReturn(new JBigInt(BigInts.Read(reference.Value)));
+                    case RefKind.Flt:
+                        return cp.OnReturn(new JSingle(Floats.Read(reference.Value)));
+                    case RefKind.Dbl:
+                        return cp.OnReturn(new JDouble(Doubles.Read(reference.Value)));
+                    case RefKind.BigDec:
+                        return cp.OnReturn(new JBigDecimal(BigDecimals.Read(reference.Value)));
+                    case RefKind.Str:
+                        return cp.OnReturn(new JStr(Strings.Read(reference.Value)));
+                    case RefKind.Arr:
+                        return cp.OnReturn(new JArr(Arrs.Read(reference.Value)));
+                    case RefKind.Obj:
+                        return cp.OnReturn(new JObj(Objs.Read(reference.Value)));
+                    case RefKind.Root:
+                        return cp.OnReturn(new JRoot(Roots.Read(reference.Value)));
+                    default:
+                        throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
+                }
             }
         }
 
@@ -368,44 +356,47 @@ namespace SickSharp.Format
 
         private Header ReadHeader()
         {
-            _stream.Position = 0;
-
-            var version = _stream.ReadInt32BE();
-            var tableCount = _stream.ReadInt32BE();
-
-            var expectedVersion = 0;
-            if (version != expectedVersion)
+            using (var cp = _profiler.OnInvoke("ReadHeader"))
             {
-                throw new FormatException(
-                    $"Structural failure: SICK version expected to be {expectedVersion}, got {version}");
-            }
+                _stream.Position = 0;
 
-            var expectedTableCount = 10;
-            if (tableCount != expectedTableCount)
-            {
-                throw new FormatException(
-                    $"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
-            }
+                var version = _stream.ReadInt32BE();
+                var tableCount = _stream.ReadInt32BE();
 
-            var tableOffsets = new List<int>();
-
-            foreach (var t in Enumerable.Range(0, tableCount))
-            {
-                var next = _stream.ReadInt32BE();
-                if (t > 0 && next <= tableOffsets[t - 1])
+                var expectedVersion = 0;
+                if (version != expectedVersion)
                 {
                     throw new FormatException(
-                        $"Structural failure: wrong SICK format, table offset {next} expected to be more than previous table offset {tableOffsets[t - 1]}");
+                        $"Structural failure: SICK version expected to be {expectedVersion}, got {version}");
                 }
 
-                tableOffsets.Add(next);
+                var expectedTableCount = 10;
+                if (tableCount != expectedTableCount)
+                {
+                    throw new FormatException(
+                        $"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
+                }
+
+                var tableOffsets = new List<int>();
+
+                foreach (var t in Enumerable.Range(0, tableCount))
+                {
+                    var next = _stream.ReadInt32BE();
+                    if (t > 0 && next <= tableOffsets[t - 1])
+                    {
+                        throw new FormatException(
+                            $"Structural failure: wrong SICK format, table offset {next} expected to be more than previous table offset {tableOffsets[t - 1]}");
+                    }
+
+                    tableOffsets.Add(next);
+                }
+
+                var bucketCount = _stream.ReadUInt16BE();
+
+                // Console.WriteLine($"Offsets: {String.Join(",", tables)}, b SICKuckets: {bucketCount}" );
+                var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
+                return header;
             }
-
-            var bucketCount = _stream.ReadUInt16BE();
-
-            // Console.WriteLine($"Offsets: {String.Join(",", tables)}, b SICKuckets: {bucketCount}" );
-            var header = new Header(version, tableCount, tableOffsets, new ObjIndexing(bucketCount, 0));
-            return header;
         }
 
         public bool TryQuery(JObj @ref, string fullPath, out IJsonVal o)
@@ -421,7 +412,7 @@ namespace SickSharp.Format
                 return false;
             }
         }
-        
+
         public bool TryQuery(Ref @ref, string fullPath, out IJsonVal o)
         {
             try
@@ -435,78 +426,97 @@ namespace SickSharp.Format
                 return false;
             }
         }
-        
-               public IJsonVal Query(Ref reference, string path)
+
+        public IJsonVal Query(Ref reference, string path)
         {
-            return Query(reference, path.Split('.'));
+            using (var cp = _profiler.OnInvoke("Query", path))
+            {
+                return cp.OnReturn(Query(reference, path.Split('.')));
+            }
         }
-        
+
         public FoundRef QueryRef(Ref reference, string path)
         {
-            var query = path.Split('.');
-            return new FoundRef(QueryRef(reference, query), query);
+            using (var cp = _profiler.OnInvoke("QueryRef", path))
+            {
+                var query = path.Split('.');
+                return cp.OnReturn(new FoundRef(QueryRef(reference, query), query));
+            }
         }
 
-        
+
         public IJsonVal Query(Ref reference, Span<string> path)
         {
-            var result = QueryRef(reference, path);
-            var value = Resolve(result);
-            if (value == null)
+            using (var cp = _profiler.OnInvoke("Query/span", reference))
             {
-                throw new KeyNotFoundException(
-                    $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", path.ToArray())}`"
-                );
+                var result = QueryRef(reference, path);
+                var value = Resolve(result);
+                if (value == null)
+                {
+                    throw new KeyNotFoundException(
+                        $"Failed to query `{reference}` lookup result was `{result}` but it failed to resolve. The query was `{String.Join("->", path.ToArray())}`"
+                    );
+                }
+
+                return cp.OnReturn(value);
             }
-
-            return value;
-        }
-        
-        public IJsonVal Query(JObj jObj, string path)
-        {
-            return Query(jObj, path.Split('.'), jObj, path);
         }
 
-        
         public Ref QueryRef(Ref reference, Span<string> path)
         {
-            if (path.Length == 0)
+            using (var cp = _profiler.OnInvoke("QueryRef/span", reference))
             {
-                return reference;
+                if (path.Length == 0)
+                {
+                    return reference;
+                }
+
+                var currentQuery = path[0];
+                var next = HandleBracketsWithoutDot(ref currentQuery, path);
+
+                if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
+                {
+                    var index = currentQuery.Substring(1, currentQuery.Length - 2);
+                    var iindex = Int32.Parse(index);
+
+                    var resolvedArr = ReadArrayElementRef(reference, iindex);
+                    return QueryRef(resolvedArr, next.ToArray());
+                }
+
+                var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
+
+                return QueryRef(resolvedObj, next);
             }
-
-            var currentQuery = path[0];
-            var next = HandleBracketsWithoutDot(ref currentQuery, path);
-
-            if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
-            {
-                var index = currentQuery.Substring(1, currentQuery.Length - 2);
-                var iindex = Int32.Parse(index);
-
-                var resolvedArr = ReadArrayElementRef(reference, iindex);
-                return QueryRef(resolvedArr, next.ToArray());
-            }
-            
-            var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
-            
-            return QueryRef(resolvedObj, next);
         }
-        
-        private IJsonVal Query(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
+
+        public IJsonVal Query(JObj jObj, string path)
         {
-            if (path.Length == 0)
+            using (var cp = _profiler.OnInvoke("Query", jObj, path))
             {
-                return jObj;
+                return cp.OnReturn(QueryJsonVal(jObj, path.Split('.'), jObj, path));
             }
-
-            var currentQuery = path[0];
-            var next = HandleBracketsWithoutDot(ref currentQuery, path);
-            
-            var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value, $"query `{initialQuery}` on object `{initialObj}`");
-            
-            return Query(resolvedObj, next);
         }
-        
+
+
+        private IJsonVal QueryJsonVal(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
+        {
+            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery))
+            {
+                if (path.Length == 0)
+                {
+                    return jObj;
+                }
+
+                var currentQuery = path[0];
+                var next = HandleBracketsWithoutDot(ref currentQuery, path);
+
+                var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value,
+                    $"query `{initialQuery}` on object `{initialObj}`");
+
+                return cp.OnReturn(Query(resolvedObj, next));
+            }
+        }
+
         private static Span<string> HandleBracketsWithoutDot(ref string currentQuery, Span<string> current)
         {
             var span = current.Slice(1);
@@ -519,10 +529,10 @@ namespace SickSharp.Format
                 span.CopyTo(newArray.AsSpan(1));
                 span = newArray;
             }
-    
+
             return span;
         }
-        
+
         private static string? ExtractIndex(ref string currentQuery)
         {
             var indexStart = currentQuery.IndexOf('[');
@@ -533,10 +543,8 @@ namespace SickSharp.Format
                 currentQuery = currentQuery.Substring(0, indexStart);
                 return index;
             }
+
             return null;
         }
-        
-
-        
     }
 }
