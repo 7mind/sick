@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
@@ -256,7 +257,7 @@ namespace SickSharp.Format
                         throw new ObjectDisposedException($"Cache is being disposed, page {page} won't be loaded");
 
                     _underlying.Seek(offset, SeekOrigin.Begin);
-                    read = _underlying.Read(newPage, 0, newPage.Length);
+                    read = _underlying.ReadUpTo(newPage, 0, newPage.Length);
                 }
 
                 if (read < PageSize)

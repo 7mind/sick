@@ -94,7 +94,10 @@ namespace SickSharp.Format
             Stream stream;
             if (loadIntoMemory)
             {
-                stream = new MemoryStream(File.ReadAllBytes(path));
+                // stream = new MemoryStream(File.ReadAllBytes(path));
+                // there were reports that ReadAllBytes might be broken on IL2CPP
+                stream = new MemoryStream(ReadAllBytes2(path));
+                
             }
             else if (pageCached)
             {
@@ -107,6 +110,24 @@ namespace SickSharp.Format
 
             return new SickReader(stream, profiler);
         }
+        
+        private static byte[] ReadAllBytes2(string filePath)
+        {
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                long fileLength = fs.Length;
+                if (fileLength > int.MaxValue)
+                    throw new IOException($"{filePath} is too large");
+
+                byte[] bytes = new byte[fileLength];
+
+                fs.ReadUpTo(bytes, 0, (int)fileLength);
+                
+                return bytes;
+            }
+        }
+
+
 
         public Header Header { get; }
         public IntTable Ints { get; }

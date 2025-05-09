@@ -1,6 +1,7 @@
     using System.Diagnostics;
 using System.Security.Cryptography;
 using SickSharp.Format;
+using SickSharp.Primitives;
 
 namespace SickSharp.Test;
 
@@ -39,7 +40,7 @@ public class CacheTests
         byte[] buffer = new byte[bytesToRead];
         
         fileStream.Seek(offset, SeekOrigin.Begin);
-        int bytesRead = fileStream.Read(buffer, 0, bytesToRead);
+        int bytesRead = fileStream.ReadUpTo(buffer, 0, bytesToRead);
         Debug.Assert(bytesRead == size);
         return buffer;
     }
