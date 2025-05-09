@@ -32,6 +32,8 @@ namespace SickSharp.Format
         private volatile bool _disposed;
 
         private readonly TaskCompletionSource<bool>[] _pageLoadedLatches;
+        private readonly FileInfo _info;
+        private readonly ISickProfiler _profiler;
 
         public CachePageStatus GetPageStatus(int page)
         {
@@ -39,12 +41,12 @@ namespace SickSharp.Format
             return (CachePageStatus)id;
         }
 
-        public PageCachedFile(string path, int pageSize)
+        public PageCachedFile(string path, int pageSize, ISickProfiler profiler)
         {
             Debug.Assert(pageSize > 0);
-
-            var info = new FileInfo(path);
-            Length = info.Length;
+            _profiler = profiler;
+            _info = new FileInfo(path);
+            Length = _info.Length;
 
             PageSize = pageSize;
             var fullSize = (Length + PageSize - 1) / PageSize;
@@ -240,43 +242,51 @@ namespace SickSharp.Format
         private void LoadPageSynchronously(int page)
         {
             Debug.Assert(_underlying != null);
-            var offset = page * PageSize;
-            var newPage = new byte[PageSize];
 
-            int read;
-            lock (_lock)
+            using (var cp = _profiler.OnInvoke("LoadPageSynchronously", _info, page))
             {
-                if (_underlying == null)
-                    throw new ObjectDisposedException($"Cache is being disposed, page {page} won't be loaded");
 
-                _underlying.Seek(offset, SeekOrigin.Begin);
-                read = _underlying.Read(newPage, 0, newPage.Length);
-            }
+                var offset = page * PageSize;
+                var newPage = new byte[PageSize];
 
-            if (read < PageSize)
-            {
-                newPage = newPage[..read];
-            }
-
-            var pageBeforeUpdate = Interlocked.CompareExchange(ref _buf[page], newPage, null);
-
-            if (pageBeforeUpdate == null)
-            {
-                Interlocked.CompareExchange(
-                    ref _status[page],
-                    (int)CachePageStatus.Loaded,
-                    (int)CachePageStatus.Loading
-                );
-
-                if (Interlocked.Increment(ref _processedPages) == TotalPages)
+                int read;
+                lock (_lock)
                 {
-                    lock (_lock)
+                    if (_underlying == null)
+                        throw new ObjectDisposedException($"Cache is being disposed, page {page} won't be loaded");
+
+                    _underlying.Seek(offset, SeekOrigin.Begin);
+                    read = _underlying.Read(newPage, 0, newPage.Length);
+                }
+
+                if (read < PageSize)
+                {
+                    newPage = newPage[..read];
+                }
+
+                var pageBeforeUpdate = Interlocked.CompareExchange(ref _buf[page], newPage, null);
+
+                if (pageBeforeUpdate == null)
+                {
+                    Interlocked.CompareExchange(
+                        ref _status[page],
+                        (int)CachePageStatus.Loaded,
+                        (int)CachePageStatus.Loading
+                    );
+
+                    if (Interlocked.Increment(ref _processedPages) == TotalPages)
                     {
-                        _underlying?.Dispose();
-                        _underlying = null;
+                        lock (_lock)
+                        {
+                            _underlying?.Dispose();
+                            _underlying = null;
+                        }
                     }
                 }
+                
+                cp.OnCheckpoint("LoadPageSynchronously:done", CacheSaturation());
             }
+
         }
 
         public void Dispose()

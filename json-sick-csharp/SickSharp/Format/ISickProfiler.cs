@@ -7,6 +7,7 @@ namespace SickSharp.Format
     public interface ISickCallProfiler : IDisposable
     {
         T OnReturn<T>(T value);
+        void OnCheckpoint(string clue, params object[] args);
     }
     public interface ISickProfiler
     {
@@ -31,6 +32,11 @@ namespace SickSharp.Format
         public T OnReturn<T>(T value)
         {
             return value;
+        }
+
+        public void OnCheckpoint(string clue, params object[] args)
+        {
+            
         }
     }
     public class NoopSickProfiler : ISickProfiler

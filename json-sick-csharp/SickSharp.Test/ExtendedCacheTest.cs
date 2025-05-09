@@ -43,7 +43,7 @@ public class PageCachedFileTests
     [Test]
     public void GetPage_ValidPage_ReturnsCorrectData()
     {
-        using var cache = new PageCachedFile(_tempFile, BasePageSize);
+        using var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         var page = cache.GetPage(0);
         Assert.That(page, Is.EqualTo(TestData.Take(BasePageSize).ToArray()));
     }
@@ -51,7 +51,7 @@ public class PageCachedFileTests
     [Test]
     public void GetPage_OutOfRange_ThrowsArgumentException()
     {
-        using var cache = new PageCachedFile(_tempFile, BasePageSize);
+        using var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         Assert.Throws<ArgumentOutOfRangeException>(() => cache.GetPage(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => cache.GetPage(100));
     }
@@ -63,7 +63,7 @@ public class PageCachedFileTests
     [Test]
     public void ConcurrentGetPage_SamePage_LoadsOnce()
     {
-        using var cache = new PageCachedFile(_tempFile, BasePageSize);
+        using var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         byte[][] results = new byte[2][];
         
 #pragma warning disable CS8601 // Possible null reference assignment.
@@ -80,7 +80,7 @@ public class PageCachedFileTests
     [Test]
     public void ConcurrentGetPage_DifferentPages_LoadsIndependently()
     {
-        using var cache = new PageCachedFile(_tempFile, BasePageSize);
+        using var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         var barrier = new Barrier(2);
 
         void LoadPage(int page)
@@ -104,7 +104,7 @@ public class PageCachedFileTests
     [Test]
     public void AfterDispose_ThrowsOnAccess()
     {
-        var cache = new PageCachedFile(_tempFile, BasePageSize);
+        var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         cache.Dispose();
         Assert.Throws<ObjectDisposedException>(() => cache.GetPage(0));
     }
@@ -117,7 +117,7 @@ public class PageCachedFileTests
     public void LastPage_TruncatedCorrectly()
     {
         const int customPageSize = 1500;
-        using var cache = new PageCachedFile(_tempFile, customPageSize);
+        using var cache = new PageCachedFile(_tempFile, customPageSize, ISickProfiler.Noop());
         var lastPage = cache.GetPage(cache.TotalPages - 1);
 
         Assert.NotNull(lastPage);
@@ -129,7 +129,7 @@ public class PageCachedFileTests
     public void ZeroLengthFile_HandlesCorrectly()
     {
         var emptyFile = Path.GetTempFileName();
-        using var cache = new PageCachedFile(emptyFile, BasePageSize);
+        using var cache = new PageCachedFile(emptyFile, BasePageSize, ISickProfiler.Noop());
 
         Assert.That(cache.TotalPages, Is.EqualTo(0));
         Assert.Throws<ArgumentOutOfRangeException>(() => cache.GetPage(0));
@@ -143,7 +143,7 @@ public class PageCachedFileTests
     [Test]
     public void HighConcurrency_StressTest()
     {
-        using var cache = new PageCachedFile(_tempFile, BasePageSize);
+        using var cache = new PageCachedFile(_tempFile, BasePageSize, ISickProfiler.Noop());
         const int threads = 10;
         const int iterations = 100;
 

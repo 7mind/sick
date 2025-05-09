@@ -5,7 +5,7 @@ namespace SickSharp.Format
 {
     public interface ISickCacheManager
     {
-        PageCachedFile Provide(string path, int pageSize);
+        PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler);
 
         private static readonly ISickCacheManager DummyInstance = new DummySickCacheManager();
         
@@ -23,9 +23,9 @@ namespace SickSharp.Format
     
     public class DummySickCacheManager : ISickCacheManager
     {
-        public PageCachedFile Provide(string path, int pageSize)
+        public PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler)
         {
-            return new PageCachedFile(path, pageSize);
+            return new PageCachedFile(path, pageSize, profiler);
         }
     }
 
@@ -33,9 +33,9 @@ namespace SickSharp.Format
     {
         private ConcurrentDictionary<string, PageCachedFile> _cache = new();
 
-        public PageCachedFile Provide(string path, int pageSize)
+        public PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler)
         {
-            return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize));
+            return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize, profiler));
         }
     }
 }

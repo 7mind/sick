@@ -98,7 +98,7 @@ namespace SickSharp.Format
             }
             else if (pageCached)
             {
-                stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize));
+                stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize, profiler));
             }
             else
             {
