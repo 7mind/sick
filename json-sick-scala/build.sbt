@@ -76,12 +76,14 @@ ThisBuild /crossScalaVersions := Seq(
 
 ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head
 
-ThisBuild / publishTo :=
-  (if (!isSnapshot.value) {
-     sonatypePublishToBundle.value
-   } else {
-     Some(Opts.resolver.sonatypeSnapshots)
-   })
+ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
+
+ThisBuild / publishTo := sonatypePublishToBundle.value
+//  (if (!isSnapshot.value) {
+//     sonatypePublishToBundle.value
+//   } else {
+//     Some(Opts.resolver.sonatypeSnapshots)
+//   })
 
 publishTo := (ThisBuild / publishTo).value
 
