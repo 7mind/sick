@@ -78,18 +78,19 @@ ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head
 
 ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
 
-ThisBuild / publishTo := sonatypePublishToBundle.value
-//  (if (!isSnapshot.value) {
-//     sonatypePublishToBundle.value
-//   } else {
-//     Some(Opts.resolver.sonatypeSnapshots)
-//   })
+ThisBuild / publishTo := (if (!isSnapshot.value) {
+     sonatypePublishToBundle.value
+   } else {
+//     Some(Opts.resolver.sonatypeOssSnapshots.head)
+//    Some("snapshots" at "https://central.sonatype.com/content/repositories/snapshots")
+  None
+   })
 
 publishTo := (ThisBuild / publishTo).value
 
 ThisBuild / credentials ++= {
   val credTarget =
-    Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties"
+    Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-new.properties"
   if (credTarget.exists) {
     Seq(Credentials(credTarget))
   } else {
