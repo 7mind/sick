@@ -7,11 +7,11 @@ function run-publish-scala() {
   
   [[ "$CI_PULL_REQUEST" != "false"  ]] && exit 0
 
-  sbt +clean +test sonatypeBundleRelease
   
-#  if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
-#      sbt +clean +test +publishSigned sonatypeBundleRelease
-#  else
+  if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
+      sbt +clean +test +publishSigned sonatypeBundleRelease
+  else
 #      sbt +clean +test +publishSigned
-#  fi
+      echo "Publishing is temporarily broken"
+  fi
 }
