@@ -468,7 +468,7 @@ namespace SickSharp.Format
 
         public IJsonVal Query(Ref reference, Span<string> path)
         {
-            using (var cp = _profiler.OnInvoke("Query/span", reference))
+            using (var cp = _profiler.OnInvoke("Query/span", reference, path.ToArray()))
             {
                 var result = QueryRef(reference, path);
                 var value = Resolve(result);
@@ -485,7 +485,7 @@ namespace SickSharp.Format
 
         public Ref QueryRef(Ref reference, Span<string> path)
         {
-            using (var cp = _profiler.OnInvoke("QueryRef/span", reference))
+            using (var cp = _profiler.OnInvoke("QueryRef/span", reference, path.ToArray()))
             {
                 if (path.Length == 0)
                 {
@@ -521,7 +521,7 @@ namespace SickSharp.Format
 
         private IJsonVal QueryJsonVal(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
         {
-            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery))
+            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, path.ToArray()))
             {
                 if (path.Length == 0)
                 {
