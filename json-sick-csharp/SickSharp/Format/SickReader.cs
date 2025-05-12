@@ -97,7 +97,6 @@ namespace SickSharp.Format
                 // stream = new MemoryStream(File.ReadAllBytes(path));
                 // there were reports that ReadAllBytes might be broken on IL2CPP
                 stream = new MemoryStream(ReadAllBytes2(path));
-                
             }
             else if (pageCached)
             {
@@ -110,7 +109,7 @@ namespace SickSharp.Format
 
             return new SickReader(stream, profiler);
         }
-        
+
         private static byte[] ReadAllBytes2(string filePath)
         {
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -122,11 +121,10 @@ namespace SickSharp.Format
                 byte[] bytes = new byte[fileLength];
 
                 fs.ReadUpTo(bytes, 0, (int)fileLength);
-                
+
                 return bytes;
             }
         }
-
 
 
         public Header Header { get; }
@@ -141,7 +139,7 @@ namespace SickSharp.Format
         public ObjTable Objs { get; }
         public RootTable Roots { get; }
 
-#if DEBUG_TRAVEL
+#if SICK_DEBUG_TRAVEL
         public static volatile int TotalLookups = 0;
         public static volatile int TotalTravel = 0;
 #endif
@@ -175,7 +173,9 @@ namespace SickSharp.Format
 
         private Ref ReadObjectFieldRef(string field, OneObjTable currentObj, String clue)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", field, currentObj, clue))
+#endif
             {
                 var lower = 0;
                 var upper = currentObj.Count;
@@ -233,7 +233,7 @@ namespace SickSharp.Format
                 }
 
 
-#if DEBUG_TRAVEL
+#if SICK_DEBUG_TRAVEL
                 TotalLookups += 1;
 #endif
 
@@ -243,13 +243,17 @@ namespace SickSharp.Format
                     var k = currentObj.ReadKeyOnly(i);
                     if (k.Key == field)
                     {
-#if DEBUG_TRAVEL
+#if SICK_DEBUG_TRAVEL
                         TotalTravel += (i - lower);
 #endif
 
                         var kind = (RefKind)k.Value[sizeof(int)];
                         var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+#if SICK_PROFILE_READER
                         return cp.OnReturn(new Ref(kind, value));
+#else
+                        return new Ref(kind, value);
+#endif
                     }
                 }
 
@@ -267,7 +271,9 @@ namespace SickSharp.Format
 
         public Ref ReadArrayElementRef(Ref reference, int iindex)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadArrayElementRef", reference, iindex))
+#endif
             {
                 if (reference.Kind == RefKind.Arr)
                 {
@@ -275,7 +281,12 @@ namespace SickSharp.Format
                     var i = (iindex >= 0)
                         ? iindex
                         : currentObj.Count + iindex; // + decrements here because iindex is negative
-                    return cp.OnReturn(currentObj.Read(i));
+                    var ret = currentObj.Read(i);
+#if SICK_PROFILE_READER
+                    return cp.OnReturn(ret);
+#else
+                    return ret;
+#endif
                 }
 
                 throw new KeyNotFoundException(
@@ -287,86 +298,119 @@ namespace SickSharp.Format
 
         public JToken ToJson(Ref reference)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ToJson", reference))
+#endif
             {
+                JToken ret;
                 switch (reference.Kind)
                 {
                     case RefKind.Nul:
-                        return cp.OnReturn(JValue.CreateNull());
+                        ret = JValue.CreateNull();
+                        break;
                     case RefKind.Bit:
-                        return cp.OnReturn(new JValue(reference.Value == 1));
+                        ret = new JValue(reference.Value == 1);
+                        break;
                     case RefKind.SByte:
-                        return cp.OnReturn(new JValue((sbyte)reference.Value));
+                        ret = new JValue((sbyte)reference.Value);
+                        break;
+
                     case RefKind.Short:
-                        return new JValue((short)reference.Value);
+                        ret = new JValue((short)reference.Value);
+                        break;
                     case RefKind.Int:
-                        return cp.OnReturn(new JValue(Ints.Read(reference.Value)));
+                        ret = new JValue(Ints.Read(reference.Value));
+                        break;
                     case RefKind.Lng:
-                        return cp.OnReturn(new JValue(Longs.Read(reference.Value)));
+                        ret = new JValue(Longs.Read(reference.Value));
+                        break;
                     case RefKind.BigInt:
-                        return cp.OnReturn(new JValue(BigInts.Read(reference.Value)));
+                        ret = new JValue(BigInts.Read(reference.Value));
+                        break;
                     case RefKind.Flt:
-                        return cp.OnReturn(new JValue(Floats.Read(reference.Value)));
+                        ret = new JValue(Floats.Read(reference.Value));
+                        break;
                     case RefKind.Dbl:
-                        return cp.OnReturn(new JValue(Doubles.Read(reference.Value)));
+                        ret = new JValue(Doubles.Read(reference.Value));
+                        break;
                     case RefKind.BigDec:
-                        return cp.OnReturn(new JValue(BigDecimals.Read(reference.Value)));
+                        ret = new JValue(BigDecimals.Read(reference.Value));
+                        break;
                     case RefKind.Str:
-                        return cp.OnReturn(new JValue(Strings.Read(reference.Value)));
+                        ret = new JValue(Strings.Read(reference.Value));
+                        break;
                     case RefKind.Arr:
-                        return cp.OnReturn(new JArray(
+                        ret = new JArray(
                             new SingleShotEnumerable<Ref>(Arrs.Read(reference.Value).GetEnumerator())
-                                .Select(ToJson).ToArray<object>()));
+                                .Select(ToJson).ToArray<object>());
+                        break;
                     case RefKind.Obj:
-                        return cp.OnReturn(new JObject(
+                        ret = new JObject(
                             new SingleShotEnumerable<KeyValuePair<string, Ref>>(Objs.Read(reference.Value)
                                     .GetEnumerator())
-                                .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>()));
+                                .Select(kvp => new JProperty(kvp.Key, ToJson(kvp.Value))).ToArray<object>());
+                        break;
                     case RefKind.Root:
-                        return cp.OnReturn(ToJson(Roots.Read(reference.Value).Reference));
+                        ret = ToJson(Roots.Read(reference.Value).Reference);
+                        break;
                     default:
                         throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
                 }
+
+#if SICK_PROFILE_READER
+                    return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 
         public IJsonVal Resolve(Ref reference)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Resolve", reference))
+#endif
             {
+                IJsonVal ret;
                 switch (reference.Kind)
                 {
                     case RefKind.Nul:
-                        return cp.OnReturn(new JNull());
+                        ret = new JNull(); break;
                     case RefKind.Bit:
-                        return cp.OnReturn(new JBool(reference.Value == 1));
+                        ret = new JBool(reference.Value == 1); break;
                     case RefKind.SByte:
-                        return cp.OnReturn(new JSByte((sbyte)reference.Value));
+                        ret = new JSByte((sbyte)reference.Value); break;
                     case RefKind.Short:
-                        return cp.OnReturn(new JShort((short)reference.Value));
+                        ret = new JShort((short)reference.Value); break;
                     case RefKind.Int:
-                        return cp.OnReturn(new JInt(Ints.Read(reference.Value)));
+                        ret = new JInt(Ints.Read(reference.Value)); break;
                     case RefKind.Lng:
-                        return cp.OnReturn(new JLong(Longs.Read(reference.Value)));
+                        ret = new JLong(Longs.Read(reference.Value)); break;
                     case RefKind.BigInt:
-                        return cp.OnReturn(new JBigInt(BigInts.Read(reference.Value)));
+                        ret = new JBigInt(BigInts.Read(reference.Value)); break;
                     case RefKind.Flt:
-                        return cp.OnReturn(new JSingle(Floats.Read(reference.Value)));
+                        ret = new JSingle(Floats.Read(reference.Value)); break;
                     case RefKind.Dbl:
-                        return cp.OnReturn(new JDouble(Doubles.Read(reference.Value)));
+                        ret = new JDouble(Doubles.Read(reference.Value)); break;
                     case RefKind.BigDec:
-                        return cp.OnReturn(new JBigDecimal(BigDecimals.Read(reference.Value)));
+                        ret = new JBigDecimal(BigDecimals.Read(reference.Value)); break;
                     case RefKind.Str:
-                        return cp.OnReturn(new JStr(Strings.Read(reference.Value)));
+                        ret = new JStr(Strings.Read(reference.Value)); break;
                     case RefKind.Arr:
-                        return cp.OnReturn(new JArr(Arrs.Read(reference.Value)));
+                        ret = new JArr(Arrs.Read(reference.Value)); break;
                     case RefKind.Obj:
-                        return cp.OnReturn(new JObj(Objs.Read(reference.Value)));
+                        ret = new JObj(Objs.Read(reference.Value)); break;
                     case RefKind.Root:
-                        return cp.OnReturn(new JRoot(Roots.Read(reference.Value)));
+                        ret = new JRoot(Roots.Read(reference.Value)); break;
                     default:
                         throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
                 }
+
+#if SICK_PROFILE_READER
+                    return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 
@@ -377,7 +421,9 @@ namespace SickSharp.Format
 
         private Header ReadHeader()
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadHeader"))
+#endif
             {
                 _stream.Position = 0;
 
@@ -450,25 +496,43 @@ namespace SickSharp.Format
 
         public IJsonVal Query(Ref reference, string path)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query", path))
+#endif
             {
-                return cp.OnReturn(Query(reference, path.Split('.')));
+                var ret = Query(reference, path.Split('.'));
+
+#if SICK_PROFILE_READER
+                return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 
         public FoundRef QueryRef(Ref reference, string path)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("QueryRef", path))
+#endif
             {
                 var query = path.Split('.');
-                return cp.OnReturn(new FoundRef(QueryRef(reference, query), query));
+                var ret = new FoundRef(QueryRef(reference, query), query);
+
+#if SICK_PROFILE_READER
+                return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 
 
         public IJsonVal Query(Ref reference, Span<string> path)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query/span", reference, new Lazy<string[]>(path.ToArray())))
+#endif
             {
                 var result = QueryRef(reference, path);
                 var value = Resolve(result);
@@ -479,13 +543,19 @@ namespace SickSharp.Format
                     );
                 }
 
+#if SICK_PROFILE_READER
                 return cp.OnReturn(value);
+#else
+                return value;
+#endif
             }
         }
 
         public Ref QueryRef(Ref reference, Span<string> path)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("QueryRef/span", reference, new Lazy<string[]>(path.ToArray())))
+#endif
             {
                 if (path.Length == 0)
                 {
@@ -510,23 +580,33 @@ namespace SickSharp.Format
                 {
                     return resolvedObj;
                 }
-                
+
                 return QueryRef(resolvedObj, next);
             }
         }
 
         public IJsonVal Query(JObj jObj, string path)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query", jObj, path))
+#endif
             {
-                return cp.OnReturn(QueryJsonVal(jObj, path.Split('.'), jObj, path));
+                var ret = QueryJsonVal(jObj, path.Split('.'), jObj, path);
+#if SICK_PROFILE_READER
+                return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 
 
         private IJsonVal QueryJsonVal(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
         {
-            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, new Lazy<string[]>(path.ToArray())))
+#if SICK_PROFILE_READER
+            using (var cp =
+ _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, new Lazy<string[]>(path.ToArray())))
+#endif
             {
                 if (path.Length == 0)
                 {
@@ -543,8 +623,14 @@ namespace SickSharp.Format
                 {
                     return Resolve(resolvedObj);
                 }
-                
-                return cp.OnReturn(Query(resolvedObj, next));
+
+                var ret = Query(resolvedObj, next);
+
+#if SICK_PROFILE_READER
+                return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
             }
         }
 

@@ -235,7 +235,7 @@ public class SickTests
 
                     Console.WriteLine();
 
-#if DEBUG_TRAVEL
+#if SICK_DEBUG_TRAVEL
             Console.WriteLine($"Total travel = {SickReader.TotalTravel}, total index lookups = {SickReader.TotalLookups}, ratio = {Convert.ToDouble(SickReader.TotalTravel) / SickReader.TotalLookups}");
 #endif
                 }
