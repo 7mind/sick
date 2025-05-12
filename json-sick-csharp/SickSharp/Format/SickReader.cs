@@ -501,7 +501,7 @@ namespace SickSharp.Format
                     var iindex = Int32.Parse(index);
 
                     var resolvedArr = ReadArrayElementRef(reference, iindex);
-                    return QueryRef(resolvedArr, next.ToArray());
+                    return QueryRef(resolvedArr, next);
                 }
 
                 var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
