@@ -468,7 +468,7 @@ namespace SickSharp.Format
 
         public IJsonVal Query(Ref reference, Span<string> path)
         {
-            using (var cp = _profiler.OnInvoke("Query/span", reference, path.ToArray()))
+            using (var cp = _profiler.OnInvoke("Query/span", reference, new Lazy<string[]>(path.ToArray())))
             {
                 var result = QueryRef(reference, path);
                 var value = Resolve(result);
@@ -485,7 +485,7 @@ namespace SickSharp.Format
 
         public Ref QueryRef(Ref reference, Span<string> path)
         {
-            using (var cp = _profiler.OnInvoke("QueryRef/span", reference, path.ToArray()))
+            using (var cp = _profiler.OnInvoke("QueryRef/span", reference, new Lazy<string[]>(path.ToArray())))
             {
                 if (path.Length == 0)
                 {
@@ -506,6 +506,11 @@ namespace SickSharp.Format
 
                 var resolvedObj = ReadObjectFieldRef(reference, currentQuery);
 
+                if (next.Length == 0)
+                {
+                    return resolvedObj;
+                }
+                
                 return QueryRef(resolvedObj, next);
             }
         }
@@ -521,7 +526,7 @@ namespace SickSharp.Format
 
         private IJsonVal QueryJsonVal(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
         {
-            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, path.ToArray()))
+            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, new Lazy<string[]>(path.ToArray())))
             {
                 if (path.Length == 0)
                 {
@@ -534,10 +539,16 @@ namespace SickSharp.Format
                 var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value,
                     $"query `{initialQuery}` on object `{initialObj}`");
 
+                if (next.Length == 0)
+                {
+                    return Resolve(resolvedObj);
+                }
+                
                 return cp.OnReturn(Query(resolvedObj, next));
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Span<string> HandleBracketsWithoutDot(ref string currentQuery, Span<string> current)
         {
             var span = current.Slice(1);
@@ -554,6 +565,7 @@ namespace SickSharp.Format
             return span;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string? ExtractIndex(ref string currentQuery)
         {
             var indexStart = currentQuery.IndexOf('[');
