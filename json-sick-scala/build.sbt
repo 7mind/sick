@@ -7,11 +7,11 @@ lazy val root = (project in file("."))
     name := "json-sick",
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core" % circeVersion,
-      "io.circe" %% "circe-parser" % circeVersion
+      "io.circe" %% "circe-parser" % circeVersion,
     ),
-    libraryDependencies  += "com.github.luben" % "zstd-jni" % "1.5.6-9" % Test,
+    libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.6-9" % Test,
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-    sonatypeProfileName := "io.7mind"
+    sonatypeProfileName := "io.7mind",
   )
 
 ThisBuild / scalacOptions ++= Seq(
@@ -20,7 +20,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
   "-deprecation",
-  "-language:higherKinds"
+  "-language:higherKinds",
 )
 ThisBuild / scalacOptions ++= {
   val s = scalaVersion.value
@@ -42,7 +42,7 @@ ThisBuild / scalacOptions ++= {
       "-Wunused:-synthetics",
       // inlining
       "-opt:l:inline",
-      "-opt-inline-from:izumi.sick.**"
+      "-opt-inline-from:izumi.sick.**",
     )
   } else {
     Seq(
@@ -54,14 +54,20 @@ ThisBuild / scalacOptions ++= {
   }
 }
 
-ThisBuild / organization := "io.7mind.izumi"
 
-ThisBuild / sonatypeSessionName := s"[sbt-sonatype] ${name.value} ${version.value} ${java.util.UUID.randomUUID}"
+ThisBuild / crossScalaVersions := Seq(
+  "3.3.5",
+  "2.13.15",
+)
+
+ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head
+
+ThisBuild / organization := "io.7mind.izumi"
 
 ThisBuild / version := {
   val versionBase = IO.read(file("../version.txt")).trim()
-  val isStable =
-    GitKeys.gitCurrentTags.value.nonEmpty && !GitKeys.gitUncommittedChanges.value
+  val isStable = Option(System.getProperty("FORCE_BUILD_STABLE")).contains("1") ||
+    (GitKeys.gitCurrentTags.value.nonEmpty && !GitKeys.gitUncommittedChanges.value)
   if (isStable) {
     versionBase
   } else {
@@ -69,44 +75,27 @@ ThisBuild / version := {
   }
 }
 
-ThisBuild /crossScalaVersions := Seq(
-  "3.3.5",
-  "2.13.15",
-)
-
-ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.head
+ThisBuild / sonatypeSessionName := s"[sbt-sonatype] ${name.value} ${version.value} ${java.util.UUID.randomUUID}"
 
 ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost
 
-ThisBuild / publishTo := (if (!isSnapshot.value) {
-     sonatypePublishToBundle.value
-   } else {
-//     Some(Opts.resolver.sonatypeOssSnapshots.head)
-//    Some("snapshots" at "https://central.sonatype.com/content/repositories/snapshots")
-  None
-   })
+ThisBuild / publishTo := {
+  if (!isSnapshot.value) {
+    sonatypePublishToBundle.value
+  } else {
+    None
+  }
+}
 
 publishTo := (ThisBuild / publishTo).value
 
-ThisBuild / credentials ++= {
-  val credTarget =
-    Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-new.properties"
-  if (credTarget.exists) {
-    Seq(Credentials(credTarget))
-  } else {
-    Seq.empty
-  }
-}
-
-ThisBuild / credentials ++= {
-  val credTarget =
-    file(".") / ".secrets" / "credentials.sonatype-nexus.properties"
-  if (credTarget.exists) {
-    Seq(Credentials(credTarget))
-  } else {
-    Seq.empty
-  }
-}
+ThisBuild / credentials ++= Seq(
+  Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-new.properties",
+  Path.userHome / ".sbt" / "secrets" / "credentials.sonatype-nexus.properties",
+  file(".") / ".secrets" / "credentials.sonatype-nexus.properties",
+)
+  .filter(_.exists())
+  .map(Credentials.apply)
 
 ThisBuild / homepage := Some(url("https://github.com/7mind/sick"))
 ThisBuild / licenses := Seq(
@@ -117,12 +106,12 @@ ThisBuild / developers := List(
     id = "7mind",
     name = "Septimal Mind",
     url = url("https://github.com/7mind"),
-    email = "team@7mind.io"
+    email = "team@7mind.io",
   )
 )
 ThisBuild / scmInfo := Some(
   ScmInfo(
     url("https://github.com/7mind/sick"),
-    "scm:git:https://github.com/7mind/sick.git"
+    "scm:git:https://github.com/7mind/sick.git",
   )
 )
