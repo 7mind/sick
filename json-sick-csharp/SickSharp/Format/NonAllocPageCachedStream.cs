@@ -87,7 +87,7 @@ namespace SickSharp.Format
                 return new ReadOnlySpan<byte>(page, pageOffset, toRead);
             }
 
-            // Multi-page read with buffer pooling
+            // Our data spans across several pages, bad case
             var buffer = new byte[realCount];
             var dstPos = 0;
             var remaining = realCount;
@@ -130,7 +130,7 @@ namespace SickSharp.Format
                 return new ReadOnlyMemory<byte>(page, pageOffset, toRead);
             }
 
-            // Multi-page read with buffer pooling
+            // Our data spans across several pages, bad case
             var buffer = new byte[realCount];
             var dstPos = 0;
             var remaining = realCount;
