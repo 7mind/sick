@@ -10,30 +10,31 @@ namespace SickSharp.Format
     {
         //private readonly int _offset;
         private readonly Stream _stream;
+        private readonly byte[] _buffer;
         // private UInt32 _offset;
 
 
         public FixedTable(Stream stream)
         {
             _stream = stream;
-
+            _buffer = new byte[16];
         }
 
         public int Count { get; protected set; }
-        public UInt32 StartOffset { get; protected set; }
-        public UInt32 DataOffset { get; protected set; }
+        public int StartOffset { get; protected set; }
+        public int DataOffset { get; protected set; }
 
-        protected void SetStart(UInt32 offset)
+        protected void SetStart(int offset)
         {
             StartOffset = offset;
-            DataOffset = offset +  sizeof(int);
+            DataOffset = offset + sizeof(int);
         }
-        
+
         protected void ReadStandardCount()
         {
             Count = _stream.ReadInt32BE(StartOffset);
         }
-        
+
         // Call this carefully, it may explode!
         // Only use it on small collections and only when you are completely sure that they are actually small
         public List<TV> ReadAll()
@@ -43,21 +44,22 @@ namespace SickSharp.Format
             return result;
         }
 
-        public byte[] ReadBytes(int index)
+        public ReadOnlySpan<byte> ReadBytes(int index)
         {
             Debug.Assert(index < Count);
             var target = DataOffset + index * ElementByteLength();
-            return _stream.ReadBytes(target, ElementByteLength());
+            var read = _stream.ReadBuffer(_buffer, target, ElementByteLength());
+            return _buffer.AsSpan(0, read);
         }
-        
+
         public TV Read(int index)
         {
             return Convert(ReadBytes(index));
         }
-        
+
         protected abstract short ElementByteLength();
 
-        protected abstract TV Convert(byte[] bytes);
+        protected abstract TV Convert(ReadOnlySpan<byte> bytes);
 
         public override string ToString()
         {

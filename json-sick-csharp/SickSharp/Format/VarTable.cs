@@ -7,16 +7,16 @@ namespace SickSharp.Format
 {
     public abstract class BasicVarTable<TV>
     {
-        private readonly UInt32 _dataOffset;
-        private readonly UInt32 _sizeOffset;
+        private readonly int _dataOffset;
+        private readonly int _sizeOffset;
         protected readonly Stream Stream;
         private readonly byte[] _index;
         private readonly bool _readIndexes;
-        
-        public BasicVarTable(Stream stream, UInt32 offset)
+
+        public BasicVarTable(Stream stream, int offset)
         {
             Stream = stream;
-            Count = (uint)Stream.ReadInt32BE(offset);
+            Count = Stream.ReadInt32BE(offset);
 
             _readIndexes = SickReader.LoadIndexes;
             _sizeOffset = offset + sizeof(int);
@@ -25,53 +25,59 @@ namespace SickSharp.Format
             {
                 _index = Stream.ReadBytes(_sizeOffset, (int)(sizeof(int) * (Count + 1)));
             }
-
         }
 
-        public UInt32 Count { get; }
+        public int Count { get; }
 
 
         public TV Read(int index)
         {
             Debug.Assert(index < Count);
 
-            UInt32 relativeDataOffset;
-            UInt32 endOffset;
+            int relativeDataOffset;
+            int endOffset;
             if (_readIndexes)
             {
-                 relativeDataOffset =
-                    (UInt32)_index.ReadInt32BE((uint)index * sizeof(int));
-                 endOffset = (UInt32)_index.ReadInt32BE((uint)(index + 1) * sizeof(int));
+                relativeDataOffset = _index.ReadInt32BE((uint)index * sizeof(int));
+                endOffset = _index.ReadInt32BE((uint)(index + 1) * sizeof(int));
             }
             else
             {
                 var szTarget = _sizeOffset + index * sizeof(int);
                 var szTargetNext = _sizeOffset + (index + 1) * sizeof(int);
-                relativeDataOffset = (UInt32)Stream.ReadInt32BE(szTarget);
-                endOffset = (UInt32)Stream.ReadInt32BE(szTargetNext);
+                relativeDataOffset = Stream.ReadInt32BE(szTarget);
+                endOffset = Stream.ReadInt32BE(szTargetNext);
             }
 
-            
+
             var absoluteStartOffset = _dataOffset + relativeDataOffset;
             var byteLen = endOffset - relativeDataOffset;
             return BasicRead(absoluteStartOffset, byteLen);
         }
 
-        protected abstract TV BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen);
+        protected abstract TV BasicRead(int absoluteStartOffset, int byteLen);
     }
 
     public abstract class VarTable<TV> : BasicVarTable<TV>
     {
-        protected VarTable(Stream stream, UInt32 offset) : base(stream, offset)
+        private byte[] _buffer;
+
+        protected VarTable(Stream stream, int offset) : base(stream, offset)
         {
+            _buffer = new byte[16];
         }
 
-        protected override TV BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
+        protected override TV BasicRead(int absoluteStartOffset, int byteLen)
         {
-            var bytes = Stream.ReadBuffer(absoluteStartOffset, (int)byteLen);
-            return Convert(bytes);
+            if (_buffer.Length < byteLen)
+            {
+                Array.Resize(ref _buffer, byteLen);
+            }
+
+            var read = Stream.ReadBuffer(_buffer, absoluteStartOffset, byteLen);
+            return Convert(_buffer.AsSpan(0, read));
         }
 
-        protected abstract TV Convert(byte[] bytes);
+        protected abstract TV Convert(ReadOnlySpan<byte> bytes);
     }
 }

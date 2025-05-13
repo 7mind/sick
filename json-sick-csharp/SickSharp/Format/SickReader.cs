@@ -55,19 +55,19 @@ namespace SickSharp.Format
             _profiler = profiler;
             Header = ReadHeader();
 
-            Ints = new IntTable(_stream, (UInt32)Header.Offsets[0]);
-            Longs = new LongTable(_stream, (UInt32)Header.Offsets[1]);
-            BigInts = new BigIntTable(_stream, (UInt32)Header.Offsets[2]);
+            Ints = new IntTable(_stream, Header.Offsets[0]);
+            Longs = new LongTable(_stream, Header.Offsets[1]);
+            BigInts = new BigIntTable(_stream, Header.Offsets[2]);
 
-            Floats = new FloatTable(_stream, (UInt32)Header.Offsets[3]);
-            Doubles = new DoubleTable(_stream, (UInt32)Header.Offsets[4]);
-            BigDecimals = new BigDecTable(_stream, (UInt32)Header.Offsets[5]);
+            Floats = new FloatTable(_stream, Header.Offsets[3]);
+            Doubles = new DoubleTable(_stream, Header.Offsets[4]);
+            BigDecimals = new BigDecTable(_stream, Header.Offsets[5]);
 
-            Strings = new StringTable(_stream, (UInt32)Header.Offsets[6]);
+            Strings = new StringTable(_stream, Header.Offsets[6]);
 
-            Arrs = new ArrTable(_stream, (UInt32)Header.Offsets[7]);
-            Objs = new ObjTable(_stream, Strings, (UInt32)Header.Offsets[8], Header.Settings);
-            Roots = new RootTable(_stream, (UInt32)Header.Offsets[9]);
+            Arrs = new ArrTable(_stream, Header.Offsets[7]);
+            Objs = new ObjTable(_stream, Strings, Header.Offsets[8], Header.Settings);
+            Roots = new RootTable(_stream, Header.Offsets[9]);
 
             for (var i = 0; i < Roots.Count; i++)
             {
@@ -250,15 +250,15 @@ namespace SickSharp.Format
                 Debug.Assert(lower <= upper);
                 for (int i = lower; i < upper; i++)
                 {
-                    var k = currentObj.ReadKeyOnly(i);
-                    if (k.Key == field)
+                    var bytes = currentObj.ReadKeyOnly(i, out var key);
+                    if (key == field)
                     {
 #if SICK_DEBUG_TRAVEL
                         TotalTravel += (i - lower);
 #endif
 
-                        var kind = (RefKind)k.Value[sizeof(int)];
-                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        var kind = (RefKind)bytes[sizeof(int)];
+                        var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
 #if SICK_PROFILE_READER
                         return cp.OnReturn(new Ref(kind, value));
 #else

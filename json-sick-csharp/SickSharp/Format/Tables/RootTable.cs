@@ -6,7 +6,7 @@ namespace SickSharp.Format.Tables
 {
     public class RootTable : FixedTable<Root>
     {
-        public RootTable(Stream stream, UInt32 offset) : base(stream)
+        public RootTable(Stream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
@@ -17,7 +17,7 @@ namespace SickSharp.Format.Tables
             return sizeof(int) + sizeof(byte) + sizeof(int);
         }
 
-        protected override Root Convert(byte[] bytes)
+        protected override Root Convert(ReadOnlySpan<byte> bytes)
         {
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
             var kind = (RefKind?)bytes[sizeof(int)];

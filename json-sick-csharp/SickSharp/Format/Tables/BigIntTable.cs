@@ -6,11 +6,11 @@ namespace SickSharp.Format.Tables
 {
     public class BigIntTable : VarTable<BigInteger>
     {
-        public BigIntTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public BigIntTable(Stream stream, int offset) : base(stream, offset)
         {
         }
 
-        protected override BigInteger Convert(byte[] bytes)
+        protected override BigInteger Convert(ReadOnlySpan<byte> bytes)
         {
             return new BigInteger(bytes);
         }

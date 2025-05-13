@@ -16,13 +16,13 @@ namespace SickSharp.Format.Tables
         private readonly StringTable _strings;
         private readonly ObjIndexing _settings;
 
-        public ObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream, offset)
+        public ObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream, offset)
         {
             _strings = strings;
             _settings = settings;
         }
 
-        protected override OneObjTable BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
+        protected override OneObjTable BasicRead(int absoluteStartOffset, int byteLen)
         {
             return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings);
         }
@@ -46,7 +46,9 @@ namespace SickSharp.Format.Tables
     public class ObjIndexing
     {
         public const ushort NoIndex = 65535;
+
         public const ushort MaxIndex = NoIndex - 1;
+
         //public const ushort BucketCount = 16;
         public const long Range = (long)UInt32.MaxValue + 1;
         public readonly ushort BucketCount;
@@ -65,8 +67,6 @@ namespace SickSharp.Format.Tables
         }
 
         public const ushort IndexMemberSize = sizeof(ushort);
-
-
     }
 
     public class OneObjTable : FixedTable<ObjEntry>
@@ -77,15 +77,15 @@ namespace SickSharp.Format.Tables
         // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
         public byte[]? RawIndex;
-        
-        public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream)
+
+        public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream)
         {
             _strings = strings;
 
 
             var indexHeader = stream.ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
             // var indexHeader = rawIndex.ReadUInt16BE(0);
-            
+
             if (indexHeader == ObjIndexing.NoIndex)
             {
                 SetStart(offset + ObjIndexing.IndexMemberSize);
@@ -98,12 +98,12 @@ namespace SickSharp.Format.Tables
                 var intSize = Fixed.IntEncoder.BlobSize();
                 RawIndex = stream.ReadBytes(offset, indexSize + intSize);
 
-                SetStart((uint)(offset + indexSize));
+                SetStart(offset + indexSize);
                 Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(RawIndex, indexSize, intSize));
 
                 UseIndex = true;
             }
-            
+
             if (Count >= ObjIndexing.MaxIndex)
             {
                 throw new FormatException(
@@ -117,7 +117,7 @@ namespace SickSharp.Format.Tables
             return sizeof(byte) + 2 * sizeof(int);
         }
 
-        protected override ObjEntry Convert(byte[] bytes)
+        protected override ObjEntry Convert(ReadOnlySpan<byte> bytes)
         {
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
             var kind = (RefKind)bytes[sizeof(int)];
@@ -125,13 +125,14 @@ namespace SickSharp.Format.Tables
             return new ObjEntry(keyval, new Ref(kind, value));
         }
 
-        public KeyValuePair<string, byte[]> ReadKeyOnly(int index)
+        public ReadOnlySpan<byte> ReadKeyOnly(int index, out string key)
         {
             var bytes = ReadBytes(index);
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
-            return new KeyValuePair<string, byte[]>(_strings.Read(keyval), bytes);
+            key = _strings.Read(keyval);
+            return bytes;
         }
-        
+
         public KeyValuePair<string, Ref> ReadKey(int index)
         {
             var obj = Read(index);
@@ -142,15 +143,15 @@ namespace SickSharp.Format.Tables
         {
             return Content().GetEnumerator();
         }
+
         public IEnumerable<KeyValuePair<string, Ref>> Content()
         {
             for (var i = 0; i < Count; i++)
             {
                 yield return ReadKey(i);
-            };
+            }
         }
     }
 
     public record ObjEntry(int Key, Ref Value);
-
 }
