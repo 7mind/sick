@@ -115,8 +115,7 @@ namespace SickSharp.Format
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 long fileLength = fs.Length;
-                if (fileLength > int.MaxValue)
-                    throw new IOException($"{filePath} is too large");
+                if (fileLength > int.MaxValue) throw new IOException($"{filePath} is too large");
 
                 byte[] bytes = new byte[fileLength];
 
@@ -146,23 +145,34 @@ namespace SickSharp.Format
 
         public Ref? GetRoot(string id)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("GetRoot", id))
+#endif
             {
                 Ref? value;
+#if SICK_PROFILE_READER
                 return cp.OnReturn(_roots.TryGetValue(id, out value) ? value : null);
+#else
+                return _roots.TryGetValue(id, out value) ? value : null;
+#endif
             }
         }
 
         public Ref ReadObjectFieldRef(Ref reference, string field)
         {
+#if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))
+#endif
             {
                 if (reference.Kind == RefKind.Obj)
                 {
                     var currentObj = Objs.Read(reference.Value);
 
-                    return cp.OnReturn(ReadObjectFieldRef(field, currentObj,
-                        $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+#if SICK_PROFILE_READER
+                    return cp.OnReturn(ReadObjectFieldRef(field, currentObj, $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+#else
+                    return ReadObjectFieldRef(field, currentObj, new Lazy<string>(() => $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+#endif
                 }
 
                 throw new KeyNotFoundException(
@@ -171,10 +181,10 @@ namespace SickSharp.Format
             }
         }
 
-        private Ref ReadObjectFieldRef(string field, OneObjTable currentObj, String clue)
+        private Ref ReadObjectFieldRef(string field, OneObjTable currentObj, Lazy<string> clue)
         {
 #if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", field, currentObj, clue))
+            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", field, currentObj, clue.Value))
 #endif
             {
                 var lower = 0;
@@ -194,14 +204,14 @@ namespace SickSharp.Format
                     if (probablyLower == ObjIndexing.MaxIndex)
                     {
                         throw new KeyNotFoundException(
-                            $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
+                            $"Field `{field}` not found in object `{currentObj}`. Context: {clue.Value}"
                         );
                     }
 
                     if (probablyLower >= currentObj.Count)
                     {
                         throw new FormatException(
-                            $"Structural failure: Field `{field}` in object `{currentObj}` produced bucket index `{probablyLower}` which is more than object size `{currentObj.Count}`. Context: {clue}"
+                            $"Structural failure: Field `{field}` in object `{currentObj}` produced bucket index `{probablyLower}` which is more than object size `{currentObj.Count}`. Context: {clue.Value}"
                         );
                     }
 
@@ -226,7 +236,7 @@ namespace SickSharp.Format
                         if (probablyUpper > currentObj.Count)
                         {
                             throw new FormatException(
-                                $"Field `{field}` in object `{currentObj}` produced bucket index `{probablyUpper}` which is more than object size `{currentObj.Count}`. Context: {clue}"
+                                $"Field `{field}` in object `{currentObj}` produced bucket index `{probablyUpper}` which is more than object size `{currentObj.Count}`. Context: {clue.Value}"
                             );
                         }
                     }
@@ -258,7 +268,7 @@ namespace SickSharp.Format
                 }
 
                 throw new KeyNotFoundException(
-                    $"Field `{field}` not found in object `{currentObj}`. Context: {clue}"
+                    $"Field `{field}` not found in object `{currentObj}`. Context: {clue.Value}"
                 );
             }
         }
@@ -375,33 +385,47 @@ namespace SickSharp.Format
                 switch (reference.Kind)
                 {
                     case RefKind.Nul:
-                        ret = new JNull(); break;
+                        ret = new JNull();
+                        break;
                     case RefKind.Bit:
-                        ret = new JBool(reference.Value == 1); break;
+                        ret = new JBool(reference.Value == 1);
+                        break;
                     case RefKind.SByte:
-                        ret = new JSByte((sbyte)reference.Value); break;
+                        ret = new JSByte((sbyte)reference.Value);
+                        break;
                     case RefKind.Short:
-                        ret = new JShort((short)reference.Value); break;
+                        ret = new JShort((short)reference.Value);
+                        break;
                     case RefKind.Int:
-                        ret = new JInt(Ints.Read(reference.Value)); break;
+                        ret = new JInt(Ints.Read(reference.Value));
+                        break;
                     case RefKind.Lng:
-                        ret = new JLong(Longs.Read(reference.Value)); break;
+                        ret = new JLong(Longs.Read(reference.Value));
+                        break;
                     case RefKind.BigInt:
-                        ret = new JBigInt(BigInts.Read(reference.Value)); break;
+                        ret = new JBigInt(BigInts.Read(reference.Value));
+                        break;
                     case RefKind.Flt:
-                        ret = new JSingle(Floats.Read(reference.Value)); break;
+                        ret = new JSingle(Floats.Read(reference.Value));
+                        break;
                     case RefKind.Dbl:
-                        ret = new JDouble(Doubles.Read(reference.Value)); break;
+                        ret = new JDouble(Doubles.Read(reference.Value));
+                        break;
                     case RefKind.BigDec:
-                        ret = new JBigDecimal(BigDecimals.Read(reference.Value)); break;
+                        ret = new JBigDecimal(BigDecimals.Read(reference.Value));
+                        break;
                     case RefKind.Str:
-                        ret = new JStr(Strings.Read(reference.Value)); break;
+                        ret = new JStr(Strings.Read(reference.Value));
+                        break;
                     case RefKind.Arr:
-                        ret = new JArr(Arrs.Read(reference.Value)); break;
+                        ret = new JArr(Arrs.Read(reference.Value));
+                        break;
                     case RefKind.Obj:
-                        ret = new JObj(Objs.Read(reference.Value)); break;
+                        ret = new JObj(Objs.Read(reference.Value));
+                        break;
                     case RefKind.Root:
-                        ret = new JRoot(Roots.Read(reference.Value)); break;
+                        ret = new JRoot(Roots.Read(reference.Value));
+                        break;
                     default:
                         throw new InvalidDataException($"BUG: Unknown reference: `{reference}`");
                 }
@@ -604,8 +628,7 @@ namespace SickSharp.Format
         private IJsonVal QueryJsonVal(JObj jObj, Span<string> path, JObj initialObj, string initialQuery)
         {
 #if SICK_PROFILE_READER
-            using (var cp =
- _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, new Lazy<string[]>(path.ToArray())))
+            using (var cp = _profiler.OnInvoke("QueryJsonVal", jObj, initialObj, initialQuery, new Lazy<string[]>(path.ToArray())))
 #endif
             {
                 if (path.Length == 0)
@@ -616,8 +639,7 @@ namespace SickSharp.Format
                 var currentQuery = path[0];
                 var next = HandleBracketsWithoutDot(ref currentQuery, path);
 
-                var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value,
-                    $"query `{initialQuery}` on object `{initialObj}`");
+                var resolvedObj = ReadObjectFieldRef(currentQuery, jObj.Value, new Lazy<string>(() => $"query `{initialQuery}` on object `{initialObj}`"));
 
                 if (next.Length == 0)
                 {

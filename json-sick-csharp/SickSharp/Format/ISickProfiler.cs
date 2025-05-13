@@ -13,6 +13,7 @@ namespace SickSharp.Format
     {
 
         public ISickCallProfiler OnInvoke(string id, params object[] args);
+        public void OnStats(string id, long value);
         
         private static readonly ISickProfiler DummyInstance = new NoopSickProfiler();
         
@@ -46,6 +47,10 @@ namespace SickSharp.Format
         public ISickCallProfiler OnInvoke(string id, params object[] args)
         {
             return Noop;
+        }
+
+        public void OnStats(string id, long value)
+        {
         }
     }
 }
