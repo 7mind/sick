@@ -62,6 +62,24 @@ public class SickTests
             Assert.That(o5.Value, Is.EqualTo("http"));
         }
     }
+    
+    [Test]
+    public void Query_Benchmark()
+    {
+        var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
+
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
+                   inMemoryThreshold: 0))
+        {
+            for (int i = 0; i < 500000; i++)
+            {
+                var rootRef = reader.GetRoot(RootName)!;
+                var o3 = (JStr)reader.Query(rootRef, "schemes[0]");
+                Debug.Assert(o3 != null);
+            }
+        }
+    }
+    
     //
     // [Test]
     // public void Test3_repro()
