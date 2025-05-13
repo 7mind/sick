@@ -151,10 +151,11 @@ namespace SickSharp.Format
 #endif
             {
                 Ref? value;
+                var ret = _roots.TryGetValue(id, out value) ? value : null;
 #if SICK_PROFILE_READER
-                return cp.OnReturn(_roots.TryGetValue(id, out value) ? value : null);
+                return cp.OnReturn(ret);
 #else
-                return _roots.TryGetValue(id, out value) ? value : null;
+                return ret;
 #endif
             }
         }
@@ -168,11 +169,11 @@ namespace SickSharp.Format
                 if (reference.Kind == RefKind.Obj)
                 {
                     var currentObj = Objs.Read(reference.Value);
-
+                    var ret = ReadObjectFieldRef(field, currentObj, new Lazy<string>(() => $"lookup in ReadObjectFieldRef starting with `{reference}`"));
 #if SICK_PROFILE_READER
-                    return cp.OnReturn(ReadObjectFieldRef(field, currentObj, $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+                    return cp.OnReturn(ret);
 #else
-                    return ReadObjectFieldRef(field, currentObj, new Lazy<string>(() => $"lookup in ReadObjectFieldRef starting with `{reference}`"));
+                    return ret;
 #endif
                 }
 
@@ -193,11 +194,6 @@ namespace SickSharp.Format
 
                 if (currentObj.UseIndex)
                 {
-                    //BucketStartOffsets = new ushort[settings.BucketCount];
-                    //BucketEndOffsets = new Dictionary<uint, ushort>();
-
-                    // uint previousBucketStart = 0;
-
                     var khash = KHash.Compute(field);
                     var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
                     var probablyLower = currentObj.BucketValue(bucket);
@@ -258,12 +254,13 @@ namespace SickSharp.Format
                         TotalTravel += (i - lower);
 #endif
 
-                        var kind = (RefKind)bytes[sizeof(int)];
-                        var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        var kind = (RefKind)k.Value[sizeof(int)];
+                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        var ret = new Ref(kind, value);
 #if SICK_PROFILE_READER
-                        return cp.OnReturn(new Ref(kind, value));
+                        return cp.OnReturn(ret);
 #else
-                        return new Ref(kind, value);
+                        return ret;
 #endif
                     }
                 }
