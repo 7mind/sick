@@ -23,11 +23,7 @@ public class SickTests
     {
         Directory.CreateDirectory(PathOut);
         _files = Directory.EnumerateFiles(PathInput, "*.json", SearchOption.AllDirectories).ToList();
-    }
-
-    [Test]
-    public void Test1_EncodeAll()
-    {
+        
         foreach (var file in _files)
         {
             var fi = new FileInfo(file);
@@ -35,7 +31,7 @@ public class SickTests
             DoWrite(file, Path.Combine(PathOut, $"{name}-CS.bin"));
         }
     }
-
+    
     [Test]
     public void Test1_Queries()
     {
@@ -64,10 +60,10 @@ public class SickTests
     }
     
     [Test]
-    public void Query_Benchmark()
+    public void Test_Query_Benchmark()
     {
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
-
+    
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
                    inMemoryThreshold: 0))
         {
