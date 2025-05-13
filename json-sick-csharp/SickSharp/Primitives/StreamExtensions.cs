@@ -22,6 +22,29 @@ namespace SickSharp.Primitives
             Debug.Assert(ret == count);
             return bytes;
         }
+
+        public static ReadOnlyMemory<byte> ReadMemory(this Stream stream, int offset, int count)
+        {
+            switch (stream)
+            {
+                case NonAllocPageCachedStream cachedStream:
+                {
+                    return cachedStream.ReadMemoryDirect(offset, count);
+                }
+
+                case MemoryStream memoryStream when memoryStream.TryGetBuffer(out var buffer):
+                {
+                    var ret = new ReadOnlyMemory<byte>(buffer.Array, offset, count);
+                    memoryStream.Position += count;
+                    return ret;
+                }
+
+                default:
+                {
+                    return new ReadOnlyMemory<byte>(stream.ReadBuffer(offset, count));
+                }
+            }
+        }
         
         public static ReadOnlySpan<byte> ReadSpan(this Stream stream, int offset, int count)
         {
@@ -29,8 +52,7 @@ namespace SickSharp.Primitives
             {
                 case NonAllocPageCachedStream cachedStream:
                 {
-                    cachedStream.Seek(offset, SeekOrigin.Begin);
-                    return cachedStream.ReadDirect(0, count);
+                    return cachedStream.ReadSpanDirect(offset, count);
                 }
 
                 case MemoryStream memoryStream when memoryStream.TryGetBuffer(out var buffer):

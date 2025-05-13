@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -64,51 +65,92 @@ namespace SickSharp.Format
             return realCount;
         }
 
-        public ReadOnlySpan<byte> ReadDirect(int offset, int count)
+        public ReadOnlySpan<byte> ReadSpanDirect(int offset, int count)
         {
-            var pos = Volatile.Read(ref _realPosition);
-            var curPage = (int)(pos / _pcf.PageSize);
+            var pos = offset;
+            var curPage = pos / _pcf.PageSize;
             var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1);
 
-            // for (long i = curPage; i <= maxPage; i++)
-            // {            
-            //     _pcf.EnsurePageLoadedByIdx((int)i);
-            // }
-
             var realCount = (int)Math.Min(count, Length - pos);
+            if (realCount <= 0)
+                return ReadOnlySpan<byte>.Empty;
 
-            var left = realCount;
-            var pageOffset = (int)(pos % _pcf.PageSize);
+            Position = offset + realCount;
 
+            var pageOffset = pos % _pcf.PageSize;
+
+            // requested data fits into one page
             if (curPage == maxPage)
             {
                 var page = _pcf.GetPage(curPage);
-                var toRead = Math.Min(left, _pcf.PageSize - pageOffset);
-
-                Position += realCount;
-
+                var toRead = Math.Min(realCount, _pcf.PageSize - pageOffset);
                 return new ReadOnlySpan<byte>(page, pageOffset, toRead);
             }
 
-            var buffer = new byte[count];
-            var dstPos = offset;
-            for (var i = curPage; i <= maxPage; i++)
+            // Multi-page read with buffer pooling
+            var buffer = new byte[realCount];
+            var dstPos = 0;
+            var remaining = realCount;
+
+            for (var i = curPage; i <= maxPage && remaining > 0; i++)
             {
                 var page = _pcf.GetPage(i);
-                var toRead = Math.Min(left, _pcf.PageSize - pageOffset);
+                var copySize = Math.Min(remaining, _pcf.PageSize - pageOffset);
 
-                var dest = buffer.AsSpan(dstPos, toRead);
-                var src = page.AsSpan(pageOffset, toRead);
-                src.CopyTo(dest);
+                new ReadOnlySpan<byte>(page, pageOffset, copySize).CopyTo(
+                    buffer.AsSpan(dstPos, copySize));
 
-                dstPos += toRead;
-                left -= toRead;
-                pageOffset = 0;
+                dstPos += copySize;
+                remaining -= copySize;
+                pageOffset = 0; // Reset offset after first page
             }
 
-            Position += realCount;
-            return buffer;
+            return new ReadOnlySpan<byte>(buffer, 0, realCount);
         }
+
+        public ReadOnlyMemory<byte> ReadMemoryDirect(int offset, int count)
+        {
+            var pos = offset;
+            var curPage = pos / _pcf.PageSize;
+            var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1);
+
+            var realCount = (int)Math.Min(count, Length - pos);
+            if (realCount <= 0)
+                return ReadOnlyMemory<byte>.Empty;
+
+            Position = offset + realCount;
+
+            var pageOffset = pos % _pcf.PageSize;
+
+            // requested data fits into one page
+            if (curPage == maxPage)
+            {
+                var page = _pcf.GetPage(curPage);
+                var toRead = Math.Min(realCount, _pcf.PageSize - pageOffset);
+                return new ReadOnlyMemory<byte>(page, pageOffset, toRead);
+            }
+
+            // Multi-page read with buffer pooling
+            var buffer = new byte[realCount];
+            var dstPos = 0;
+            var remaining = realCount;
+
+            for (var i = curPage; i <= maxPage && remaining > 0; i++)
+            {
+                var page = _pcf.GetPage(i);
+                var copySize = Math.Min(remaining, _pcf.PageSize - pageOffset);
+
+                new ReadOnlySpan<byte>(page, pageOffset, copySize).CopyTo(
+                    buffer.AsSpan(dstPos, copySize));
+
+                dstPos += copySize;
+                remaining -= copySize;
+                pageOffset = 0; // Reset offset after first page
+            }
+
+            return new ReadOnlyMemory<byte>(buffer, 0, realCount);
+        }
+
 
         public override long Seek(long offset, SeekOrigin origin)
         {

@@ -42,7 +42,7 @@ namespace SickSharp.Format
             return result;
         }
 
-        public ReadOnlySpan<byte> ReadBytes(int index)
+        public ReadOnlySpan<byte> ReadSpanOfEntity(int index)
         {
             Debug.Assert(index < Count);
             var offset = DataOffset + index * ElementByteLength();
@@ -51,7 +51,7 @@ namespace SickSharp.Format
 
         public TV Read(int index)
         {
-            return Convert(ReadBytes(index));
+            return Convert(ReadSpanOfEntity(index));
         }
 
         protected abstract short ElementByteLength();

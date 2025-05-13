@@ -4,11 +4,15 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 
+#if SICK_CACHE_STRINGS
+using SickSharp.Primitives;
+#endif
+
 namespace SickSharp.Format.Tables
 {
     public class StringTable : VarTable<string>
     {
-        private readonly ConcurrentDictionary<int, WeakReference<string>> _cache = new();
+        private readonly ConcurrentDictionary<int, string> _cache = new();
         
         public StringTable(Stream stream, int offset) : base(stream, offset)
         {
@@ -19,40 +23,15 @@ namespace SickSharp.Format.Tables
             return Encoding.UTF8.GetString(bytes);
         }
 
+        #if SICK_CACHE_STRINGS
         protected override string BasicRead(int absoluteStartOffset, int byteLen)
         {
             // While it's technically possible, we don't have overlapping packing, 
             // so it's safe to use start offsets as keys
             
             // Convert(Stream.ReadSpan(absoluteStartOffset, byteLen))
-            string? ret;
-            
-            var r = _cache.AddOrUpdate(absoluteStartOffset, (i) =>
-            {
-                ret = base.BasicRead(i, byteLen);
-                return new WeakReference<string>(ret);
-            }, (i, reference) =>
-            {
-                if (reference.TryGetTarget(out _))
-                {
-                    return reference;
-                }
-
-                ret = base.BasicRead(i, byteLen);
-                return new WeakReference<string>(ret);
-            });
-            
-
-            if (r.TryGetTarget(out var retw))
-            {
-                return retw;
-            }
-
-            // in theory, this should never happen, because in both cases `ret` will retain the strong reference
-            ret = base.BasicRead(absoluteStartOffset, byteLen);
-            _cache[absoluteStartOffset] = new WeakReference<string>(ret);
-            
-            return ret;
+            return _cache.GetOrAdd(absoluteStartOffset, (i) => Convert(Stream.ReadSpan(i, byteLen)));
         }
+        #endif
     }
 }

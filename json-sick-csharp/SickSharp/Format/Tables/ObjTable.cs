@@ -76,7 +76,7 @@ namespace SickSharp.Format.Tables
         // public readonly ushort[]? BucketStartOffsets;
         // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
-        private byte[]? _rawIndex;
+        private ReadOnlyMemory<byte>? _rawIndex;
         private static int _intSize = Fixed.IntEncoder.BlobSize();
 
         public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream)
@@ -95,10 +95,10 @@ namespace SickSharp.Format.Tables
             else
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
-                _rawIndex = stream.ReadBytes(offset, indexSize + _intSize);
+                _rawIndex =  stream.ReadMemory(offset, indexSize + _intSize);
 
                 SetStart(offset + indexSize);
-                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(_rawIndex, indexSize, _intSize));
+                Count = BinaryPrimitives.ReadInt32BigEndian(_rawIndex.Value.Span.Slice(indexSize, _intSize));
 
                 UseIndex = true;
             }
@@ -115,7 +115,9 @@ namespace SickSharp.Format.Tables
         public ushort BucketValue(uint bucket)
         {
             Debug.Assert(UseIndex && _rawIndex != null);
-            return _rawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
+            int s = (int)(ObjIndexing.IndexMemberSize * bucket);
+            return BinaryPrimitives.ReadUInt16BigEndian(_rawIndex.Value.Span.Slice(s, sizeof(UInt16)));
+            //return _rawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
         }
 
         protected override short ElementByteLength()
@@ -133,7 +135,7 @@ namespace SickSharp.Format.Tables
 
         public ReadOnlySpan<byte> ReadKeyOnly(int index, out string key)
         {
-            var bytes = ReadBytes(index);
+            var bytes = ReadSpanOfEntity(index);
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
             key = _strings.Read(keyval);
             return bytes;
