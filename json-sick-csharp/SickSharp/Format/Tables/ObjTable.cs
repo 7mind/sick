@@ -76,7 +76,8 @@ namespace SickSharp.Format.Tables
         // public readonly ushort[]? BucketStartOffsets;
         // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
-        public byte[]? RawIndex;
+        private byte[]? _rawIndex;
+        private static int _intSize = Fixed.IntEncoder.BlobSize();
 
         public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream)
         {
@@ -94,11 +95,10 @@ namespace SickSharp.Format.Tables
             else
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
-                var intSize = Fixed.IntEncoder.BlobSize();
-                RawIndex = stream.ReadBytes(offset, indexSize + intSize);
+                _rawIndex = stream.ReadBytes(offset, indexSize + _intSize);
 
                 SetStart(offset + indexSize);
-                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(RawIndex, indexSize, intSize));
+                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(_rawIndex, indexSize, _intSize));
 
                 UseIndex = true;
             }
@@ -109,6 +109,13 @@ namespace SickSharp.Format.Tables
                     $"Structural failure: object size is {Count} but max index is {ObjIndexing.MaxIndex}, object offset was {offset}"
                 );
             }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ushort BucketValue(uint bucket)
+        {
+            Debug.Assert(UseIndex && _rawIndex != null);
+            return _rawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
         }
 
         protected override short ElementByteLength()

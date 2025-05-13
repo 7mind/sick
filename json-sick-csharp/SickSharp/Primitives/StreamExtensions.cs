@@ -9,10 +9,10 @@ namespace SickSharp.Primitives
     {
         public static byte[] ReadBytes(this Stream stream, int at, int size)
         {
-            return ReadBuffer(stream, at, size);
+            return ReadSpan(stream, at, size).ToArray();
         }
 
-        public static byte[] ReadBuffer(this Stream stream, int offset, int count)
+        private static byte[] ReadBuffer(this Stream stream, int offset, int count)
         {
             var bytes = new byte[count];
             // stream.Position = offset;
@@ -22,17 +22,7 @@ namespace SickSharp.Primitives
             Debug.Assert(ret == count);
             return bytes;
         }
-
-        public static int ReadBuffer(this Stream stream, byte[] buffer, int offset, int count)
-        {
-            // stream.Position = offset;
-            stream.Seek(offset, SeekOrigin.Begin);
-            var ret = stream.ReadUpTo(buffer, 0, count);
-            // Debug.Assert(stream.Length >= stream.Position + count);
-            Debug.Assert(ret == count);
-            return ret;
-        }
-
+        
         public static ReadOnlySpan<byte> ReadSpan(this Stream stream, int offset, int count)
         {
             switch (stream)
@@ -45,7 +35,9 @@ namespace SickSharp.Primitives
 
                 case MemoryStream memoryStream:
                 {
-                    return new ReadOnlySpan<byte>(memoryStream.GetBuffer(), offset, count);
+                    var ret = new ReadOnlySpan<byte>(memoryStream.GetBuffer(), offset, count);
+                    memoryStream.Position += count;
+                    return ret;
                 }
 
                 default:
@@ -80,12 +72,12 @@ namespace SickSharp.Primitives
 
         public static int ReadInt32BE(this Stream stream, int offset)
         {
-            return stream.ReadBuffer(offset, sizeof(int)).ReadInt32BE();
+            return stream.ReadSpan(offset, sizeof(int)).ReadInt32BE();
         }
 
         public static ushort ReadUInt16BE(this Stream stream, int offset)
         {
-            return stream.ReadBuffer(offset, sizeof(ushort)).ReadUInt16BE();
+            return stream.ReadSpan(offset, sizeof(ushort)).ReadUInt16BE();
         }
 
         public static int ReadInt32BE(this Stream stream)

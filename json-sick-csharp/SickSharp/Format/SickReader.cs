@@ -96,7 +96,8 @@ namespace SickSharp.Format
             {
                 // stream = new MemoryStream(File.ReadAllBytes(path));
                 // there were reports that ReadAllBytes might be broken on IL2CPP
-                stream = new MemoryStream(ReadAllBytes2(path));
+                var buf = ReadAllBytes2(path);
+                stream = new MemoryStream(buf, 0, buf.Length, writable: false, publiclyVisible: true);
             }
             else if (pageCached)
             {
@@ -199,7 +200,7 @@ namespace SickSharp.Format
 
                     var khash = KHash.Compute(field);
                     var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
-                    var probablyLower = BucketValue(currentObj, bucket);
+                    var probablyLower = currentObj.BucketValue(bucket);
 
                     if (probablyLower == ObjIndexing.MaxIndex)
                     {
@@ -220,7 +221,7 @@ namespace SickSharp.Format
                     // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
                     for (uint i = bucket + 1; i < Header.Settings.BucketCount; i++)
                     {
-                        var probablyUpper = BucketValue(currentObj, i);
+                        var probablyUpper = currentObj.BucketValue(i);
 
                         if (probablyUpper <= currentObj.Count)
                         {
@@ -273,11 +274,7 @@ namespace SickSharp.Format
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort BucketValue(OneObjTable table, uint bucket)
-        {
-            return table.RawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
-        }
+
 
         public Ref ReadArrayElementRef(Ref reference, int iindex)
         {
@@ -465,7 +462,7 @@ namespace SickSharp.Format
                 if (tableCount != expectedTableCount)
                 {
                     throw new FormatException(
-                        $"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}");
+                        $"Structural failure: SICK table count expected to be {expectedTableCount}, got {tableCount}, stream {_stream}");
                 }
 
                 var tableOffsets = new List<int>();
