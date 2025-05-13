@@ -10,14 +10,12 @@ namespace SickSharp.Format
     {
         //private readonly int _offset;
         private readonly Stream _stream;
-        private readonly byte[] _buffer;
         // private UInt32 _offset;
 
 
         public FixedTable(Stream stream)
         {
             _stream = stream;
-            _buffer = new byte[16];
         }
 
         public int Count { get; protected set; }
@@ -47,9 +45,8 @@ namespace SickSharp.Format
         public ReadOnlySpan<byte> ReadBytes(int index)
         {
             Debug.Assert(index < Count);
-            var target = DataOffset + index * ElementByteLength();
-            var read = _stream.ReadBuffer(_buffer, target, ElementByteLength());
-            return _buffer.AsSpan(0, read);
+            var offset = DataOffset + index * ElementByteLength();
+            return _stream.ReadSpan(offset, ElementByteLength());
         }
 
         public TV Read(int index)

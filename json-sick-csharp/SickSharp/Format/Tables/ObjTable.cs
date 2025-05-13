@@ -82,8 +82,7 @@ namespace SickSharp.Format.Tables
         {
             _strings = strings;
 
-
-            var indexHeader = stream.ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
+            var indexHeader = stream.ReadSpan(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
             // var indexHeader = rawIndex.ReadUInt16BE(0);
 
             if (indexHeader == ObjIndexing.NoIndex)

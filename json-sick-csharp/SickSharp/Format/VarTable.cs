@@ -23,7 +23,7 @@ namespace SickSharp.Format
             _dataOffset = _sizeOffset + sizeof(int) * (Count + 1);
             if (_readIndexes)
             {
-                _index = Stream.ReadBytes(_sizeOffset, (int)(sizeof(int) * (Count + 1)));
+                _index = Stream.ReadBytes(_sizeOffset, sizeof(int) * (Count + 1));
             }
         }
 
@@ -49,7 +49,6 @@ namespace SickSharp.Format
                 endOffset = Stream.ReadInt32BE(szTargetNext);
             }
 
-
             var absoluteStartOffset = _dataOffset + relativeDataOffset;
             var byteLen = endOffset - relativeDataOffset;
             return BasicRead(absoluteStartOffset, byteLen);
@@ -60,22 +59,13 @@ namespace SickSharp.Format
 
     public abstract class VarTable<TV> : BasicVarTable<TV>
     {
-        private byte[] _buffer;
-
         protected VarTable(Stream stream, int offset) : base(stream, offset)
         {
-            _buffer = new byte[16];
         }
 
         protected override TV BasicRead(int absoluteStartOffset, int byteLen)
         {
-            if (_buffer.Length < byteLen)
-            {
-                Array.Resize(ref _buffer, byteLen);
-            }
-
-            var read = Stream.ReadBuffer(_buffer, absoluteStartOffset, byteLen);
-            return Convert(_buffer.AsSpan(0, read));
+            return Convert(Stream.ReadSpan(absoluteStartOffset, byteLen));
         }
 
         protected abstract TV Convert(ReadOnlySpan<byte> bytes);

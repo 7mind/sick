@@ -1,21 +1,18 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
+using SickSharp.Format;
 
 namespace SickSharp.Primitives
 {
-    using System.IO;
-
-
     public static class StreamExtensions
     {
-        public static byte[] ReadBytes(this Stream stream, long at, int size)
+        public static byte[] ReadBytes(this Stream stream, int at, int size)
         {
             return ReadBuffer(stream, at, size);
         }
 
-        public static byte[] ReadBuffer(this Stream stream, long offset, int count)
+        public static byte[] ReadBuffer(this Stream stream, int offset, int count)
         {
             var bytes = new byte[count];
             // stream.Position = offset;
@@ -25,8 +22,8 @@ namespace SickSharp.Primitives
             Debug.Assert(ret == count);
             return bytes;
         }
-        
-        public static int ReadBuffer(this Stream stream, byte[] buffer, long offset, int count)
+
+        public static int ReadBuffer(this Stream stream, byte[] buffer, int offset, int count)
         {
             // stream.Position = offset;
             stream.Seek(offset, SeekOrigin.Begin);
@@ -34,6 +31,28 @@ namespace SickSharp.Primitives
             // Debug.Assert(stream.Length >= stream.Position + count);
             Debug.Assert(ret == count);
             return ret;
+        }
+
+        public static ReadOnlySpan<byte> ReadSpan(this Stream stream, int offset, int count)
+        {
+            switch (stream)
+            {
+                case NonAllocPageCachedStream cachedStream:
+                {
+                    cachedStream.Seek(offset, SeekOrigin.Begin);
+                    return cachedStream.ReadDirect(0, count);
+                }
+
+                case MemoryStream memoryStream:
+                {
+                    return new ReadOnlySpan<byte>(memoryStream.GetBuffer(), offset, count);
+                }
+
+                default:
+                {
+                    return new ReadOnlySpan<byte>(stream.ReadBuffer(offset, count));
+                }
+            }
         }
 
         // the loop shouldn't be necessary, but the spec is INSANE:
@@ -64,7 +83,7 @@ namespace SickSharp.Primitives
             return stream.ReadBuffer(offset, sizeof(int)).ReadInt32BE();
         }
 
-        public static ushort ReadUInt16BE(this Stream stream, long offset)
+        public static ushort ReadUInt16BE(this Stream stream, int offset)
         {
             return stream.ReadBuffer(offset, sizeof(ushort)).ReadUInt16BE();
         }
@@ -76,7 +95,7 @@ namespace SickSharp.Primitives
 
         public static ushort ReadUInt16BE(this Stream stream)
         {
-            return ReadUInt16BE(stream, stream.Position);
+            return ReadUInt16BE(stream, (int)stream.Position);
         }
     }
 }

@@ -274,7 +274,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort BucketValue(OneObjTable table, UInt32 bucket)
+        private ushort BucketValue(OneObjTable table, uint bucket)
         {
             return table.RawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
         }
