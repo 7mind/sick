@@ -254,8 +254,8 @@ namespace SickSharp.Format
                         TotalTravel += (i - lower);
 #endif
 
-                        var kind = (RefKind)k.Value[sizeof(int)];
-                        var value = k.Value[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+                        var kind = (RefKind)bytes[sizeof(int)];
+                        var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
                         var ret = new Ref(kind, value);
 #if SICK_PROFILE_READER
                         return cp.OnReturn(ret);

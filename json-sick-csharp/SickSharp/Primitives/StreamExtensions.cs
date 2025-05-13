@@ -33,9 +33,9 @@ namespace SickSharp.Primitives
                     return cachedStream.ReadDirect(0, count);
                 }
 
-                case MemoryStream memoryStream:
+                case MemoryStream memoryStream when memoryStream.TryGetBuffer(out var buffer):
                 {
-                    var ret = new ReadOnlySpan<byte>(memoryStream.GetBuffer(), offset, count);
+                    var ret = new ReadOnlySpan<byte>(buffer.Array, offset, count);
                     memoryStream.Position += count;
                     return ret;
                 }
