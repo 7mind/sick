@@ -109,15 +109,19 @@ namespace SickSharp.Format
 
             status = Volatile.Read(ref _status[page]);
 
+            if (status == (int)CachePageStatus.Loaded)
+            {
+                return Volatile.Read(ref _buf[page])!;
+            }
+
             return status switch
             {
-                (int)CachePageStatus.Loaded =>
-                    Volatile.Read(ref _buf[page])!,
-                (int)CachePageStatus.Dead =>
-                    throw new ObjectDisposedException(
-                        $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"),
-                _ =>
-                    throw new InvalidOperationException($"Unexpected page state after loading: {status}")
+                (int)CachePageStatus.Dead => throw new ObjectDisposedException(
+                    $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"
+                ),
+                _ => throw new InvalidOperationException(
+                    $"Unexpected page state after loading: {status}"
+                )
             };
         }
 
@@ -133,11 +137,13 @@ namespace SickSharp.Format
                 (int)CachePageStatus.Missing
             );
 
+            if (currentStatus == (int)CachePageStatus.Loaded)
+            {
+                return;
+            }
+            
             switch (currentStatus)
             {
-                case (int)CachePageStatus.Loaded:
-                    return;
-
                 case (int)CachePageStatus.Missing:
                     try
                     {

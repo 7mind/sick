@@ -67,45 +67,39 @@ namespace SickSharp.Format
 
         public ReadOnlySpan<byte> ReadSpanDirect(int offset, int count)
         {
-            var pos = offset;
-            var curPage = pos / _pcf.PageSize;
-            var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1);
+            var curPage = offset / _pcf.PageSize;
+            var lastPage = Math.Min((offset + count) / _pcf.PageSize, _pcf.TotalPages - 1);
 
-            var realCount = (int)Math.Min(count, Length - pos);
-            if (realCount <= 0)
-                return ReadOnlySpan<byte>.Empty;
+            count = (int)Math.Min(count, Length - offset);
+            if (count <= 0) return ReadOnlySpan<byte>.Empty;
 
-            Position = offset + realCount;
+            Position = offset + count;
 
-            var pageOffset = pos % _pcf.PageSize;
+            var pageOffset = offset % _pcf.PageSize;
 
             // requested data fits into one page
-            if (curPage == maxPage)
+            if (curPage == lastPage)
             {
-                var page = _pcf.GetPage(curPage);
-                var toRead = Math.Min(realCount, _pcf.PageSize - pageOffset);
-                return new ReadOnlySpan<byte>(page, pageOffset, toRead);
+                var copySize = Math.Min(count, _pcf.PageSize - pageOffset);
+                return new ReadOnlySpan<byte>(_pcf.GetPage(curPage), pageOffset, copySize);
             }
 
             // Our data spans across several pages, bad case
-            var buffer = new byte[realCount];
-            var dstPos = 0;
-            var remaining = realCount;
-
-            for (var i = curPage; i <= maxPage && remaining > 0; i++)
+            var buffer = new byte[count];
+            var copied = 0;
+            for (; curPage <= lastPage && count > 0; curPage++)
             {
-                var page = _pcf.GetPage(i);
-                var copySize = Math.Min(remaining, _pcf.PageSize - pageOffset);
+                var copySize = Math.Min(count, _pcf.PageSize - pageOffset);
 
-                new ReadOnlySpan<byte>(page, pageOffset, copySize).CopyTo(
-                    buffer.AsSpan(dstPos, copySize));
+                new ReadOnlySpan<byte>(_pcf.GetPage(curPage), pageOffset, copySize)
+                    .CopyTo(buffer.AsSpan(copied, copySize));
 
-                dstPos += copySize;
-                remaining -= copySize;
+                copied += copySize;
+                count -= copySize;
                 pageOffset = 0; // Reset offset after first page
             }
 
-            return new ReadOnlySpan<byte>(buffer, 0, realCount);
+            return new ReadOnlySpan<byte>(buffer, 0, buffer.Length);
         }
 
         public ReadOnlyMemory<byte> ReadMemoryDirect(int offset, int count)
@@ -115,8 +109,7 @@ namespace SickSharp.Format
             var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1);
 
             var realCount = (int)Math.Min(count, Length - pos);
-            if (realCount <= 0)
-                return ReadOnlyMemory<byte>.Empty;
+            if (realCount <= 0) return ReadOnlyMemory<byte>.Empty;
 
             Position = offset + realCount;
 
