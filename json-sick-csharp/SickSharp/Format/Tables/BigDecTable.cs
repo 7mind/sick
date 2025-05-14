@@ -11,7 +11,7 @@ namespace SickSharp.Format.Tables
 
     public class BigDecTable : VarTable<BigDecimal>
     {
-        public BigDecTable(Stream stream, int offset) : base(stream, offset)
+        public BigDecTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

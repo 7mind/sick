@@ -36,20 +36,19 @@ namespace SickSharp.Format
         private readonly Stream _stream;
         private readonly ISickProfiler _profiler;
 
-        public static bool LoadIndexes { get; set; }
-
-
         static SickReader()
         {
-            LoadIndexes = true;
-
             if (!BitConverter.IsLittleEndian)
             {
                 throw new ConstraintException("big endian architecure is not supported");
             }
         }
 
-        public SickReader(Stream stream, ISickProfiler profiler)
+        public SickReader(
+            Stream stream,
+            ISickProfiler profiler,
+            bool loadIndexes
+        )
         {
             _stream = stream;
             _profiler = profiler;
@@ -57,16 +56,16 @@ namespace SickSharp.Format
 
             Ints = new IntTable(_stream, Header.Offsets[0]);
             Longs = new LongTable(_stream, Header.Offsets[1]);
-            BigInts = new BigIntTable(_stream, Header.Offsets[2]);
+            BigInts = new BigIntTable(_stream, Header.Offsets[2], loadIndexes);
 
             Floats = new FloatTable(_stream, Header.Offsets[3]);
             Doubles = new DoubleTable(_stream, Header.Offsets[4]);
-            BigDecimals = new BigDecTable(_stream, Header.Offsets[5]);
+            BigDecimals = new BigDecTable(_stream, Header.Offsets[5], loadIndexes);
 
-            Strings = new StringTable(_stream, Header.Offsets[6]);
+            Strings = new StringTable(_stream, Header.Offsets[6], loadIndexes);
 
-            Arrs = new ArrTable(_stream, Header.Offsets[7]);
-            Objs = new ObjTable(_stream, Strings, Header.Offsets[8], Header.Settings);
+            Arrs = new ArrTable(_stream, Header.Offsets[7], loadIndexes);
+            Objs = new ObjTable(_stream, Strings, Header.Offsets[8], Header.Settings, loadIndexes);
             Roots = new RootTable(_stream, Header.Offsets[9]);
 
             for (var i = 0; i < Roots.Count; i++)
@@ -92,23 +91,27 @@ namespace SickSharp.Format
             var loadIntoMemory = info.Length <= inMemoryThreshold;
 
             Stream stream;
+            bool loadIndexes;
             if (loadIntoMemory)
             {
                 // stream = new MemoryStream(File.ReadAllBytes(path));
                 // there were reports that ReadAllBytes might be broken on IL2CPP
                 var buf = ReadAllBytes2(path);
                 stream = new MemoryStream(buf, 0, buf.Length, writable: false, publiclyVisible: true);
+                loadIndexes = false;
             }
             else if (pageCached)
             {
                 stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize, profiler));
+                loadIndexes = false;
             }
             else
             {
                 stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                loadIndexes = true;
             }
 
-            return new SickReader(stream, profiler);
+            return new SickReader(stream, profiler, loadIndexes);
         }
 
         private static byte[] ReadAllBytes2(string filePath)
@@ -270,7 +273,6 @@ namespace SickSharp.Format
                 );
             }
         }
-
 
 
         public Ref ReadArrayElementRef(Ref reference, int iindex)

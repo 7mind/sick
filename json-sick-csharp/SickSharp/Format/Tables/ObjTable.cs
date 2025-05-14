@@ -15,16 +15,18 @@ namespace SickSharp.Format.Tables
     {
         private readonly StringTable _strings;
         private readonly ObjIndexing _settings;
+        private readonly bool _loadIndexes;
 
-        public ObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream, offset)
+        public ObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
             _strings = strings;
             _settings = settings;
+            _loadIndexes = loadIndexes;
         }
 
         protected override OneObjTable BasicRead(int absoluteStartOffset, int byteLen)
         {
-            return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings);
+            return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings, _loadIndexes);
         }
     }
 
@@ -72,16 +74,17 @@ namespace SickSharp.Format.Tables
     public class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
+        private readonly int _offset;
+        private readonly byte[]? _index;
 
         // public readonly ushort[]? BucketStartOffsets;
         // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
-        private ReadOnlyMemory<byte>? _rawIndex;
-        private static int _intSize = Fixed.IntEncoder.BlobSize();
 
-        public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings) : base(stream)
+        public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
         {
             _strings = strings;
+            _offset = offset;
 
             var indexHeader = stream.ReadSpan(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
             // var indexHeader = rawIndex.ReadUInt16BE(0);
@@ -95,10 +98,17 @@ namespace SickSharp.Format.Tables
             else
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
-                _rawIndex =  stream.ReadMemory(offset, indexSize + _intSize);
-
                 SetStart(offset + indexSize);
-                Count = BinaryPrimitives.ReadInt32BigEndian(_rawIndex.Value.Span.Slice(indexSize, _intSize));
+
+                if (loadIndexes)
+                {
+                    _index = Stream.ReadBytes(offset, indexSize + sizeof(int));
+                    Count = _index.ReadInt32BE(indexSize);
+                }
+                else
+                {
+                    Count = Stream.ReadInt32BE(_offset + indexSize);
+                }
 
                 UseIndex = true;
             }
@@ -110,14 +120,13 @@ namespace SickSharp.Format.Tables
                 );
             }
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort BucketValue(uint bucket)
         {
-            Debug.Assert(UseIndex && _rawIndex != null);
-            int s = (int)(ObjIndexing.IndexMemberSize * bucket);
-            return BinaryPrimitives.ReadUInt16BigEndian(_rawIndex.Value.Span.Slice(s, sizeof(UInt16)));
-            //return _rawIndex.ReadUInt16BE(ObjIndexing.IndexMemberSize * bucket);
+            Debug.Assert(UseIndex);
+            var start = (int)(ObjIndexing.IndexMemberSize * bucket);
+            return _index?.ReadUInt16BE(start) ?? Stream.ReadUInt16BE(_offset + start);
         }
 
         protected override short ElementByteLength()

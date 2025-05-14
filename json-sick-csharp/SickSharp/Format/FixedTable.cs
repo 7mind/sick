@@ -9,13 +9,13 @@ namespace SickSharp.Format
     public abstract class FixedTable<TV>
     {
         //private readonly int _offset;
-        private readonly Stream _stream;
+        protected readonly Stream Stream;
         // private UInt32 _offset;
 
 
         public FixedTable(Stream stream)
         {
-            _stream = stream;
+            Stream = stream;
         }
 
         public int Count { get; protected set; }
@@ -30,7 +30,7 @@ namespace SickSharp.Format
 
         protected void ReadStandardCount()
         {
-            Count = _stream.ReadInt32BE(StartOffset);
+            Count = Stream.ReadInt32BE(StartOffset);
         }
 
         // Call this carefully, it may explode!
@@ -46,7 +46,7 @@ namespace SickSharp.Format
         {
             Debug.Assert(index < Count);
             var offset = DataOffset + index * ElementByteLength();
-            return _stream.ReadSpan(offset, ElementByteLength());
+            return Stream.ReadSpan(offset, ElementByteLength());
         }
 
         public TV Read(int index)

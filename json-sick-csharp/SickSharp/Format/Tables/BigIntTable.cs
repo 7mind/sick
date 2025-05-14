@@ -6,7 +6,7 @@ namespace SickSharp.Format.Tables
 {
     public class BigIntTable : VarTable<BigInteger>
     {
-        public BigIntTable(Stream stream, int offset) : base(stream, offset)
+        public BigIntTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

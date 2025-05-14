@@ -14,7 +14,7 @@ namespace SickSharp.Format.Tables
     {
         private readonly ConcurrentDictionary<int, string> _cache = new();
         
-        public StringTable(Stream stream, int offset) : base(stream, offset)
+        public StringTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

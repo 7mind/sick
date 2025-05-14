@@ -7,7 +7,7 @@ namespace SickSharp.Format.Tables
 {
     public class ArrTable : BasicVarTable<OneArrTable>
     {
-        public ArrTable(Stream stream, int offset) : base(stream, offset)
+        public ArrTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

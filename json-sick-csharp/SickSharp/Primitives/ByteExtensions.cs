@@ -9,7 +9,7 @@ namespace SickSharp.Primitives
     public static class ByteExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort ReadUInt16BE(this byte[] arr, uint start)
+        public static ushort ReadUInt16BE(this byte[] arr, int start)
         {
             return (ushort)((arr[start] << 8) | arr[start + 1]);
 
@@ -36,7 +36,7 @@ namespace SickSharp.Primitives
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ReadInt32BE(this byte[] arr, uint start)
+        public static int ReadInt32BE(this byte[] arr, int start)
         {
             return arr[start] << 24 | (arr[start + 1] << 16) | (arr[start + 2] << 8) | arr[start + 3];
 
