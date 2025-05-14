@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using SickSharp.Format;
 
 namespace SickSharp.Primitives
@@ -45,7 +46,7 @@ namespace SickSharp.Primitives
                 }
             }
         }
-        
+
         public static ReadOnlySpan<byte> ReadSpan(this Stream stream, int offset, int count)
         {
             switch (stream)
@@ -92,21 +93,25 @@ namespace SickSharp.Primitives
             return totalRead;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int ReadInt32BE(this Stream stream, int offset)
         {
             return stream.ReadSpan(offset, sizeof(int)).ReadInt32BE();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ReadUInt16BE(this Stream stream, int offset)
         {
             return stream.ReadSpan(offset, sizeof(ushort)).ReadUInt16BE();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int ReadInt32BE(this Stream stream)
         {
             return ReadInt32BE(stream, (int)stream.Position);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ReadUInt16BE(this Stream stream)
         {
             return ReadUInt16BE(stream, (int)stream.Position);
