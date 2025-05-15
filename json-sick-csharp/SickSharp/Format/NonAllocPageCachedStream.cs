@@ -65,7 +65,7 @@ namespace SickSharp.Format
             return realCount;
         }
 
-        public ReadOnlySpan<byte> ReadSpanDirect(int offset, int count)
+        public ReadOnlySpan<byte> ReadSpan(int offset, int count)
         {
             var curPage = offset / _pcf.PageSize;
             var lastPage = Math.Min((offset + count) / _pcf.PageSize, _pcf.TotalPages - 1);
@@ -102,7 +102,7 @@ namespace SickSharp.Format
             return new ReadOnlySpan<byte>(buffer, 0, buffer.Length);
         }
 
-        public ReadOnlyMemory<byte> ReadMemoryDirect(int offset, int count)
+        public ReadOnlyMemory<byte> ReadMemory(int offset, int count)
         {
             var pos = offset;
             var curPage = pos / _pcf.PageSize;

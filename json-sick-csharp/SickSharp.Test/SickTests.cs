@@ -38,7 +38,7 @@ public class SickTests
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
 
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
-                   inMemoryThreshold: 32768))
+                   loadInMemoryThreshold: 32768))
         {
             var rootRef = reader.GetRoot(RootName)!;
 
@@ -65,7 +65,7 @@ public class SickTests
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
     
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
-                   inMemoryThreshold: 0))
+                   loadInMemoryThreshold: 0))
         {
             for (int i = 0; i < 500000; i++)
             {
@@ -217,7 +217,7 @@ public class SickTests
                 Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
 
                 using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
-                           inMemoryThreshold: 32768))
+                           loadInMemoryThreshold: 32768))
                 {
                     var rootRef = reader.GetRoot(RootName);
 

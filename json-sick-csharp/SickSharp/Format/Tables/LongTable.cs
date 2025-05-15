@@ -1,12 +1,11 @@
 using System;
-using System.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
     public class LongTable : FixedTable<long>
     {
-        public LongTable(Stream stream, int offset) : base(stream)
+        public LongTable(SpanStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();

@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Diagnostics;
-using System.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format
@@ -10,11 +9,11 @@ namespace SickSharp.Format
     {
         private readonly int _dataOffset;
         private readonly int _sizeOffset;
-        private readonly byte[]? _index;
+        private readonly ReadOnlyMemory<byte>? _index;
 
-        protected readonly Stream Stream;
+        protected readonly SpanStream Stream;
 
-        public BasicVarTable(Stream stream, int offset, bool loadIndexes)
+        public BasicVarTable(SpanStream stream, int offset, bool loadIndexes)
         {
             Stream = stream;
             Count = Stream.ReadInt32BE(offset);
@@ -23,7 +22,7 @@ namespace SickSharp.Format
             _dataOffset = _sizeOffset + sizeof(int) * (Count + 1);
             if (loadIndexes)
             {
-                _index = Stream.ReadBytes(_sizeOffset, sizeof(int) * (Count + 1));
+                _index = Stream.ReadMemory(_sizeOffset, sizeof(int) * (Count + 1));
             }
         }
 
@@ -36,10 +35,10 @@ namespace SickSharp.Format
 
             int relativeDataOffset;
             int endOffset;
-            if (_index != null)
+            if (_index.HasValue)
             {
-                relativeDataOffset = _index.ReadInt32BE(index * sizeof(int));
-                endOffset = _index.ReadInt32BE((index + 1) * sizeof(int));
+                relativeDataOffset = _index.Value.Slice(index * sizeof(int), sizeof(int)).Span.ReadInt32BE();
+                endOffset = _index.Value.Slice((index + 1) * sizeof(int), sizeof(int)).Span.ReadInt32BE();
             }
             else
             {
@@ -59,7 +58,7 @@ namespace SickSharp.Format
 
     public abstract class VarTable<TV> : BasicVarTable<TV>
     {
-        protected VarTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
+        protected VarTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
+using System.Runtime.CompilerServices;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format
@@ -9,11 +9,11 @@ namespace SickSharp.Format
     public abstract class FixedTable<TV>
     {
         //private readonly int _offset;
-        protected readonly Stream Stream;
+        protected readonly SpanStream Stream;
         // private UInt32 _offset;
 
 
-        public FixedTable(Stream stream)
+        public FixedTable(SpanStream stream)
         {
             Stream = stream;
         }
@@ -42,16 +42,26 @@ namespace SickSharp.Format
             return result;
         }
 
-        public ReadOnlySpan<byte> ReadSpanOfEntity(int index)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TV Read(int index)
+        {
+            return Convert(ReadSpan(index));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ReadOnlySpan<byte> ReadSpan(int index)
         {
             Debug.Assert(index < Count);
             var offset = DataOffset + index * ElementByteLength();
             return Stream.ReadSpan(offset, ElementByteLength());
         }
 
-        public TV Read(int index)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ReadOnlySpan<byte> ReadSpan(int index, int offset, int count)
         {
-            return Convert(ReadSpanOfEntity(index));
+            Debug.Assert(index < Count);
+            var streamOffset = DataOffset + index * ElementByteLength() + offset;
+            return Stream.ReadSpan(streamOffset, count);
         }
 
         protected abstract short ElementByteLength();

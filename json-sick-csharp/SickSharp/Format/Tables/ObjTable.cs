@@ -1,12 +1,9 @@
 #nullable enable
 using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using SickSharp.Encoder;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
@@ -17,7 +14,7 @@ namespace SickSharp.Format.Tables
         private readonly ObjIndexing _settings;
         private readonly bool _loadIndexes;
 
-        public ObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
+        public ObjTable(SpanStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
             _strings = strings;
             _settings = settings;
@@ -30,9 +27,10 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public class KHash
+    public static class KHash
     {
-        public static Int64 Compute(string s)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static long Compute(string s)
         {
             Int32 a = 0x6BADBEEF;
             foreach (var b in Encoding.UTF8.GetBytes(s))
@@ -42,6 +40,15 @@ namespace SickSharp.Format.Tables
             }
 
             return (long)(a) & 0xffffffffL;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (long Hash, int Bucket) Bucket(string str, long bucketSize)
+        {
+            var hash = Compute(str);
+            var bucket = Convert.ToInt32(hash / bucketSize);
+            Debug.Assert(bucket < bucketSize && bucket >= 0);
+            return (hash, bucket);
         }
     }
 
@@ -75,13 +82,13 @@ namespace SickSharp.Format.Tables
     {
         private readonly StringTable _strings;
         private readonly int _offset;
-        private readonly byte[]? _index;
+        private readonly ReadOnlyMemory<byte>? _index;
 
         // public readonly ushort[]? BucketStartOffsets;
         // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
 
-        public OneObjTable(Stream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
+        public OneObjTable(SpanStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
         {
             _strings = strings;
             _offset = offset;
@@ -102,8 +109,8 @@ namespace SickSharp.Format.Tables
 
                 if (loadIndexes)
                 {
-                    _index = Stream.ReadBytes(offset, indexSize + sizeof(int));
-                    Count = _index.ReadInt32BE(indexSize);
+                    _index = Stream.ReadMemory(offset, indexSize + sizeof(int));
+                    Count = _index.Value.Slice(indexSize, sizeof(int)).Span.ReadInt32BE();
                 }
                 else
                 {
@@ -122,11 +129,11 @@ namespace SickSharp.Format.Tables
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort BucketValue(uint bucket)
+        public ushort BucketValue(int bucket)
         {
             Debug.Assert(UseIndex);
-            var start = (int)(ObjIndexing.IndexMemberSize * bucket);
-            return _index?.ReadUInt16BE(start) ?? Stream.ReadUInt16BE(_offset + start);
+            var start = ObjIndexing.IndexMemberSize * bucket;
+            return _index.HasValue ? _index.Value.Slice(start, sizeof(ushort)).Span.ReadUInt16BE() : Stream.ReadUInt16BE(_offset + start);
         }
 
         protected override short ElementByteLength()
@@ -136,18 +143,10 @@ namespace SickSharp.Format.Tables
 
         protected override ObjEntry Convert(ReadOnlySpan<byte> bytes)
         {
-            var keyval = bytes[..sizeof(int)].ReadInt32BE();
+            var keyval = bytes.Slice(0, sizeof(int)).ReadInt32BE();
             var kind = (RefKind)bytes[sizeof(int)];
-            var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
+            var value = bytes.Slice(sizeof(int) + sizeof(byte), sizeof(int)).ReadInt32BE();
             return new ObjEntry(keyval, new Ref(kind, value));
-        }
-
-        public ReadOnlySpan<byte> ReadKeyOnly(int index, out string key)
-        {
-            var bytes = ReadSpanOfEntity(index);
-            var keyval = bytes[..sizeof(int)].ReadInt32BE();
-            key = _strings.Read(keyval);
-            return bytes;
         }
 
         public KeyValuePair<string, Ref> ReadKey(int index)
@@ -155,6 +154,15 @@ namespace SickSharp.Format.Tables
             var obj = Read(index);
             return new KeyValuePair<string, Ref>(_strings.Read(obj.Key), obj.Value);
         }
+
+        public ReadOnlySpan<byte> ReadKeyRefSpan(int index, out string key)
+        {
+            var bytes = ReadSpan(index);
+            var keyval = bytes[..sizeof(int)].ReadInt32BE();
+            key = _strings.Read(keyval);
+            return bytes[sizeof(int)..];
+        }
+
 
         public IEnumerator<KeyValuePair<string, Ref>> GetEnumerator()
         {
@@ -167,6 +175,14 @@ namespace SickSharp.Format.Tables
             {
                 yield return ReadKey(i);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Ref ConvertRef(ReadOnlySpan<byte> bytes)
+        {
+            var kind = (RefKind)bytes[0];
+            var value = bytes.Slice(sizeof(byte), sizeof(int)).ReadInt32BE();
+            return new Ref(kind, value);
         }
     }
 

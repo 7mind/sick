@@ -7,7 +7,7 @@ namespace SickSharp.Format.Tables
 {
     public class ArrTable : BasicVarTable<OneArrTable>
     {
-        public ArrTable(Stream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
+        public ArrTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 
@@ -19,7 +19,7 @@ namespace SickSharp.Format.Tables
 
     public class OneArrTable : FixedTable<Ref>
     {
-        public OneArrTable(Stream stream, int offset) : base(stream)
+        public OneArrTable(SpanStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();

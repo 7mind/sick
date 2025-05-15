@@ -33,7 +33,7 @@ namespace SickSharp.Format
     public class SickReader : IDisposable
     {
         private readonly Dictionary<string, Ref> _roots = new();
-        private readonly Stream _stream;
+        private readonly SpanStream _stream;
         private readonly ISickProfiler _profiler;
 
         static SickReader()
@@ -50,7 +50,7 @@ namespace SickSharp.Format
             bool loadIndexes
         )
         {
-            _stream = stream;
+            _stream = SpanStream.Create(stream);
             _profiler = profiler;
             Header = ReadHeader();
 
@@ -82,13 +82,14 @@ namespace SickSharp.Format
             string path,
             ISickCacheManager cacheManager,
             ISickProfiler profiler,
-            long inMemoryThreshold = 65536,
-            bool pageCached = true,
-            int cachePageSize = 4192
+            long loadInMemoryThreshold = 65536,
+            bool cacheStream = true,
+            int cachePageSize = 4192,
+            bool cacheInternedIndexes = true
         )
         {
             var info = new FileInfo(path);
-            var loadIntoMemory = info.Length <= inMemoryThreshold;
+            var loadIntoMemory = info.Length <= loadInMemoryThreshold;
 
             Stream stream;
             bool loadIndexes;
@@ -98,12 +99,12 @@ namespace SickSharp.Format
                 // there were reports that ReadAllBytes might be broken on IL2CPP
                 var buf = ReadAllBytes2(path);
                 stream = new MemoryStream(buf, 0, buf.Length, writable: false, publiclyVisible: true);
-                loadIndexes = false;
+                loadIndexes = !cacheInternedIndexes;
             }
-            else if (pageCached)
+            else if (cacheStream)
             {
                 stream = new NonAllocPageCachedStream(cacheManager.Provide(path, cachePageSize, profiler));
-                loadIndexes = false;
+                loadIndexes = !cacheInternedIndexes;
             }
             else
             {
@@ -197,8 +198,7 @@ namespace SickSharp.Format
 
                 if (currentObj.UseIndex)
                 {
-                    var khash = KHash.Compute(field);
-                    var bucket = Convert.ToUInt32(khash / Header.Settings.BucketSize);
+                    var (_, bucket) = KHash.Bucket(field, Header.Settings.BucketSize);
                     var probablyLower = currentObj.BucketValue(bucket);
 
                     if (probablyLower == ObjIndexing.MaxIndex)
@@ -217,8 +217,8 @@ namespace SickSharp.Format
 
                     lower = probablyLower;
 
-                    // with optimized index there should be no maxIndex elements in the index and we expect to make exactly ONE iteration
-                    for (uint i = bucket + 1; i < Header.Settings.BucketCount; i++)
+                    // with optimized index there should be no maxIndex elements in the index, and we expect to make exactly ONE iteration
+                    for (var i = bucket + 1; i < Header.Settings.BucketCount; i++)
                     {
                         var probablyUpper = currentObj.BucketValue(i);
 
@@ -248,24 +248,20 @@ namespace SickSharp.Format
 #endif
 
                 Debug.Assert(lower <= upper);
-                for (int i = lower; i < upper; i++)
+                for (var i = lower; i < upper; i++)
                 {
-                    var bytes = currentObj.ReadKeyOnly(i, out var key);
-                    if (key == field)
-                    {
+                    var refBytes = currentObj.ReadKeyRefSpan(i, out var key);
+                    if (key != field) continue;
+
 #if SICK_DEBUG_TRAVEL
-                        TotalTravel += (i - lower);
+                    TotalTravel += (i - lower);
 #endif
 
-                        var kind = (RefKind)bytes[sizeof(int)];
-                        var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-                        var ret = new Ref(kind, value);
 #if SICK_PROFILE_READER
-                        return cp.OnReturn(ret);
+                    return cp.OnReturn(currentObj.ConvertRef(refBytes));
 #else
-                        return ret;
+                    return OneObjTable.ConvertRef(refBytes);
 #endif
-                    }
                 }
 
                 throw new KeyNotFoundException(
@@ -275,7 +271,7 @@ namespace SickSharp.Format
         }
 
 
-        public Ref ReadArrayElementRef(Ref reference, int iindex)
+        public Ref ReadArrayElementRef(Ref reference, int index)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadArrayElementRef", reference, iindex))
@@ -284,9 +280,7 @@ namespace SickSharp.Format
                 if (reference.Kind == RefKind.Arr)
                 {
                     var currentObj = Arrs.Read(reference.Value);
-                    var i = (iindex >= 0)
-                        ? iindex
-                        : currentObj.Count + iindex; // + decrements here because iindex is negative
+                    var i = (index >= 0) ? index : currentObj.Count + index; // + decrements here because index is negative
                     var ret = currentObj.Read(i);
 #if SICK_PROFILE_READER
                     return cp.OnReturn(ret);
@@ -296,7 +290,7 @@ namespace SickSharp.Format
                 }
 
                 throw new KeyNotFoundException(
-                    $"Tried to find element `{iindex}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
+                    $"Tried to find element `{index}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
                 );
             }
         }
