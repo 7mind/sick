@@ -84,8 +84,6 @@ namespace SickSharp.Format.Tables
         private readonly int _offset;
         private readonly ReadOnlyMemory<byte>? _index;
 
-        // public readonly ushort[]? BucketStartOffsets;
-        // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
 
         public OneObjTable(SpanStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
@@ -94,15 +92,9 @@ namespace SickSharp.Format.Tables
             _offset = offset;
 
             var indexHeader = stream.ReadSpan(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
-            // var indexHeader = rawIndex.ReadUInt16BE(0);
+            UseIndex = indexHeader != ObjIndexing.NoIndex;
 
-            if (indexHeader == ObjIndexing.NoIndex)
-            {
-                SetStart(offset + ObjIndexing.IndexMemberSize);
-                ReadStandardCount();
-                UseIndex = false;
-            }
-            else
+            if (UseIndex)
             {
                 var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
                 SetStart(offset + indexSize);
@@ -116,8 +108,11 @@ namespace SickSharp.Format.Tables
                 {
                     Count = Stream.ReadInt32BE(_offset + indexSize);
                 }
-
-                UseIndex = true;
+            }
+            else
+            {
+                SetStart(offset + ObjIndexing.IndexMemberSize);
+                ReadStandardCount();
             }
 
             if (Count >= ObjIndexing.MaxIndex)
