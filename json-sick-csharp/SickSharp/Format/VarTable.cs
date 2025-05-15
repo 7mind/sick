@@ -20,7 +20,7 @@ namespace SickSharp.Format
 
             _sizeOffset = offset + sizeof(int);
             _dataOffset = _sizeOffset + sizeof(int) * (Count + 1);
-            _index = loadIndexes ? Stream.ReadMemory(_sizeOffset, sizeof(int) * (Count + 1)) : null;
+            _index = loadIndexes ? Stream.ReadMemory(_sizeOffset, sizeof(int) * (Count + 1)) : (ReadOnlyMemory<byte>?)null;
         }
 
         public int Count { get; }
