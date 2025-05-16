@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Concurrent;
 
-namespace SickSharp.Format
+namespace SickSharp.IO
 {
     public interface ISickCacheManager
     {

@@ -8,7 +8,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class ObjTable : BasicVarTable<OneObjTable>
+    internal sealed class ObjTable : BasicVarTable<OneObjTable>
     {
         private readonly StringTable _strings;
         private readonly ObjIndexing _settings;
@@ -27,7 +27,7 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public static class KHash
+    internal static class KHash
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long Compute(string s)
@@ -52,7 +52,9 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public class ObjIndexing
+    public record ObjEntry(int Key, Ref Value);
+
+    public sealed class ObjIndexing
     {
         public const ushort NoIndex = 65535;
 
@@ -78,7 +80,7 @@ namespace SickSharp.Format.Tables
         public const ushort IndexMemberSize = sizeof(ushort);
     }
 
-    public class OneObjTable : FixedTable<ObjEntry>
+    internal sealed class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
         private readonly int _offset;
@@ -180,6 +182,4 @@ namespace SickSharp.Format.Tables
             return new Ref(kind, value);
         }
     }
-
-    public record ObjEntry(int Key, Ref Value);
 }

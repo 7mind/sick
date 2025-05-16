@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SickSharp.Primitives;
 
-namespace SickSharp.Format
+namespace SickSharp.IO
 {
     public enum CachePageStatus : int
     {
@@ -141,7 +141,7 @@ namespace SickSharp.Format
             {
                 return;
             }
-            
+
             switch (currentStatus)
             {
                 case (int)CachePageStatus.Missing:

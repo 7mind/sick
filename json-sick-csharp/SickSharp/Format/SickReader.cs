@@ -1,21 +1,16 @@
 #nullable enable
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using Newtonsoft.Json.Linq;
 using SickSharp.Format.Tables;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
-namespace SickSharp.Format
+namespace SickSharp
 {
-    public record FoundRef(Ref result, string[] query);
-
     /// <summary>
     ///     <list type="bullet">
     ///         <item>
@@ -35,6 +30,17 @@ namespace SickSharp.Format
         private readonly Dictionary<string, Ref> _roots = new();
         private readonly SpanStream _stream;
         private readonly ISickProfiler _profiler;
+        private readonly Header _header;
+        private readonly RootTable _root;
+        private readonly IntTable _ints;
+        private readonly LongTable _longs;
+        private readonly BigIntTable _bigInts;
+        private readonly FloatTable _floats;
+        private readonly DoubleTable _doubles;
+        private readonly BigDecTable _bigDecimals;
+        private readonly StringTable _strings;
+        private readonly ArrTable _arrs;
+        private readonly ObjTable _objs;
 
         static SickReader()
         {
@@ -52,26 +58,26 @@ namespace SickSharp.Format
         {
             _stream = SpanStream.Create(stream);
             _profiler = profiler;
-            Header = ReadHeader();
+            _header = ReadHeader();
 
-            Ints = new IntTable(_stream, Header.Offsets[0]);
-            Longs = new LongTable(_stream, Header.Offsets[1]);
-            BigInts = new BigIntTable(_stream, Header.Offsets[2], loadIndexes);
+            _ints = new IntTable(_stream, _header.Offsets[0]);
+            _longs = new LongTable(_stream, _header.Offsets[1]);
+            _bigInts = new BigIntTable(_stream, _header.Offsets[2], loadIndexes);
 
-            Floats = new FloatTable(_stream, Header.Offsets[3]);
-            Doubles = new DoubleTable(_stream, Header.Offsets[4]);
-            BigDecimals = new BigDecTable(_stream, Header.Offsets[5], loadIndexes);
+            _floats = new FloatTable(_stream, _header.Offsets[3]);
+            _doubles = new DoubleTable(_stream, _header.Offsets[4]);
+            _bigDecimals = new BigDecTable(_stream, _header.Offsets[5], loadIndexes);
 
-            Strings = new StringTable(_stream, Header.Offsets[6], loadIndexes);
+            _strings = new StringTable(_stream, _header.Offsets[6], loadIndexes);
 
-            Arrs = new ArrTable(_stream, Header.Offsets[7], loadIndexes);
-            Objs = new ObjTable(_stream, Strings, Header.Offsets[8], Header.Settings, loadIndexes);
-            Roots = new RootTable(_stream, Header.Offsets[9]);
+            _arrs = new ArrTable(_stream, _header.Offsets[7], loadIndexes);
+            _objs = new ObjTable(_stream, _strings, _header.Offsets[8], _header.Settings, loadIndexes);
+            _root = new RootTable(_stream, _header.Offsets[9]);
 
-            for (var i = 0; i < Roots.Count; i++)
+            for (var i = 0; i < _root.Count; i++)
             {
-                var rootEntry = Roots.Read(i);
-                var rootId = Strings.Read(rootEntry.Key);
+                var rootEntry = _root.Read(i);
+                var rootId = _strings.Read(rootEntry.Key);
                 var root = rootEntry.Reference;
 
                 _roots.Add(rootId, root);
@@ -130,19 +136,6 @@ namespace SickSharp.Format
             }
         }
 
-
-        public Header Header { get; }
-        public IntTable Ints { get; }
-        public LongTable Longs { get; }
-        public BigIntTable BigInts { get; }
-        public FloatTable Floats { get; }
-        public DoubleTable Doubles { get; }
-        public BigDecTable BigDecimals { get; }
-        public StringTable Strings { get; }
-        public ArrTable Arrs { get; }
-        public ObjTable Objs { get; }
-        public RootTable Roots { get; }
-
 #if SICK_DEBUG_TRAVEL
         public static volatile int TotalLookups = 0;
         public static volatile int TotalTravel = 0;
@@ -154,8 +147,7 @@ namespace SickSharp.Format
             using (var cp = _profiler.OnInvoke("GetRoot", id))
 #endif
             {
-                Ref? value;
-                var ret = _roots.TryGetValue(id, out value) ? value : null;
+                var ret = _roots.GetValueOrDefault(id);
 #if SICK_PROFILE_READER
                 return cp.OnReturn(ret);
 #else

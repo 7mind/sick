@@ -3,7 +3,8 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class RootTable : FixedTable<Root>
+
+    internal sealed class RootTable : FixedTable<Root>
     {
         public RootTable(SpanStream stream, int offset) : base(stream)
         {
@@ -25,6 +26,4 @@ namespace SickSharp.Format.Tables
             return new Root(keyval, new Ref(kind.Value, value));
         }
     }
-
-    public record Root(int Key, Ref Reference);
 }

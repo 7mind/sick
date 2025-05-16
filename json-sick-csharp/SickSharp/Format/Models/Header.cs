@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using SickSharp.Format.Tables;
 
-namespace SickSharp.Format
+namespace SickSharp
 {
-    public record Header(int Version, int TableCount, List<int> Offsets, ObjIndexing Settings);
+    internal record Header(int Version, int TableCount, List<int> Offsets, ObjIndexing Settings);
 }

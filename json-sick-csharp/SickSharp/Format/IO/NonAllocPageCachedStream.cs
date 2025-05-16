@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-namespace SickSharp.Format
+namespace SickSharp.IO
 {
     public sealed class NonAllocPageCachedStream : Stream, ICachedStream
     {

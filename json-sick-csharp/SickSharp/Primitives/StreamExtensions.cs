@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using SickSharp.Format;
+using SickSharp.IO;
 
 // ReSharper disable InconsistentNaming
 

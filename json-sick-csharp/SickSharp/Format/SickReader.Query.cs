@@ -2,14 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using SickSharp.Format.Tables;
 
-namespace SickSharp.Format
+namespace SickSharp
 {
     public sealed partial class SickReader
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IJsonVal Query(Ref reference, ReadOnlySpan<string> path)
+        public SickJson Query(Ref reference, ReadOnlySpan<string> path)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query/span", reference, new Lazy<string[]>(path.ToArray())))
@@ -33,7 +32,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryQuery(Ref reference, ReadOnlySpan<string> path, out IJsonVal value)
+        public bool TryQuery(Ref reference, ReadOnlySpan<string> path, out SickJson value)
         {
             try
             {
@@ -48,7 +47,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IJsonVal Query(Ref reference, string path)
+        public SickJson Query(Ref reference, string path)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query", path))
@@ -65,7 +64,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryQuery(Ref reference, string path, out IJsonVal value)
+        public bool TryQuery(Ref reference, string path, out SickJson value)
         {
             try
             {
@@ -80,7 +79,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IJsonVal Query(JObj obj, ReadOnlySpan<string> path)
+        public SickJson Query(SickJson.Object obj, ReadOnlySpan<string> path)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query/span", jObj, new Lazy<string[]>(string.Join(path, "."))))
@@ -118,7 +117,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryQuery(JObj obj, Span<string> path, out IJsonVal value)
+        public bool TryQuery(SickJson.Object obj, Span<string> path, out SickJson value)
         {
             try
             {
@@ -133,7 +132,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IJsonVal Query(JObj obj, string path)
+        public SickJson Query(SickJson.Object obj, string path)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Query", jObj))
@@ -149,7 +148,7 @@ namespace SickSharp.Format
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryQuery(JObj obj, string path, out IJsonVal value)
+        public bool TryQuery(SickJson.Object obj, string path, out SickJson value)
         {
             try
             {

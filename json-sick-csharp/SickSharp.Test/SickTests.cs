@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SickSharp.Format;
 using SickSharp.Format.Tables;
+using SickSharp.IO;
 using Index = SickSharp.Encoder.Index;
 
 namespace SickSharp.Test;
@@ -23,7 +24,7 @@ public class SickTests
     {
         Directory.CreateDirectory(PathOut);
         _files = Directory.EnumerateFiles(PathInput, "*.json", SearchOption.AllDirectories).ToList();
-        
+
         foreach (var file in _files)
         {
             var fi = new FileInfo(file);
@@ -31,7 +32,7 @@ public class SickTests
             DoWrite(file, Path.Combine(PathOut, $"{name}-CS.bin"));
         }
     }
-    
+
     [Test]
     public void Test1_Queries()
     {
@@ -42,40 +43,39 @@ public class SickTests
         {
             var rootRef = reader.GetRoot(RootName)!;
 
-            var o1 = (JStr)reader.Query(rootRef, "info.version");
+            var o1 = (SickJson.String)reader.Query(rootRef, "info.version");
             Assert.That(o1.Value, Is.EqualTo("1.0.0"));
 
-            var o2 = (JStr)reader.Query(rootRef, "swagger");
+            var o2 = (SickJson.String)reader.Query(rootRef, "swagger");
             Assert.That(o2.Value, Is.EqualTo("2.0"));
 
-            var o3 = (JStr)reader.Query(rootRef, "schemes[0]");
+            var o3 = (SickJson.String)reader.Query(rootRef, "schemes[0]");
             Assert.That(o3.Value, Is.EqualTo("http"));
 
-            var o4 = (JStr)reader.Query(rootRef, "schemes.[0]");
+            var o4 = (SickJson.String)reader.Query(rootRef, "schemes.[0]");
             Assert.That(o4.Value, Is.EqualTo("http"));
 
-            var o5 = (JStr)reader.Query(rootRef, "schemes.[-1]");
+            var o5 = (SickJson.String)reader.Query(rootRef, "schemes.[-1]");
             Assert.That(o5.Value, Is.EqualTo("http"));
         }
     }
-    
+
     [Test]
     public void Test_Query_Benchmark()
     {
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
-    
-        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
-                   loadInMemoryThreshold: 0))
+
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(), loadInMemoryThreshold: 0))
         {
             for (int i = 0; i < 500000; i++)
             {
                 var rootRef = reader.GetRoot(RootName)!;
-                var o3 = (JStr)reader.Query(rootRef, "schemes[0]");
+                var o3 = (SickJson.String)reader.Query(rootRef, "schemes[0]");
                 Debug.Assert(o3 != null);
             }
         }
     }
-    
+
     //
     // [Test]
     // public void Test3_repro()
@@ -107,7 +107,7 @@ public class SickTests
 
         if (reference.Kind == RefKind.Arr)
         {
-            var arr = ((JArr)reader.Resolve(reference)).Value;
+            var arr = (SickJson.Array)reader.Resolve(reference);
             if (arr.Count == 0)
             {
                 return next;
@@ -133,7 +133,7 @@ public class SickTests
 
         if (reference.Kind == RefKind.Obj)
         {
-            var obj = ((JObj)reader.Resolve(reference)).Value;
+            var obj = (SickJson.Object)reader.Resolve(reference);
             if (obj.Count == 0)
             {
                 return next;
@@ -183,7 +183,7 @@ public class SickTests
     //
     //     if (reference.Kind == RefKind.Obj)
     //     {
-    //         var obj = ((JObj)reader.Resolve(reference)).Value;
+    //         var obj = ((SickJson.Object)reader.Resolve(reference)).Value;
     //         if (obj.Count == 0)
     //         {
     //             return next;
@@ -241,7 +241,7 @@ public class SickTests
                     {
                         case RefKind.Obj:
                             Console.WriteLine(
-                                $"{name}: object with {((JObj)reader.Resolve(rootRef)).Value.Count} elements");
+                                $"{name}: object with {((SickJson.Object)reader.Resolve(rootRef)).Count} elements");
                             break;
                         default:
                             break;
@@ -273,8 +273,7 @@ public class SickTests
         var index = Index.Create();
         var root = index.append(RootName, loaded);
 
-        using (BinaryWriter binWriter =
-               new BinaryWriter(File.Open(outPath, FileMode.Create)))
+        using (BinaryWriter binWriter = new BinaryWriter(File.Open(outPath, FileMode.Create)))
         {
             var data = index.Serialize().data;
             Console.WriteLine(

@@ -4,9 +4,9 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public record BigDecimal(BigInteger Unscaled, int Scale, int Precision, int Signum);
+    public sealed record BigDecimal(BigInteger Unscaled, int Scale, int Precision, int Signum);
 
-    public class BigDecTable : VarTable<BigDecimal>
+    internal sealed class BigDecTable : VarTable<BigDecimal>
     {
         public BigDecTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {

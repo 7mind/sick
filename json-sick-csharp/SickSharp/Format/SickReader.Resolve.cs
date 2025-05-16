@@ -1,36 +1,33 @@
 #nullable enable
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Newtonsoft.Json.Linq;
-using SickSharp.Format.Tables;
 
-namespace SickSharp.Format
+namespace SickSharp
 {
     public sealed partial class SickReader
     {
-        public IJsonVal Resolve(Ref reference)
+        public SickJson Resolve(Ref reference)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("Resolve", reference))
 #endif
             {
-                IJsonVal ret = reference.Kind switch
+                SickJson ret = reference.Kind switch
                 {
-                    RefKind.Nul => new JNull(),
-                    RefKind.Bit => new JBool(reference.Value == 1),
-                    RefKind.SByte => new JSByte((sbyte)reference.Value),
-                    RefKind.Short => new JShort((short)reference.Value),
-                    RefKind.Int => new JInt(Ints.Read(reference.Value)),
-                    RefKind.Lng => new JLong(Longs.Read(reference.Value)),
-                    RefKind.BigInt => new JBigInt(BigInts.Read(reference.Value)),
-                    RefKind.Flt => new JSingle(Floats.Read(reference.Value)),
-                    RefKind.Dbl => new JDouble(Doubles.Read(reference.Value)),
-                    RefKind.BigDec => new JBigDecimal(BigDecimals.Read(reference.Value)),
-                    RefKind.Str => new JStr(Strings.Read(reference.Value)),
-                    RefKind.Arr => new JArr(Arrs.Read(reference.Value)),
-                    RefKind.Obj => new JObj(Objs.Read(reference.Value)),
-                    RefKind.Root => new JRoot(Roots.Read(reference.Value)),
+                    RefKind.Nul => new SickJson.Null(),
+                    RefKind.Bit => new SickJson.Bool(reference.Value == 1),
+                    RefKind.SByte => new SickJson.SByte((sbyte)reference.Value),
+                    RefKind.Short => new SickJson.Short((short)reference.Value),
+                    RefKind.Int => new SickJson.Int(_ints.Read(reference.Value)),
+                    RefKind.Lng => new SickJson.Long(_longs.Read(reference.Value)),
+                    RefKind.BigInt => new SickJson.BigInt(_bigInts.Read(reference.Value)),
+                    RefKind.Flt => new SickJson.Single(_floats.Read(reference.Value)),
+                    RefKind.Dbl => new SickJson.Double(_doubles.Read(reference.Value)),
+                    RefKind.BigDec => new SickJson.BigDec(_bigDecimals.Read(reference.Value)),
+                    RefKind.Str => new SickJson.String(_strings.Read(reference.Value)),
+                    RefKind.Arr => new SickJson.Array(this, _arrs.Read(reference.Value)),
+                    RefKind.Obj => new SickJson.Object(this, _objs.Read(reference.Value)),
+                    RefKind.Root => new SickJson.Root(_root.Read(reference.Value)),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
 
@@ -54,16 +51,16 @@ namespace SickSharp.Format
                     RefKind.Bit => new JValue(reference.Value == 1),
                     RefKind.SByte => new JValue((sbyte)reference.Value),
                     RefKind.Short => new JValue((short)reference.Value),
-                    RefKind.Int => new JValue(Ints.Read(reference.Value)),
-                    RefKind.Lng => new JValue(Longs.Read(reference.Value)),
-                    RefKind.BigInt => new JValue(BigInts.Read(reference.Value)),
-                    RefKind.Flt => new JValue(Floats.Read(reference.Value)),
-                    RefKind.Dbl => new JValue(Doubles.Read(reference.Value)),
-                    RefKind.BigDec => new JValue(BigDecimals.Read(reference.Value)),
-                    RefKind.Str => new JValue(Strings.Read(reference.Value)),
+                    RefKind.Int => new JValue(_ints.Read(reference.Value)),
+                    RefKind.Lng => new JValue(_longs.Read(reference.Value)),
+                    RefKind.BigInt => new JValue(_bigInts.Read(reference.Value)),
+                    RefKind.Flt => new JValue(_floats.Read(reference.Value)),
+                    RefKind.Dbl => new JValue(_doubles.Read(reference.Value)),
+                    RefKind.BigDec => new JValue(_bigDecimals.Read(reference.Value)),
+                    RefKind.Str => new JValue(_strings.Read(reference.Value)),
                     RefKind.Arr => ToJsonArray(reference),
                     RefKind.Obj => ToJsonObject(reference),
-                    RefKind.Root => ToJson(Roots.Read(reference.Value).Reference),
+                    RefKind.Root => ToJson(_root.Read(reference.Value).Reference),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
 
@@ -78,7 +75,7 @@ namespace SickSharp.Format
         private JToken ToJsonArray(Ref reference)
         {
             var jArray = new JArray();
-            foreach (var element in Arrs.Read(reference.Value).Content())
+            foreach (var element in _arrs.Read(reference.Value).Content())
             {
                 jArray.Add(ToJson(element));
             }
@@ -89,7 +86,7 @@ namespace SickSharp.Format
         private JToken ToJsonObject(Ref reference)
         {
             var jObject = new JObject();
-            foreach (var (key, value) in Objs.Read(reference.Value).Content())
+            foreach (var (key, value) in _objs.Read(reference.Value).Content())
             {
                 jObject.Add(new JProperty(key, ToJson(value)));
             }

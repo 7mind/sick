@@ -1,4 +1,4 @@
-namespace SickSharp.Format.Tables
+namespace SickSharp
 {
     public enum RefKind : byte
     {

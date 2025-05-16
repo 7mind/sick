@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using SickSharp.Format.Tables;
 
-namespace SickSharp.Format
+namespace SickSharp
 {
     public sealed partial class SickReader
     {
@@ -23,7 +23,7 @@ namespace SickSharp.Format
 
                 try
                 {
-                    var currentObj = Objs.Read(reference.Value);
+                    var currentObj = _objs.Read(reference.Value);
                     var ret = ReadObjectFieldRef(currentObj, field);
 #if SICK_PROFILE_READER
                     return cp.OnReturn(ret);
@@ -38,7 +38,7 @@ namespace SickSharp.Format
             }
         }
 
-        public Ref ReadObjectFieldRef(OneObjTable obj, string field)
+        internal Ref ReadObjectFieldRef(OneObjTable obj, string field)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadObjectFieldRef/obj", field, currentObj, clue.Value))
@@ -50,7 +50,7 @@ namespace SickSharp.Format
                 // lookup index buckets only if there is more than 1 element, and object index in use 
                 if (obj is { Count: > 1, UseIndex: true })
                 {
-                    var (_, bucket) = KHash.Bucket(field, Header.Settings.BucketSize);
+                    var (_, bucket) = KHash.Bucket(field, _header.Settings.BucketSize);
                     var probablyLower = obj.BucketValue(bucket);
 
                     if (probablyLower == ObjIndexing.MaxIndex)
@@ -70,7 +70,7 @@ namespace SickSharp.Format
                     lower = probablyLower;
 
                     // with optimized index there should be no maxIndex elements in the index, and we expect to make exactly ONE iteration
-                    for (var i = bucket + 1; i < Header.Settings.BucketCount; i++)
+                    for (var i = bucket + 1; i < _header.Settings.BucketCount; i++)
                     {
                         var probablyUpper = obj.BucketValue(i);
 
@@ -121,6 +121,12 @@ namespace SickSharp.Format
             }
         }
 
+        public SickJson ReadObjectField(Ref reference, string field)
+        {
+            var fieldRef = ReadObjectFieldRef(reference, field);
+            return Resolve(fieldRef);
+        }
+
         public Ref ReadArrayElementRef(Ref reference, int index)
         {
 #if SICK_PROFILE_READER
@@ -134,7 +140,7 @@ namespace SickSharp.Format
                     );
                 }
 
-                var currentObj = Arrs.Read(reference.Value);
+                var currentObj = _arrs.Read(reference.Value);
                 var ret = ReadArrayElementRef(currentObj, index);
 
 #if SICK_PROFILE_READER
@@ -145,7 +151,7 @@ namespace SickSharp.Format
             }
         }
 
-        public Ref ReadArrayElementRef(OneArrTable arr, int index)
+        internal Ref ReadArrayElementRef(OneArrTable arr, int index)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadArrayElementRef/obj", reference, iindex))

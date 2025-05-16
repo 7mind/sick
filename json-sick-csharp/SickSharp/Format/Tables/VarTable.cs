@@ -5,7 +5,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
-    public abstract class BasicVarTable<TV>
+    internal abstract class BasicVarTable<TV>
     {
         private readonly int _dataOffset;
         private readonly int _sizeOffset;
@@ -13,7 +13,7 @@ namespace SickSharp.Format
 
         protected readonly SpanStream Stream;
 
-        public BasicVarTable(SpanStream stream, int offset, bool loadIndexes)
+        protected BasicVarTable(SpanStream stream, int offset, bool loadIndexes)
         {
             Stream = stream;
             Count = Stream.ReadInt32BE(offset);
@@ -25,8 +25,7 @@ namespace SickSharp.Format
 
         public int Count { get; }
 
-
-        public TV Read(int index)
+        internal TV Read(int index)
         {
             Debug.Assert(index < Count);
 
@@ -53,7 +52,7 @@ namespace SickSharp.Format
         protected abstract TV BasicRead(int absoluteStartOffset, int byteLen);
     }
 
-    public abstract class VarTable<TV> : BasicVarTable<TV>
+    internal abstract class VarTable<TV> : BasicVarTable<TV>
     {
         protected VarTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {

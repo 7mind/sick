@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class ArrTable : BasicVarTable<OneArrTable>
+    internal sealed class ArrTable : BasicVarTable<OneArrTable>
     {
         public ArrTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
@@ -17,7 +16,7 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public class OneArrTable : FixedTable<Ref>
+    internal sealed class OneArrTable : FixedTable<Ref>
     {
         public OneArrTable(SpanStream stream, int offset) : base(stream)
         {
@@ -36,18 +35,18 @@ namespace SickSharp.Format.Tables
             var value = bytes[1..(sizeof(int) + 1)].ReadInt32BE();
             return new Ref(kind, value);
         }
-        
+
         public IEnumerator<Ref> GetEnumerator()
         {
             return Content().GetEnumerator();
         }
-        
+
         public IEnumerable<Ref> Content()
         {
-            for (var i = 0; i < Count; i++) 
+            for (var i = 0; i < Count; i++)
             {
                 yield return Read(i);
-            };
+            }
         }
     }
 }

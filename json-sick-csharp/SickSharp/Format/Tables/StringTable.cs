@@ -9,7 +9,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class StringTable : VarTable<string>
+    internal class StringTable : VarTable<string>
     {
         private readonly ConcurrentDictionary<int, string> _cache = new();
 
