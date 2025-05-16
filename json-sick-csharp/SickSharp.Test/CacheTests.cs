@@ -1,6 +1,6 @@
-    using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
-using SickSharp.Format;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Test;
@@ -26,30 +26,26 @@ public class CacheTests
             }
         }
     }
-    
+
     public static byte[] ReadBytesFromFileStream(Stream fileStream, long offset, int size)
     {
-        if (fileStream == null)
-            throw new ArgumentNullException(nameof(fileStream));
-        if (offset < 0 || offset >= fileStream.Length)
-            throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of file bounds.");
-        if (size < 0)
-            throw new ArgumentOutOfRangeException(nameof(size), "Size must be non-negative.");
+        if (fileStream == null) throw new ArgumentNullException(nameof(fileStream));
+        if (offset < 0 || offset >= fileStream.Length) throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of file bounds.");
+        if (size < 0) throw new ArgumentOutOfRangeException(nameof(size), "Size must be non-negative.");
 
         int bytesToRead = size; //(int)Math.Min(size, fileStream.Length - offset);
         byte[] buffer = new byte[bytesToRead];
-        
+
         fileStream.Seek(offset, SeekOrigin.Begin);
         int bytesRead = fileStream.ReadUpTo(buffer, 0, bytesToRead);
         Debug.Assert(bytesRead == size);
         return buffer;
     }
-    
-    
+
+
     [SetUp]
     public void Setup()
     {
-
     }
 
 
@@ -59,7 +55,7 @@ public class CacheTests
         var tempFilePath = Path.GetTempFileName();
         WriteRandomFile(tempFilePath, _fileSize);
 
-        var f1  = File.Open(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var f1 = File.Open(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var f2 = new NonAllocPageCachedStream(new PageCachedFile(tempFilePath, 4192, ISickProfiler.Noop()));
 
         CheckCorrectness(f1, f2);
@@ -75,7 +71,7 @@ public class CacheTests
             f2.CopyTo(ms);
         }
     }
-    
+
     public void CheckCorrectness(Stream f1, Stream f2)
     {
         var rng = new Random();
@@ -86,7 +82,7 @@ public class CacheTests
         CompareSpans(f1, f2, 1, 4191);
         CompareSpans(f1, f2, 1, 4192);
         CompareSpans(f1, f2, 1, 4193);
-        
+
         CompareSpans(f1, f2, 4191, 8000);
         CompareSpans(f1, f2, 4192, 8000);
         CompareSpans(f1, f2, 4193, 8000);
@@ -102,16 +98,15 @@ public class CacheTests
         CompareSpans(f1, f2, _fileSize - 299, 299);
         CompareSpans(f1, f2, _fileSize - 300, 300);
         CompareSpans(f1, f2, _fileSize - 301, 301);
-        
+
         CompareSpans(f1, f2, _fileSize - 4192, 4192);
         CompareSpans(f1, f2, _fileSize - 4193, 4192);
 
         CompareSpans(f1, f2, _fileSize - 16383, 16383);
         CompareSpans(f1, f2, _fileSize - 16384, 16384);
         CompareSpans(f1, f2, _fileSize - 16385, 16385);
-        
-        
-        
+
+
         for (int i = 0; i < 10000; i++)
         {
             var offset = rng.NextInt64(0, _fileSize - 1);
@@ -119,8 +114,6 @@ public class CacheTests
 
             CompareSpans(f1, f2, offset, count);
         }
-        
-        
     }
 
     private static void CompareSpans(Stream f1, Stream f2, long offset, int count)

@@ -1,4 +1,4 @@
-namespace SickSharp.Format
+namespace SickSharp.IO
 {
     public interface ICachedStream
     {

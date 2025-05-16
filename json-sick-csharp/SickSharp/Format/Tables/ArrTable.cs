@@ -1,25 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class ArrTable : BasicVarTable<OneArrTable>
+    internal sealed class ArrTable : BasicVarTable<OneArrTable>
     {
-        public ArrTable(Stream stream, UInt32 offset) : base(stream, offset)
+        public ArrTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 
-        protected override OneArrTable BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
+        protected override OneArrTable BasicRead(int absoluteStartOffset, int byteLen)
         {
             return new OneArrTable(Stream, absoluteStartOffset);
         }
     }
 
-    public class OneArrTable : FixedTable<Ref>
+    internal sealed class OneArrTable : FixedTable<Ref>
     {
-        public OneArrTable(Stream stream, UInt32 offset) : base(stream)
+        public OneArrTable(SpanStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
@@ -30,24 +29,24 @@ namespace SickSharp.Format.Tables
             return sizeof(byte) + sizeof(int);
         }
 
-        protected override Ref Convert(byte[] bytes)
+        protected override Ref Convert(ReadOnlySpan<byte> bytes)
         {
             var kind = (RefKind)bytes[0];
             var value = bytes[1..(sizeof(int) + 1)].ReadInt32BE();
             return new Ref(kind, value);
         }
-        
+
         public IEnumerator<Ref> GetEnumerator()
         {
             return Content().GetEnumerator();
         }
-        
+
         public IEnumerable<Ref> Content()
         {
-            for (var i = 0; i < Count; i++) 
+            for (var i = 0; i < Count; i++)
             {
                 yield return Read(i);
-            };
+            }
         }
     }
 }
