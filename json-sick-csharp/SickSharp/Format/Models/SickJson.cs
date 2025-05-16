@@ -283,9 +283,12 @@ namespace SickSharp
             private readonly SickReader _reader;
             internal readonly OneArrTable Value;
 
-            internal Array(SickReader reader, OneArrTable value)
+            public readonly Ref Ref;
+
+            internal Array(SickReader reader, Ref reference, OneArrTable value)
             {
                 _reader = reader;
+                Ref = reference;
                 Value = value;
             }
 
@@ -385,12 +388,14 @@ namespace SickSharp
         public sealed class Object : SickJson
         {
             private readonly SickReader _reader;
-            internal readonly OneObjTable Value;
+            public readonly Ref Ref;
+            internal readonly OneObjTable Table;
 
-            internal Object(SickReader reader, OneObjTable value)
+            internal Object(SickReader reader, Ref reference, OneObjTable table)
             {
                 _reader = reader;
-                Value = value;
+                Ref = reference;
+                Table = table;
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
@@ -406,58 +411,50 @@ namespace SickSharp
                 return matcher.OnObj(this);
             }
 
-            public int Count => Value.Count;
+            public int Count => Table.Count;
 
             public IEnumerable<KeyValuePair<string, Ref>> Content()
             {
-                return Value.Content();
+                return Table.Content();
             }
 
             public IReadOnlyDictionary<string, SickJson> ReadAll()
             {
                 var dictionary = new Dictionary<string, SickJson>();
-                foreach (var (fieldKey, fieldRef) in Value.Content())
+                foreach (var (fieldKey, fieldRef) in Table.Content())
                 {
                     dictionary[fieldKey] = _reader.Resolve(fieldRef);
                 }
 
                 return dictionary;
             }
-
-            public T Read<T>(string field) where T : SickJson
+            
+            public KeyValuePair<string, Ref> ReadKey(int index)
             {
-                return (T)Read(field);
+                return Table.ReadKey(index);
             }
 
-            public SickJson Read(string field)
+            public SickJson Read(params string[] path)
             {
-                var fieldRef = _reader.ReadObjectFieldRef(Value, field);
-                return _reader.Resolve(fieldRef);
+                if (path.Length == 0)
+                {
+                    return this;
+                }
+
+                if (path.Length == 1)
+                {
+                    var fieldRef = _reader.ReadObjectFieldRef(Table, path[0]);
+                    return _reader.Resolve(fieldRef);
+                }
+
+                return _reader.Query(this, path);
             }
 
-            public KeyValuePair<string, SickJson> Read(int index)
-            {
-                var (key, reference) = Value.ReadKey(index);
-                return new KeyValuePair<string, SickJson>(key, _reader.Resolve(reference));
-            }
-
-            public KeyValuePair<string, T> Read<T>(int index) where T : SickJson
-            {
-                var (k, v) = Read(index);
-                return new KeyValuePair<string, T>(k, (T)v);
-            }
-
-            public Ref ReadRef(string field)
-            {
-                return _reader.ReadObjectFieldRef(Value, field);
-            }
-
-            public bool TryRead(string field, out SickJson value)
+            public bool TryRead(out SickJson value, params string[] path)
             {
                 try
                 {
-                    var fieldRef = _reader.ReadObjectFieldRef(Value, field);
-                    value = _reader.Resolve(fieldRef);
+                    value = Read(path);
                     return true;
                 }
                 catch (Exception)
@@ -467,12 +464,16 @@ namespace SickSharp
                 }
             }
 
-            public bool TryRead<T>(string field, out T value) where T : SickJson
+            public T Read<T>(params string[] path) where T : SickJson
+            {
+                return (T)Read(path);
+            }
+
+            public bool TryRead<T>(out T value, params string[] path) where T : SickJson
             {
                 try
                 {
-                    var fieldRef = _reader.ReadObjectFieldRef(Value, field);
-                    value = (_reader.Resolve(fieldRef) as T)!;
+                    value = (Read(path) as T)!;
                     return value != null!;
                 }
                 catch (Exception)
@@ -482,11 +483,33 @@ namespace SickSharp
                 }
             }
 
-            public bool TryReadRef(string field, out Ref value)
+            public KeyValuePair<string, SickJson> Read(int index)
+            {
+                var (key, reference) = Table.ReadKey(index);
+                return new KeyValuePair<string, SickJson>(key, _reader.Resolve(reference));
+            }
+
+            public KeyValuePair<string, T> Read<T>(int index) where T : SickJson
+            {
+                var (k, v) = Read(index);
+                return new KeyValuePair<string, T>(k, (T)v);
+            }
+
+            public Ref ReadRef(params string[] path)
+            {
+                return path.Length switch
+                {
+                    0 => Ref,
+                    1 => _reader.ReadObjectFieldRef(Table, path[0]),
+                    _ => _reader.QueryRef(this, path)
+                };
+            }
+
+            public bool TryReadRef(out Ref value, params string[] path)
             {
                 try
                 {
-                    value = _reader.ReadObjectFieldRef(Value, field);
+                    value = ReadRef(path);
                     return true;
                 }
                 catch (Exception)

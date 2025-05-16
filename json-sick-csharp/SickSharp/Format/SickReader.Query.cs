@@ -94,7 +94,7 @@ namespace SickSharp
 
                     var currentQuery = path[0];
                     var next = HandleBracketsWithoutDot(ref currentQuery, path);
-                    var resolvedObj = ReadObjectFieldRef(obj.Value, currentQuery);
+                    var resolvedObj = ReadObjectFieldRef(obj.Table, currentQuery);
 
                     if (next.Length == 0)
                     {
@@ -236,6 +236,88 @@ namespace SickSharp
             try
             {
                 value = QueryRef(reference, path);
+                return true;
+            }
+            catch
+            {
+                value = null!;
+                return false;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Ref QueryRef(SickJson.Object obj, ReadOnlySpan<string> path)
+        {
+#if SICK_PROFILE_READER
+            using (var cp = _profiler.OnInvoke("QueryRef/obj/span", reference, new Lazy<string[]>(path.ToArray())))
+#endif
+            {
+                if (path.Length == 0)
+                {
+                    return obj.Ref;
+                }
+
+                var currentQuery = path[0];
+                var next = HandleBracketsWithoutDot(ref currentQuery, path);
+
+                if (currentQuery.StartsWith("[") && currentQuery.EndsWith("]"))
+                {
+                    var strIndex = currentQuery.Substring(1, currentQuery.Length - 2);
+                    var index = int.Parse(strIndex);
+
+                    var resolvedArr = ReadArrayElementRef(obj.Ref, index);
+                    return QueryRef(resolvedArr, next);
+                }
+
+                var resolvedObj = ReadObjectFieldRef(obj.Table, currentQuery);
+
+                if (next.Length == 0)
+                {
+                    return resolvedObj;
+                }
+
+                return QueryRef(resolvedObj, next);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FoundRef QueryRef(SickJson.Object obj, string path)
+        {
+#if SICK_PROFILE_READER
+            using (var cp = _profiler.OnInvoke("Query/obj", jObj))
+#endif
+            {
+                var query = path.Split('.');
+                var ret = new FoundRef(QueryRef(obj, query), query);
+#if SICK_PROFILE_READER
+                return cp.OnReturn(ret);
+#else
+                return ret;
+#endif
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryQueryRef(SickJson.Object obj, ReadOnlySpan<string> path, out Ref value)
+        {
+            try
+            {
+                value = QueryRef(obj, path);
+                return true;
+            }
+            catch
+            {
+                value = null!;
+                return false;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryQueryRef(SickJson.Object obj, string path, out FoundRef value)
+        {
+            try
+            {
+                value = QueryRef(obj, path);
                 return true;
             }
             catch

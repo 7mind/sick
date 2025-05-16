@@ -8,7 +8,7 @@ namespace SickSharp
 {
     public sealed partial class SickReader
     {
-        public Ref ReadObjectFieldRef(Ref reference, string field)
+        internal Ref ReadObjectFieldRef(Ref reference, string field)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))
@@ -121,13 +121,13 @@ namespace SickSharp
             }
         }
 
-        public SickJson ReadObjectField(Ref reference, string field)
+        internal SickJson ReadObjectField(Ref reference, string field)
         {
             var fieldRef = ReadObjectFieldRef(reference, field);
             return Resolve(fieldRef);
         }
 
-        public Ref ReadArrayElementRef(Ref reference, int index)
+        internal Ref ReadArrayElementRef(Ref reference, int index)
         {
 #if SICK_PROFILE_READER
             using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))

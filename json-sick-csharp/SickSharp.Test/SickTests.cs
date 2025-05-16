@@ -126,7 +126,7 @@ public class SickTests
                 entry = arr.Content().ElementAt(index);
             }
 
-            var entryRef = reader.ReadArrayElementRef(reference, index);
+            var entryRef = arr.ReadRef(index);
             Debug.Assert(entry == entryRef);
             return Traverse(entryRef, reader, next, limit);
         }
@@ -152,7 +152,7 @@ public class SickTests
                 entry = obj.Content().ElementAt(index);
             }
 
-            var fieldVal = reader.ReadObjectFieldRef(reference, entry.Key);
+            var fieldVal = obj.ReadRef(entry.Key);
             Debug.Assert(fieldVal == entry.Value);
             return Traverse(entry.Value, reader, next, limit);
         }

@@ -25,8 +25,8 @@ namespace SickSharp
                     RefKind.Dbl => new SickJson.Double(_doubles.Read(reference.Value)),
                     RefKind.BigDec => new SickJson.BigDec(_bigDecimals.Read(reference.Value)),
                     RefKind.Str => new SickJson.String(_strings.Read(reference.Value)),
-                    RefKind.Arr => new SickJson.Array(this, _arrs.Read(reference.Value)),
-                    RefKind.Obj => new SickJson.Object(this, _objs.Read(reference.Value)),
+                    RefKind.Arr => new SickJson.Array(this, reference, _arrs.Read(reference.Value)),
+                    RefKind.Obj => new SickJson.Object(this, reference, _objs.Read(reference.Value)),
                     RefKind.Root => new SickJson.Root(_root.Read(reference.Value)),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
