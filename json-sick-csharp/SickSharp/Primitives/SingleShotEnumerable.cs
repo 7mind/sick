@@ -6,26 +6,27 @@ namespace SickSharp.Format
 {
     public sealed class SingleShotEnumerable<T> : IEnumerable<T>
     {
-        private IEnumerator<T> enumerator;
+        private IEnumerator<T> _enumerator;
 
         public SingleShotEnumerable(IEnumerator<T> enumerator)
         {
             if (enumerator == null)
             {
-                throw new ArgumentNullException("enumerator");
+                throw new ArgumentNullException(nameof(enumerator));
             }
-            this.enumerator = enumerator;
+
+            _enumerator = enumerator;
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            if (enumerator == null)
+            if (_enumerator == null)
             {
-                throw new InvalidOperationException
-                    ("GetEnumerator can only be called once");
+                throw new InvalidOperationException("GetEnumerator can only be called once");
             }
-            var ret = enumerator;
-            enumerator = null;
+
+            var ret = _enumerator;
+            _enumerator = null;
             return ret;
         }
 

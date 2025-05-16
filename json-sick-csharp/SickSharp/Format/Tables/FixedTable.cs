@@ -8,10 +8,7 @@ namespace SickSharp.Format
 {
     public abstract class FixedTable<TV>
     {
-        //private readonly int _offset;
         protected readonly SpanStream Stream;
-        // private UInt32 _offset;
-
 
         public FixedTable(SpanStream stream)
         {
