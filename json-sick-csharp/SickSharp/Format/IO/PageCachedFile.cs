@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SickSharp.Primitives;
 
-namespace SickSharp.Format
+namespace SickSharp.IO
 {
     public enum CachePageStatus : int
     {
@@ -33,7 +33,6 @@ namespace SickSharp.Format
         private volatile bool _disposed;
 
         private readonly TaskCompletionSource<bool>[] _pageLoadedLatches;
-        private readonly FileInfo _info;
         private readonly ISickProfiler _profiler;
 
         public CachePageStatus GetPageStatus(int page)
@@ -46,15 +45,15 @@ namespace SickSharp.Format
         {
             Debug.Assert(pageSize > 0);
             _profiler = profiler;
-            _info = new FileInfo(path);
-            Length = _info.Length;
 
+            Length = new FileInfo(path).Length;
             PageSize = pageSize;
-            var fullSize = (Length + PageSize - 1) / PageSize;
-            Debug.Assert(fullSize <= Int32.MaxValue);
-            TotalPages = (int)(fullSize);
-            _processedPages = 0;
 
+            var fullSize = (Length + PageSize - 1) / PageSize;
+            Debug.Assert(fullSize <= int.MaxValue);
+            TotalPages = (int)fullSize;
+
+            _processedPages = 0;
             _buf = new byte[TotalPages][];
             _status = new int[TotalPages];
             _pageLoadedLatches = new TaskCompletionSource<bool>[TotalPages];
@@ -109,15 +108,19 @@ namespace SickSharp.Format
 
             status = Volatile.Read(ref _status[page]);
 
+            if (status == (int)CachePageStatus.Loaded)
+            {
+                return Volatile.Read(ref _buf[page])!;
+            }
+
             return status switch
             {
-                (int)CachePageStatus.Loaded =>
-                    Volatile.Read(ref _buf[page])!,
-                (int)CachePageStatus.Dead =>
-                    throw new ObjectDisposedException(
-                        $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"),
-                _ =>
-                    throw new InvalidOperationException($"Unexpected page state after loading: {status}")
+                (int)CachePageStatus.Dead => throw new ObjectDisposedException(
+                    $"Page {page} is marked as dead, either cache is being disposed, or there was a loading exception"
+                ),
+                _ => throw new InvalidOperationException(
+                    $"Unexpected page state after loading: {status}"
+                )
             };
         }
 
@@ -133,11 +136,13 @@ namespace SickSharp.Format
                 (int)CachePageStatus.Missing
             );
 
+            if (currentStatus == (int)CachePageStatus.Loaded)
+            {
+                return;
+            }
+
             switch (currentStatus)
             {
-                case (int)CachePageStatus.Loaded:
-                    return;
-
                 case (int)CachePageStatus.Missing:
                     try
                     {

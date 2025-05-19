@@ -1,36 +1,37 @@
 #nullable enable
 using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using SickSharp.Encoder;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class ObjTable : BasicVarTable<OneObjTable>
+    internal sealed class ObjTable : BasicVarTable<OneObjTable>
     {
         private readonly StringTable _strings;
         private readonly ObjIndexing _settings;
+        private readonly bool _loadIndexes;
 
-        public ObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream, offset)
+        public ObjTable(ISickStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
             _strings = strings;
             _settings = settings;
+            _loadIndexes = loadIndexes;
         }
 
-        protected override OneObjTable BasicRead(UInt32 absoluteStartOffset, UInt32 byteLen)
+        protected override OneObjTable BasicRead(int absoluteStartOffset, int byteLen)
         {
-            return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings);
+            return new OneObjTable(Stream, _strings, absoluteStartOffset, _settings, _loadIndexes);
         }
     }
 
-    public class KHash
+    internal static class KHash
     {
-        public static Int64 Compute(string s)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static long Compute(string s)
         {
             Int32 a = 0x6BADBEEF;
             foreach (var b in Encoding.UTF8.GetBytes(s))
@@ -41,12 +42,25 @@ namespace SickSharp.Format.Tables
 
             return (long)(a) & 0xffffffffL;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (long Hash, int Bucket) Bucket(string str, long bucketSize)
+        {
+            var hash = Compute(str);
+            var bucket = Convert.ToInt32(hash / bucketSize);
+            Debug.Assert(bucket < bucketSize && bucket >= 0);
+            return (hash, bucket);
+        }
     }
 
-    public class ObjIndexing
+    public record ObjEntry(int Key, SickRef Value);
+
+    public sealed class ObjIndexing
     {
         public const ushort NoIndex = 65535;
+
         public const ushort MaxIndex = NoIndex - 1;
+
         //public const ushort BucketCount = 16;
         public const long Range = (long)UInt32.MaxValue + 1;
         public readonly ushort BucketCount;
@@ -65,45 +79,45 @@ namespace SickSharp.Format.Tables
         }
 
         public const ushort IndexMemberSize = sizeof(ushort);
-
-
     }
 
-    public class OneObjTable : FixedTable<ObjEntry>
+    public sealed class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
+        private readonly int _offset;
+        private readonly ReadOnlyMemory<byte>? _index;
 
-        // public readonly ushort[]? BucketStartOffsets;
-        // public readonly Dictionary<UInt32, ushort>? BucketEndOffsets;
         public bool UseIndex { get; }
-        public byte[]? RawIndex;
-        
-        public OneObjTable(Stream stream, StringTable strings, UInt32 offset, ObjIndexing settings) : base(stream)
+
+        public OneObjTable(ISickStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
         {
             _strings = strings;
+            _offset = offset;
 
+            var indexHeader = stream.ReadSpan(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
+            UseIndex = indexHeader != ObjIndexing.NoIndex;
 
-            var indexHeader = stream.ReadBytes(offset, ObjIndexing.IndexMemberSize).ReadUInt16BE();
-            // var indexHeader = rawIndex.ReadUInt16BE(0);
-            
-            if (indexHeader == ObjIndexing.NoIndex)
+            if (UseIndex)
             {
-                SetStart(offset + ObjIndexing.IndexMemberSize);
-                ReadStandardCount();
-                UseIndex = false;
+                var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
+                SetStart(offset + indexSize);
+
+                if (loadIndexes)
+                {
+                    _index = Stream.ReadMemory(offset, indexSize + sizeof(int));
+                    Count = _index.Value.Slice(indexSize, sizeof(int)).Span.ReadInt32BE();
+                }
+                else
+                {
+                    Count = Stream.ReadInt32BE(_offset + indexSize);
+                }
             }
             else
             {
-                var indexSize = settings.BucketCount * ObjIndexing.IndexMemberSize;
-                var intSize = Fixed.IntEncoder.BlobSize();
-                RawIndex = stream.ReadBytes(offset, indexSize + intSize);
-
-                SetStart((uint)(offset + indexSize));
-                Count = BinaryPrimitives.ReadInt32BigEndian(new ReadOnlySpan<byte>(RawIndex, indexSize, intSize));
-
-                UseIndex = true;
+                SetStart(offset + ObjIndexing.IndexMemberSize);
+                ReadStandardCount();
             }
-            
+
             if (Count >= ObjIndexing.MaxIndex)
             {
                 throw new FormatException(
@@ -112,45 +126,66 @@ namespace SickSharp.Format.Tables
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ushort BucketValue(int bucket)
+        {
+            Debug.Assert(UseIndex);
+            var start = ObjIndexing.IndexMemberSize * bucket;
+            return _index.HasValue ? _index.Value.Slice(start, sizeof(ushort)).Span.ReadUInt16BE() : Stream.ReadUInt16BE(_offset + start);
+        }
+
         protected override short ElementByteLength()
         {
             return sizeof(byte) + 2 * sizeof(int);
         }
 
-        protected override ObjEntry Convert(byte[] bytes)
+        protected override ObjEntry Convert(ReadOnlySpan<byte> bytes)
         {
-            var keyval = bytes[..sizeof(int)].ReadInt32BE();
-            var kind = (RefKind)bytes[sizeof(int)];
-            var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-            return new ObjEntry(keyval, new Ref(kind, value));
+            var keyval = bytes.Slice(0, sizeof(int)).ReadInt32BE();
+            var kind = (SickKind)bytes[sizeof(int)];
+            var value = bytes.Slice(sizeof(int) + sizeof(byte), sizeof(int)).ReadInt32BE();
+            return new ObjEntry(keyval, new SickRef(kind, value));
         }
 
-        public KeyValuePair<string, byte[]> ReadKeyOnly(int index)
-        {
-            var bytes = ReadBytes(index);
-            var keyval = bytes[..sizeof(int)].ReadInt32BE();
-            return new KeyValuePair<string, byte[]>(_strings.Read(keyval), bytes);
-        }
-        
-        public KeyValuePair<string, Ref> ReadKey(int index)
+        public KeyValuePair<string, SickRef> ReadKey(int index)
         {
             var obj = Read(index);
-            return new KeyValuePair<string, Ref>(_strings.Read(obj.Key), obj.Value);
+            return new KeyValuePair<string, SickRef>(_strings.Read(obj.Key), obj.Value);
         }
 
-        public IEnumerator<KeyValuePair<string, Ref>> GetEnumerator()
+        public SickRef ReadRef(int index)
+        {
+            var bytes = ReadSpan(index, sizeof(int), sizeof(byte) + sizeof(int));
+            return ConvertRef(bytes);
+        }
+
+        public ReadOnlySpan<byte> ReadKeyRefSpan(int index, out string key)
+        {
+            var bytes = ReadSpan(index);
+            var keyval = bytes[..sizeof(int)].ReadInt32BE();
+            key = _strings.Read(keyval);
+            return bytes[sizeof(int)..];
+        }
+
+        public IEnumerator<KeyValuePair<string, SickRef>> GetEnumerator()
         {
             return Content().GetEnumerator();
         }
-        public IEnumerable<KeyValuePair<string, Ref>> Content()
+
+        public IEnumerable<KeyValuePair<string, SickRef>> Content()
         {
             for (var i = 0; i < Count; i++)
             {
                 yield return ReadKey(i);
-            };
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SickRef ConvertRef(ReadOnlySpan<byte> bytes)
+        {
+            var kind = (SickKind)bytes[0];
+            var value = bytes.Slice(sizeof(byte), sizeof(int)).ReadInt32BE();
+            return new SickRef(kind, value);
         }
     }
-
-    public record ObjEntry(int Key, Ref Value);
-
 }

@@ -1,12 +1,12 @@
 using System;
-using System.IO;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class LongTable : FixedTable<long>
+    public sealed class LongTable : FixedTable<long>
     {
-        public LongTable(Stream stream, UInt32 offset) : base(stream)
+        public LongTable(ISickStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
@@ -17,7 +17,7 @@ namespace SickSharp.Format.Tables
             return sizeof(long);
         }
 
-        protected override long Convert(byte[] bytes)
+        protected override long Convert(ReadOnlySpan<byte> bytes)
         {
             return bytes.ReadInt64BE();
         }

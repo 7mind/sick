@@ -1,12 +1,12 @@
 using System;
-using System.IO;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    public class IntTable : FixedTable<int>
+    public sealed class IntTable : FixedTable<int>
     {
-        public IntTable(Stream stream, UInt32 offset) : base(stream)
+        public IntTable(ISickStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
@@ -17,7 +17,7 @@ namespace SickSharp.Format.Tables
             return sizeof(int);
         }
 
-        protected override int Convert(byte[] bytes)
+        protected override int Convert(ReadOnlySpan<byte> bytes)
         {
             return bytes.ReadInt32BE();
         }

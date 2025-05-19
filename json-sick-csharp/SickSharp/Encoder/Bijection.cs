@@ -190,12 +190,12 @@ namespace SickSharp.Encoder
 
     public interface IRemappable<V>
     {
-        public V Remap(V value, Dictionary<Ref, Ref> mapping);
+        public V Remap(V value, Dictionary<SickRef, SickRef> mapping);
     }
     
     public static class BijectionExt
     {
-        public static Bijection<V> Rewrite<V>(this Bijection<V> src, IRemappable<V> mapper, Dictionary<Ref, Ref> mapping) where V : class
+        public static Bijection<V> Rewrite<V>(this Bijection<V> src, IRemappable<V> mapper, Dictionary<SickRef, SickRef> mapping) where V : class
         {
             return src.Rewrite(v => mapper.Remap(v, mapping));
         }
