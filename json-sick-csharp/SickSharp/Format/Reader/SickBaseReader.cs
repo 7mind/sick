@@ -30,7 +30,7 @@ namespace SickSharp
             try
             {
                 value = Query(query);
-                return false;
+                return true;
             }
             catch (Exception)
             {
@@ -66,7 +66,7 @@ namespace SickSharp
             try
             {
                 value = Query<T>(query);
-                return false;
+                return true;
             }
             catch (Exception)
             {

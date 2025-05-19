@@ -133,6 +133,20 @@ namespace SickSharp
             return new SickReader(stream, profiler, loadIndexes);
         }
 
+        /**
+         * Open SICK format file for reading.
+         * <param name="bytes">Byte array of SICK serialized data.</param>
+         * <param name="profiler">Sick profiler for queries and reads tracing.</param>
+         */
+        public static SickReader Open(
+            byte[] bytes,
+            ISickProfiler profiler
+        )
+        {
+            var stream = new ISickStream.Buffer(bytes);
+            return new SickReader(stream, profiler, false);
+        }
+
 #if SICK_DEBUG_TRAVEL
         public static volatile int TotalLookups = 0;
         public static volatile int TotalTravel = 0;
