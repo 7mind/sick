@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using SickSharp.Format;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
@@ -35,21 +36,6 @@ namespace SickSharp
             }
 
             public int Count => Value.Count;
-
-            public IEnumerable<SickRef> Content()
-            {
-                return Value.Content();
-            }
-
-            public IReadOnlyList<SickJson> ReadAll()
-            {
-                return Value.Content().Select(elemRef => Reader.Resolve(elemRef)).ToList();
-            }
-
-            public IReadOnlyList<T> ReadAll<T>() where T : SickJson
-            {
-                return Value.Content().Select(elemRef => (T)Reader.Resolve(elemRef)).ToList();
-            }
 
             public override SickJson Query(string query)
             {
@@ -101,6 +87,24 @@ namespace SickSharp
                         throw new KeyNotFoundException($"Can not read `{string.Join(",", path.ToArray())}` of `{Value}` object.", ex);
                     }
                 }
+            }
+
+            /**
+             * Enumerate all array element references.
+             * Use with caution.
+             */
+            public IEnumerable<SickRef> GetReferences()
+            {
+                return Value.Content();
+            }
+
+            /**
+             * Enumerate all array elements.
+             * Use with caution.
+             */
+            public IEnumerable<SickJson> GetValues()
+            {
+                return Value.Content().Select(fieldRef => Reader.Resolve(fieldRef));
             }
 
             public override SickJson Read(params string[] path)

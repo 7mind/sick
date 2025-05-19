@@ -117,12 +117,12 @@ public class SickTests
             if (readFirst)
             {
                 index = 0;
-                entrySickRef = arr.Content().First();
+                entrySickRef = arr.GetValues().First().Ref;
             }
             else
             {
                 index = arr.Count / 2;
-                entrySickRef = arr.Content().ElementAt(index);
+                entrySickRef = arr.GetValues().ElementAt(index).Ref;
             }
 
             var entry = arr.ReadIndex(index);
@@ -142,12 +142,12 @@ public class SickTests
             if (readFirst)
             {
                 index = 0;
-                fieldRef = obj.Content().First();
+                fieldRef = obj.GetReferences().First();
             }
             else
             {
                 index = obj.Count / 2;
-                fieldRef = obj.Content().ElementAt(index);
+                fieldRef = obj.GetReferences().ElementAt(index);
             }
 
             var field = obj.Read(fieldRef.Key);

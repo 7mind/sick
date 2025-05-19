@@ -35,15 +35,25 @@ namespace SickSharp
                 return matcher.OnObj(this);
             }
 
-            public IReadOnlyDictionary<string, SickJson> ReadAll()
+            /**
+             * Enumerate all object field references.
+             * Use with caution.
+             */
+            public IEnumerable<KeyValuePair<string, SickRef>> GetReferences()
             {
-                var dictionary = new Dictionary<string, SickJson>();
+                return Value.Content();
+            }
+
+            /**
+             * Enumerate all object fields.
+             * Use with caution.
+             */
+            public IEnumerable<KeyValuePair<string, SickJson>> GetValues()
+            {
                 foreach (var (fieldKey, fieldRef) in Value.Content())
                 {
-                    dictionary[fieldKey] = Reader.Resolve(fieldRef);
+                    yield return new KeyValuePair<string, SickJson>(fieldKey, Reader.Resolve(fieldRef));
                 }
-
-                return dictionary;
             }
 
             public override SickJson Query(string query)
@@ -133,12 +143,6 @@ namespace SickSharp
             public override Object AsObject()
             {
                 return this;
-            }
-
-
-            public IEnumerable<KeyValuePair<string, SickRef>> Content()
-            {
-                return Value.Content();
             }
 
             private SickJson ReadField(string field)
