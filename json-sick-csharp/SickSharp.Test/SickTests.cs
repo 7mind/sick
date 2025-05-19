@@ -38,7 +38,7 @@ public class SickTests
     {
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
 
-        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.NoCache, ISickProfiler.Noop(),
                    loadInMemoryThreshold: 32768))
         {
             var root = reader.ReadRoot(RootName);
@@ -65,7 +65,7 @@ public class SickTests
     {
         var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
 
-        using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(), loadInMemoryThreshold: 0))
+        using (var reader = SickReader.OpenFile(input, ISickCacheManager.NoCache, ISickProfiler.Noop(), loadInMemoryThreshold: 0))
         {
             for (int i = 0; i < 500000; i++)
             {
@@ -112,21 +112,21 @@ public class SickTests
                 return next;
             }
 
-            Ref entryRef;
+            SickRef entrySickRef;
             int index;
             if (readFirst)
             {
                 index = 0;
-                entryRef = arr.Content().First();
+                entrySickRef = arr.Content().First();
             }
             else
             {
                 index = arr.Count / 2;
-                entryRef = arr.Content().ElementAt(index);
+                entrySickRef = arr.Content().ElementAt(index);
             }
 
             var entry = arr.ReadIndex(index);
-            Debug.Assert(entry.Ref == entryRef);
+            Debug.Assert(entry.Ref == entrySickRef);
             return Traverse(entry, next, limit);
         }
 
@@ -137,7 +137,7 @@ public class SickTests
                 return next;
             }
 
-            KeyValuePair<string, Ref> fieldRef;
+            KeyValuePair<string, SickRef> fieldRef;
             int index;
             if (readFirst)
             {
@@ -214,7 +214,7 @@ public class SickTests
                 var name = fi.Name;
                 Console.WriteLine($"Processing {name} ({fi.Length} bytes)...");
 
-                using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
+                using (var reader = SickReader.OpenFile(input, ISickCacheManager.NoCache, ISickProfiler.Noop(),
                            loadInMemoryThreshold: 32768))
                 {
                     var root = reader.ReadRoot(RootName);

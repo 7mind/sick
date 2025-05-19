@@ -71,7 +71,7 @@ namespace SickSharp
             return null;
         }
 
-        public virtual T? OnRoot(Root value)
+        public virtual T? OnRoot(SickRoot value)
         {
             return null;
         }

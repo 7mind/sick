@@ -1,25 +1,24 @@
 #nullable enable
 using System;
-using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
 namespace SickSharp.IO
 {
-    public sealed class NonAllocPageCachedStream : Stream, ICachedStream
+    public sealed class PageCachedStream : Stream, ICachedStream
     {
         private long _realPosition;
         private readonly PageCachedFile _pcf;
 
-        public NonAllocPageCachedStream(PageCachedFile file)
+        public PageCachedStream(PageCachedFile file)
         {
             _pcf = file;
             Length = _pcf.Length;
             _realPosition = 0;
         }
 
-        ~NonAllocPageCachedStream()
+        ~PageCachedStream()
         {
             Dispose(false);
         }
@@ -28,7 +27,6 @@ namespace SickSharp.IO
         {
             return _pcf.CacheSaturation();
         }
-
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -104,44 +102,39 @@ namespace SickSharp.IO
 
         public ReadOnlyMemory<byte> ReadMemory(int offset, int count)
         {
-            var pos = offset;
-            var curPage = pos / _pcf.PageSize;
-            var maxPage = Math.Min((pos + count) / _pcf.PageSize, _pcf.TotalPages - 1);
+            var curPage = offset / _pcf.PageSize;
+            var lastPage = Math.Min((offset + count) / _pcf.PageSize, _pcf.TotalPages - 1);
 
-            var realCount = (int)Math.Min(count, Length - pos);
-            if (realCount <= 0) return ReadOnlyMemory<byte>.Empty;
+            count = (int)Math.Min(count, Length - offset);
+            if (count <= 0) return ReadOnlyMemory<byte>.Empty;
 
-            Position = offset + realCount;
+            Position = offset + count;
 
-            var pageOffset = pos % _pcf.PageSize;
+            var pageOffset = offset % _pcf.PageSize;
 
             // requested data fits into one page
-            if (curPage == maxPage)
+            if (curPage == lastPage)
             {
-                var page = _pcf.GetPage(curPage);
-                var toRead = Math.Min(realCount, _pcf.PageSize - pageOffset);
-                return new ReadOnlyMemory<byte>(page, pageOffset, toRead);
+                var copySize = Math.Min(count, _pcf.PageSize - pageOffset);
+                return new ReadOnlyMemory<byte>(_pcf.GetPage(curPage), pageOffset, copySize);
             }
 
             // Our data spans across several pages, bad case
-            var buffer = new byte[realCount];
-            var dstPos = 0;
-            var remaining = realCount;
-
-            for (var i = curPage; i <= maxPage && remaining > 0; i++)
+            var buffer = new byte[count];
+            var copied = 0;
+            for (; curPage <= lastPage && count > 0; curPage++)
             {
-                var page = _pcf.GetPage(i);
-                var copySize = Math.Min(remaining, _pcf.PageSize - pageOffset);
+                var copySize = Math.Min(count, _pcf.PageSize - pageOffset);
 
-                new ReadOnlySpan<byte>(page, pageOffset, copySize).CopyTo(
-                    buffer.AsSpan(dstPos, copySize));
+                new ReadOnlySpan<byte>(_pcf.GetPage(curPage), pageOffset, copySize)
+                    .CopyTo(buffer.AsSpan(copied, copySize));
 
-                dstPos += copySize;
-                remaining -= copySize;
+                copied += copySize;
+                count -= copySize;
                 pageOffset = 0; // Reset offset after first page
             }
 
-            return new ReadOnlyMemory<byte>(buffer, 0, realCount);
+            return new ReadOnlyMemory<byte>(buffer, 0, buffer.Length);
         }
 
 
@@ -169,19 +162,18 @@ namespace SickSharp.IO
 
         public override void SetLength(long value)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public override void Flush()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
-
 
         public override bool CanRead => true;
         public override bool CanSeek => true;

@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
@@ -8,7 +9,7 @@ namespace SickSharp.Format.Tables
 
     public sealed class BigDecTable : VarTable<BigDecimal>
     {
-        public BigDecTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
+        public BigDecTable(ISickStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

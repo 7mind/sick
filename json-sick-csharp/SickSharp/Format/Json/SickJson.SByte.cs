@@ -11,7 +11,7 @@ namespace SickSharp
         {
             public readonly sbyte Value;
 
-            internal SByte(SickReader reader, Ref reference) : base(reader, RefKind.SByte, reference)
+            internal SByte(SickReader reader, SickRef reference) : base(reader, SickKind.SByte, reference)
             {
                 Value = (sbyte)reference.Value;
             }
@@ -19,7 +19,7 @@ namespace SickSharp
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.Root, T> onRoot)
+                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
             {
                 return onByte(Value);
             }

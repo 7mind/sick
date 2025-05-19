@@ -1,12 +1,12 @@
 using System;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-
-    public sealed class RootTable : FixedTable<Root>
+    public sealed class RootTable : FixedTable<SickRoot>
     {
-        public RootTable(SpanStream stream, int offset) : base(stream)
+        public RootTable(ISickStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
@@ -17,13 +17,13 @@ namespace SickSharp.Format.Tables
             return sizeof(int) + sizeof(byte) + sizeof(int);
         }
 
-        protected override Root Convert(ReadOnlySpan<byte> bytes)
+        protected override SickRoot Convert(ReadOnlySpan<byte> bytes)
         {
             var keyval = bytes[..sizeof(int)].ReadInt32BE();
-            var kind = (RefKind?)bytes[sizeof(int)];
+            var kind = (SickKind?)bytes[sizeof(int)];
 
             var value = bytes[(sizeof(int) + 1)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-            return new Root(keyval, new Ref(kind.Value, value));
+            return new SickRoot(keyval, new SickRef(kind.Value, value));
         }
     }
 }

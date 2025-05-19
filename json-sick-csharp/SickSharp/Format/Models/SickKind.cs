@@ -1,13 +1,13 @@
 namespace SickSharp
 {
-    public enum RefKind : byte
+    public enum SickKind : byte
     {
-        Nul = 0,
+        Null = 0,
         Bit = 1,
         SByte = 2,
         Short = 3,
         Int = 4,
-        Lng = 5,
+        Long = 5,
         BigInt = 6,
         Double = 7,
         Float = 8,
@@ -17,6 +17,4 @@ namespace SickSharp
         Object = 12,
         Root = 15
     }
-
-    public record Ref(RefKind Kind, int Value);
 }

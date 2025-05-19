@@ -1,41 +1,55 @@
 #nullable enable
+using System;
 using System.Collections.Concurrent;
 
 namespace SickSharp.IO
 {
-    public interface ISickCacheManager
+    public interface ISickCacheManager : IDisposable
     {
-        PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler);
+        PageCachedFile Acquire(string path, int pageSize, ISickProfiler profiler);
+        void Return(PageCachedFile file);
 
-        private static readonly ISickCacheManager DummyInstance = new DummySickCacheManager();
-        
-        public static ISickCacheManager Dummy()
-        {
-            return DummyInstance;
-        }
-        
-        private static readonly ISickCacheManager GlobalPerFileInstance = new PerFileSickCacheManager();
-        public static ISickCacheManager GlobalPerFile()
-        {
-            return GlobalPerFileInstance;
-        }
-    }
-    
-    public class DummySickCacheManager : ISickCacheManager
-    {
-        public PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler)
-        {
-            return new PageCachedFile(path, pageSize, profiler);
-        }
-    }
+        private static readonly Lazy<NoCacheManager> NoCacheInstance = new Lazy<NoCacheManager>(() => new NoCacheManager());
+        public static ISickCacheManager NoCache => NoCacheInstance.Value;
 
-    public class PerFileSickCacheManager : ISickCacheManager
-    {
-        private ConcurrentDictionary<string, PageCachedFile> _cache = new();
+        private static readonly Lazy<PerFileCacheManager> GlobalPerFileInstance = new Lazy<PerFileCacheManager>(() => new PerFileCacheManager());
+        public static ISickCacheManager GlobalPerFile => GlobalPerFileInstance.Value;
 
-        public PageCachedFile Provide(string path, int pageSize, ISickProfiler profiler)
+        public sealed class NoCacheManager : ISickCacheManager
         {
-            return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize, profiler));
+            public PageCachedFile Acquire(string path, int pageSize, ISickProfiler profiler)
+            {
+                return new PageCachedFile(path, pageSize, profiler);
+            }
+
+            public void Return(PageCachedFile file)
+            {
+                file.Dispose();
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+
+        public class PerFileCacheManager : ISickCacheManager
+        {
+            private readonly ConcurrentDictionary<string, PageCachedFile> _cache = new();
+
+            public void Return(PageCachedFile file)
+            {
+            }
+
+            public PageCachedFile Acquire(string path, int pageSize, ISickProfiler profiler)
+            {
+                return _cache.GetOrAdd($"{pageSize}:{path}", _ => new PageCachedFile(path, pageSize, profiler));
+            }
+
+            public void Dispose()
+            {
+                foreach (var (_, value) in _cache) value.Dispose();
+                _cache.Clear();
+            }
         }
     }
 }

@@ -29,10 +29,10 @@ namespace SickSharp.Encoder
         public static readonly IFixedByteEncoder<Int64> LongEncoder = new LongEncoder();
         public static IFixedByteEncoder<Single> FloatEncoder = new FloatEncoder();
         public static IFixedByteEncoder<Double> DoubleEncoder = new DoubleEncoder();
-        public static readonly IFixedByteEncoder<RefKind> RefKindEncoder = new RefKindEncoder();
-        public static readonly IFixedByteEncoder<Ref> RefEncoder = new RefEncoder();
+        public static readonly IFixedByteEncoder<SickKind> RefKindEncoder = new RefKindEncoder();
+        public static readonly IFixedByteEncoder<SickRef> RefEncoder = new RefEncoder();
         public static IFixedByteEncoder<ObjEntry> ObjEntryEncoder = new ObjEntryEncoder();
-        public static IFixedByteEncoder<Root> RootEncoder = new RootEncoder();
+        public static IFixedByteEncoder<SickRoot> RootEncoder = new RootEncoder();
     }
 
     class ByteEncoder : IFixedByteEncoder<SByte>
@@ -128,9 +128,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefKindEncoder : IFixedByteEncoder<RefKind>
+    class RefKindEncoder : IFixedByteEncoder<SickKind>
     {
-        public byte[] Bytes(RefKind value)
+        public byte[] Bytes(SickKind value)
         {
             return Fixed.ByteEncoder.Bytes((sbyte)value);
         }
@@ -141,9 +141,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefEncoder : IFixedByteEncoder<Ref>
+    class RefEncoder : IFixedByteEncoder<SickRef>
     {
-        public byte[] Bytes(Ref value)
+        public byte[] Bytes(SickRef value)
         {
             return (new List<byte[]> { Fixed.RefKindEncoder.Bytes(value.Kind), Fixed.IntEncoder.Bytes(value.Value) }).Concatenate();
         }
@@ -167,9 +167,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RootEncoder : IFixedByteEncoder<Root>
+    class RootEncoder : IFixedByteEncoder<SickRoot>
     {
-        public byte[] Bytes(Root value)
+        public byte[] Bytes(SickRoot value)
         {
             return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Reference), }).Concatenate();
         }
@@ -207,11 +207,11 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefListEncoder : IFixedArrayByteEncoder<List<Ref>>
+    class RefListEncoder : IFixedArrayByteEncoder<List<SickRef>>
     {
-        public byte[] Bytes(List<Ref> value)
+        public byte[] Bytes(List<SickRef> value)
         {
-            return new FixedArrayByteEncoder<Ref>(Fixed.RefEncoder).Bytes(value);
+            return new FixedArrayByteEncoder<SickRef>(Fixed.RefEncoder).Bytes(value);
         }
 
         public int ElementSize()
@@ -302,14 +302,14 @@ namespace SickSharp.Encoder
         }
     }
 
-    public record ObjIndexEntry(int Key, Ref Value, long hash, int bucket);
+    public record ObjIndexEntry(int Key, SickRef Value, long hash, int bucket);
 
 
-    class RootListEncoder : IFixedArrayByteEncoder<List<Root>>
+    class RootListEncoder : IFixedArrayByteEncoder<List<SickRoot>>
     {
-        public byte[] Bytes(List<Root> value)
+        public byte[] Bytes(List<SickRoot> value)
         {
-            return new FixedArrayByteEncoder<Root>(Fixed.RootEncoder).Bytes(value);
+            return new FixedArrayByteEncoder<SickRoot>(Fixed.RootEncoder).Bytes(value);
         }
 
         public int ElementSize()
@@ -325,8 +325,8 @@ namespace SickSharp.Encoder
             return new ObjListEncoder(strings, settings);
         }
 
-        public static IFixedArrayByteEncoder<List<Ref>> RefListEncoder = new RefListEncoder();
-        public static IFixedArrayByteEncoder<List<Root>> RootListEncoder = new RootListEncoder();
+        public static IFixedArrayByteEncoder<List<SickRef>> RefListEncoder = new RefListEncoder();
+        public static IFixedArrayByteEncoder<List<SickRoot>> RootListEncoder = new RootListEncoder();
     }
 
 

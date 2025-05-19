@@ -8,7 +8,7 @@ namespace SickSharp
 {
     public sealed partial class SickReader
     {
-        public SickJson Query(string query)
+        public override SickJson Query(string query)
         {
 #if SICK_PROFILE_READER
             using (var cp = Profiler.OnInvoke("Query()", path))
@@ -30,22 +30,8 @@ namespace SickSharp
             }
         }
 
-        public bool TryQuery(string query, out SickJson value)
-        {
-            try
-            {
-                value = Query(query);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<string> ParseQuery(string query)
+        public static ReadOnlySpan<string> ParseQuery(string query)
         {
             return new ReadOnlySpan<string>(query.Split(QuerySeparators, StringSplitOptions.RemoveEmptyEntries));
         }

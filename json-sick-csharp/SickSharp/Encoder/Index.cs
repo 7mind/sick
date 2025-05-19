@@ -21,9 +21,9 @@ namespace SickSharp.Encoder
         private Bijection<BigDecimal> _bigDecs;
         
         private Bijection<String> _strings;
-        private Bijection<List<Ref>> _arrs;
+        private Bijection<List<SickRef>> _arrs;
         private Bijection<List<ObjEntry>> _objs;
-        private Bijection<Root> _roots;
+        private Bijection<SickRoot> _roots;
         public readonly ObjIndexing Settings;
 
         public Index(
@@ -34,9 +34,9 @@ namespace SickSharp.Encoder
             Bijection<double> doubles, 
             Bijection<BigDecimal> bigDecs, 
             Bijection<string> strings, 
-            Bijection<List<Ref>> arrs, 
+            Bijection<List<SickRef>> arrs, 
             Bijection<List<ObjEntry>> objs, 
-            Bijection<Root> roots, ObjIndexing settings)
+            Bijection<SickRoot> roots, ObjIndexing settings)
         {
             // _bytes = bytes;
             // _shorts = shorts;
@@ -63,9 +63,9 @@ namespace SickSharp.Encoder
                 Bijection<Double>.Create("doubles", null),
                 Bijection<BigDecimal>.Create("bigdecs", null),
                 Bijection<String>.Create("strings", null),
-                Bijection<List<Ref>>.Create("arrays", new ListComparer<Ref>()),
+                Bijection<List<SickRef>>.Create("arrays", new ListComparer<SickRef>()),
                 Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
-                Bijection<Root>.Create("roots", null),
+                Bijection<SickRoot>.Create("roots", null),
                 new ObjIndexing(buckets, limit)
                 );
         }
@@ -81,7 +81,7 @@ namespace SickSharp.Encoder
                 new(_doubles.Name, new FixedArrayByteEncoder<double>(Fixed.DoubleEncoder).Bytes(_doubles.AsList())),
                 new(_bigDecs.Name, new VarArrayEncoder<BigDecimal>(Variable.BigDecimalEncoder).Bytes(_bigDecs.AsList())),
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
-                new(_arrs.Name,  new FixedArrayEncoder<List<Ref>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
+                new(_arrs.Name,  new FixedArrayEncoder<List<SickRef>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
                 new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, Settings)).Bytes(_objs.AsList())),
                 new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
@@ -106,18 +106,18 @@ namespace SickSharp.Encoder
         }
 
         // this can be externalized so Index won't depend on json.net
-        public Ref append(String id, JToken json)
+        public SickRef append(String id, JToken json)
         {
             var idRef = addString(id);
             var rootRef = traverse(json);
-            var root = new Root(idRef.Value, rootRef);
+            var root = new SickRoot(idRef.Value, rootRef);
             return _roots.RevGet(root).Match(
                 Some: some => throw new InvalidDataException($"Cannot find root '{root}'"), 
-                None: () => new Ref(RefKind.Root, _roots.Add(root))
+                None: () => new SickRef(SickKind.Root, _roots.Add(root))
                 );
         }
 
-        private Ref traverse(JToken json)
+        private SickRef traverse(JToken json)
         {
             return json switch
             {
@@ -133,8 +133,8 @@ namespace SickSharp.Encoder
                         JTokenType.Integer => handleInt(v),
                         JTokenType.Float => handleFloat(v),
                         JTokenType.String => addString((string)v.Value),
-                        JTokenType.Boolean => new Ref(RefKind.Bit, Convert.ToInt32((bool)v.Value)),
-                        JTokenType.Null => new Ref(RefKind.Nul, 0),
+                        JTokenType.Boolean => new SickRef(SickKind.Bit, Convert.ToInt32((bool)v.Value)),
+                        JTokenType.Null => new SickRef(SickKind.Null, 0),
                         JTokenType.Date => addString(((DateTime)v.Value).ToString()),
                         _ => throw new NotImplementedException($"BUG: unknown value `{v}`")
                     ,
@@ -144,7 +144,7 @@ namespace SickSharp.Encoder
             };
         }
 
-        private Ref handleInt(JValue v)
+        private SickRef handleInt(JValue v)
         {
             long val;
             switch (v.Value)
@@ -177,12 +177,12 @@ namespace SickSharp.Encoder
 
             if (val <= SByte.MaxValue && val >= SByte.MinValue)
             {
-                return new Ref(RefKind.SByte, (sbyte)val);
+                return new SickRef(SickKind.SByte, (sbyte)val);
             }
 
             if (val <= Int16.MaxValue && val >= Int16.MinValue)
             {
-                return new Ref(RefKind.Short, (short)val);
+                return new SickRef(SickKind.Short, (short)val);
             }
 
             if (val <= Int32.MaxValue && val >= Int32.MinValue)
@@ -193,7 +193,7 @@ namespace SickSharp.Encoder
             return addLong(val);
         }
 
-        private Ref handleFloat(JValue v)
+        private SickRef handleFloat(JValue v)
         {
             double val;
             switch (v.Value)
@@ -216,49 +216,49 @@ namespace SickSharp.Encoder
             return addDouble(val);
         }
 
-        private Ref addString(String s)
+        private SickRef addString(String s)
         {
-            return new Ref(RefKind.String, _strings.Add(s));
+            return new SickRef(SickKind.String, _strings.Add(s));
         }
         
-        private Ref addInt(Int32 s)
+        private SickRef addInt(Int32 s)
         {
-            return new Ref(RefKind.Int, _ints.Add(s));
+            return new SickRef(SickKind.Int, _ints.Add(s));
         }
 
-        private Ref addLong(Int64 s)
+        private SickRef addLong(Int64 s)
         {
-            return new Ref(RefKind.Lng, _longs.Add(s));
+            return new SickRef(SickKind.Long, _longs.Add(s));
         }
 
-        private Ref addBigInt(BigInteger s)
+        private SickRef addBigInt(BigInteger s)
         {
-            return new Ref(RefKind.BigInt, _bigints.Add(s));
+            return new SickRef(SickKind.BigInt, _bigints.Add(s));
         }
 
-        private Ref addFloat(Single s)
+        private SickRef addFloat(Single s)
         {
-            return new Ref(RefKind.Float, _floats.Add(s));
+            return new SickRef(SickKind.Float, _floats.Add(s));
         }
 
-        private Ref addDouble(Double s)
+        private SickRef addDouble(Double s)
         {
-            return new Ref(RefKind.Double, _doubles.Add(s));
+            return new SickRef(SickKind.Double, _doubles.Add(s));
         }
 
-        private Ref addBigDec(BigDecimal s)
+        private SickRef addBigDec(BigDecimal s)
         {
-            return new Ref(RefKind.BigDec, _bigDecs.Add(s));
+            return new SickRef(SickKind.BigDec, _bigDecs.Add(s));
         }
 
-        private Ref addArr(List<Ref> s)
+        private SickRef addArr(List<SickRef> s)
         {
-            return new Ref(RefKind.Array, _arrs.Add(s));
+            return new SickRef(SickKind.Array, _arrs.Add(s));
         }
 
-        private Ref addObj(List<ObjEntry> s)
+        private SickRef addObj(List<ObjEntry> s)
         {
-            return new Ref(RefKind.Object, _objs.Add(s));
+            return new SickRef(SickKind.Object, _objs.Add(s));
         }
     }
 

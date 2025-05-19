@@ -1,19 +1,17 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickJson : SickObjectReader
     {
         protected readonly SickReader Reader;
-        public readonly Ref Ref;
-        public RefKind Kind => Ref.Kind;
+        public readonly SickRef Ref;
 
-        private SickJson(SickReader reader, RefKind expectedKind, Ref reference)
+        private SickJson(SickReader reader, SickKind expectedKind, SickRef reference)
         {
             Debug.Assert(expectedKind == reference.Kind);
             Reader = reader;
@@ -34,143 +32,10 @@ namespace SickSharp
             Func<string, T> onString,
             Func<Array, T> onArray,
             Func<Object, T> onObj,
-            Func<SickSharp.Root, T> onRoot
+            Func<SickSharp.SickRoot, T> onRoot
         );
 
         public abstract T? Match<T>(SickJsonMatcher<T> matcher) where T : class;
-
-        public virtual SickJson Query(string query)
-        {
-            throw new KeyNotFoundException($"Can not query `{query}` from <{GetType().Name}>.");
-        }
-
-        public bool TryQuery(string query, out SickJson value)
-        {
-            try
-            {
-                value = Query(query);
-                return false;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
-        public virtual SickJson Read(ReadOnlySpan<string> path)
-        {
-            throw new KeyNotFoundException($"Can not read field `{string.Join(".", path.ToArray())}` from <{GetType().Name}>.");
-        }
-
-        public bool TryRead(out SickJson value, ReadOnlySpan<string> path)
-        {
-            try
-            {
-                value = Read(path);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
-        public virtual Ref ReadRef(ReadOnlySpan<string> path)
-        {
-            throw new KeyNotFoundException($"Can not read field `{string.Join(".", path.ToArray())}` from <{GetType().Name}>.");
-        }
-
-        public bool TryReadRef(out Ref value, ReadOnlySpan<string> path)
-        {
-            try
-            {
-                value = ReadRef(path);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
-        public virtual SickJson Read(params string[] path)
-        {
-            throw new KeyNotFoundException($"Can not read field `{string.Join(".", path)}` from <{GetType().Name}>.");
-        }
-
-        public bool TryRead(out SickJson value, params string[] path)
-        {
-            try
-            {
-                value = Read(path);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
-        public virtual Ref ReadRef(params string[] path)
-        {
-            throw new KeyNotFoundException($"Can not read field `{string.Join(".", path)}` from <{GetType().Name}>.");
-        }
-
-        public bool TryReadRef(out Ref value, params string[] path)
-        {
-            try
-            {
-                value = ReadRef(path);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
-
-        public virtual KeyValuePair<string, SickJson> ReadKey(int index)
-        {
-            throw new KeyNotFoundException($"Can not read indexed key field [{index}] from <{GetType().Name}>.");
-        }
-
-        public bool TryReadKey(out KeyValuePair<string, SickJson> value, int index)
-        {
-            try
-            {
-                value = ReadKey(index);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = default;
-                return false;
-            }
-        }
-
-        public virtual SickJson ReadIndex(int index)
-        {
-            throw new KeyNotFoundException($"Can not read indexed field [{index}] from <{GetType().Name}>.");
-        }
-
-        public bool TryReadIndex(out SickJson value, int index)
-        {
-            try
-            {
-                value = ReadIndex(index);
-                return true;
-            }
-            catch (Exception)
-            {
-                value = null!;
-                return false;
-            }
-        }
 
         public virtual bool AsBool()
         {
@@ -222,10 +87,22 @@ namespace SickSharp
             throw new ArgumentException($"Can not get <SickJson.Array> from <{GetType().Name}>.");
         }
 
+        /**
+         * Cast JSON to specified type.
+         */
         public T As<T>() where T : SickJson
         {
             if (this is T t) return t;
             throw new ArgumentException($"Can not convert to <{typeof(T).Name}> from <{GetType().Name}>.");
+        }
+
+        /**
+         * Try to cast JSON to specified type.
+         */
+        public bool TryAs<T>(out T value) where T : SickJson
+        {
+            value = (this as T)!;
+            return value != null!;
         }
 
         /**
@@ -238,7 +115,7 @@ namespace SickSharp
             private T? _value;
             public T Value => _created ? _value! : CreateValue();
 
-            protected Lazy(SickReader reader, RefKind expectedKind, Ref reference) : base(reader, expectedKind, reference)
+            protected Lazy(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
             {
             }
 

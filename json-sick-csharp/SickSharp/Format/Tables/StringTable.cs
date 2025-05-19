@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Text;
-using SickSharp.Primitives;
+using SickSharp.IO;
+
 #if SICK_CACHE_STRINGS
 using SickSharp.Primitives;
 #endif
@@ -13,7 +14,7 @@ namespace SickSharp.Format.Tables
     {
         private readonly ConcurrentDictionary<int, string> _cache = new();
 
-        public StringTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
+        public StringTable(ISickStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

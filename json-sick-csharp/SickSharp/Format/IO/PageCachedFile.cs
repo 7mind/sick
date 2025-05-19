@@ -33,7 +33,6 @@ namespace SickSharp.IO
         private volatile bool _disposed;
 
         private readonly TaskCompletionSource<bool>[] _pageLoadedLatches;
-        private readonly FileInfo _info;
         private readonly ISickProfiler _profiler;
 
         public CachePageStatus GetPageStatus(int page)
@@ -46,15 +45,15 @@ namespace SickSharp.IO
         {
             Debug.Assert(pageSize > 0);
             _profiler = profiler;
-            _info = new FileInfo(path);
-            Length = _info.Length;
 
+            Length = new FileInfo(path).Length;
             PageSize = pageSize;
-            var fullSize = (Length + PageSize - 1) / PageSize;
-            Debug.Assert(fullSize <= Int32.MaxValue);
-            TotalPages = (int)(fullSize);
-            _processedPages = 0;
 
+            var fullSize = (Length + PageSize - 1) / PageSize;
+            Debug.Assert(fullSize <= int.MaxValue);
+            TotalPages = (int)fullSize;
+
+            _processedPages = 0;
             _buf = new byte[TotalPages][];
             _status = new int[TotalPages];
             _pageLoadedLatches = new TaskCompletionSource<bool>[TotalPages];

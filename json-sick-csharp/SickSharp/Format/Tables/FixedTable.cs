@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
     public abstract class FixedTable<TV>
     {
-        protected readonly SpanStream Stream;
+        protected readonly ISickStream Stream;
 
-        public FixedTable(SpanStream stream)
+        public FixedTable(ISickStream stream)
         {
             Stream = stream;
         }

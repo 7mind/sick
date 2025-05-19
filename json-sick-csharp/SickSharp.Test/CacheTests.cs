@@ -56,7 +56,7 @@ public class CacheTests
         WriteRandomFile(tempFilePath, _fileSize);
 
         var f1 = File.Open(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var f2 = new NonAllocPageCachedStream(new PageCachedFile(tempFilePath, 4192, ISickProfiler.Noop()));
+        var f2 = new PageCachedStream(new PageCachedFile(tempFilePath, 4192, ISickProfiler.Noop()));
 
         CheckCorrectness(f1, f2);
 

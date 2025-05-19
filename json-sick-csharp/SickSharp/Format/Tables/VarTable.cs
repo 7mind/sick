@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Diagnostics;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format
@@ -11,9 +12,9 @@ namespace SickSharp.Format
         private readonly int _sizeOffset;
         private readonly ReadOnlyMemory<byte>? _index;
 
-        protected readonly SpanStream Stream;
+        protected readonly ISickStream Stream;
 
-        protected BasicVarTable(SpanStream stream, int offset, bool loadIndexes)
+        protected BasicVarTable(ISickStream stream, int offset, bool loadIndexes)
         {
             Stream = stream;
             Count = Stream.ReadInt32BE(offset);
@@ -54,7 +55,7 @@ namespace SickSharp.Format
 
     public abstract class VarTable<TV> : BasicVarTable<TV>
     {
-        protected VarTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
+        protected VarTable(ISickStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
         }
 

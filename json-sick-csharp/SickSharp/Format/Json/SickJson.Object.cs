@@ -1,11 +1,8 @@
 #nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
-using SickSharp.Format;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
@@ -14,7 +11,7 @@ namespace SickSharp
     {
         public sealed class Object : Lazy<OneObjTable>
         {
-            internal Object(SickReader reader, Ref reference) : base(reader, RefKind.Object, reference)
+            internal Object(SickReader reader, SickRef reference) : base(reader, SickKind.Object, reference)
             {
             }
 
@@ -29,7 +26,7 @@ namespace SickSharp
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.Root, T> onRoot)
+                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
             {
                 return onObj(this);
             }
@@ -122,56 +119,6 @@ namespace SickSharp
                 }
             }
 
-            public override Ref ReadRef(ReadOnlySpan<string> path)
-            {
-#if SICK_PROFILE_READER
-                using (var trace = Reader.Profiler.OnInvoke("Object.ReadRefSpan()", Value))
-#endif
-                {
-                    try
-                    {
-                        if (path.Length == 0)
-                        {
-                            return Ref;
-                        }
-
-                        var next = ReadFieldRef(path[0]);
-                        var result = path.Length == 1 ? next : Reader.Resolve(next).ReadRef(path.Slice(1, path.Length - 1));
-
-#if SICK_PROFILE_READER
-                        return trace.OnReturn(result);
-#else
-                        return result;
-#endif
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new KeyNotFoundException($"Can not read `{string.Join(",", path.ToArray())}` of `{Value}` object.", ex);
-                    }
-                }
-            }
-
-            public override Ref ReadRef(params string[] path)
-            {
-#if SICK_PROFILE_READER
-                using (var trace = Reader.Profiler.OnInvoke("Object.Read()", Value))
-#endif
-                {
-                    if (path.Length == 0)
-                    {
-                        return Ref;
-                    }
-
-                    var result = path.Length == 1 ? ReadFieldRef(path[0]) : ReadRef(new ReadOnlySpan<string>(path));
-
-#if SICK_PROFILE_READER
-                    return trace.OnReturn(result);
-#else
-                    return result;
-#endif
-                }
-            }
-
             public override KeyValuePair<string, SickJson> ReadKey(int index)
             {
                 var (key, reference) = Value.ReadKey(index);
@@ -190,7 +137,7 @@ namespace SickSharp
             }
 
 
-            public IEnumerable<KeyValuePair<string, Ref>> Content()
+            public IEnumerable<KeyValuePair<string, SickRef>> Content()
             {
                 return Value.Content();
             }
@@ -212,7 +159,7 @@ namespace SickSharp
                 }
             }
 
-            private Ref ReadFieldRef(string field)
+            private SickRef ReadFieldRef(string field)
             {
 #if SICK_PROFILE_READER
                 using (var cp = reader.Profiler.OnInvoke("Object.ReadFieldRef()", field, Value))

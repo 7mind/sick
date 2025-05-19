@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
@@ -14,7 +15,7 @@ namespace SickSharp.Format.Tables
         private readonly ObjIndexing _settings;
         private readonly bool _loadIndexes;
 
-        public ObjTable(SpanStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
+        public ObjTable(ISickStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
             _strings = strings;
             _settings = settings;
@@ -52,7 +53,7 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    public record ObjEntry(int Key, Ref Value);
+    public record ObjEntry(int Key, SickRef Value);
 
     public sealed class ObjIndexing
     {
@@ -88,7 +89,7 @@ namespace SickSharp.Format.Tables
 
         public bool UseIndex { get; }
 
-        public OneObjTable(SpanStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
+        public OneObjTable(ISickStream stream, StringTable strings, int offset, ObjIndexing settings, bool loadIndexes) : base(stream)
         {
             _strings = strings;
             _offset = offset;
@@ -141,18 +142,18 @@ namespace SickSharp.Format.Tables
         protected override ObjEntry Convert(ReadOnlySpan<byte> bytes)
         {
             var keyval = bytes.Slice(0, sizeof(int)).ReadInt32BE();
-            var kind = (RefKind)bytes[sizeof(int)];
+            var kind = (SickKind)bytes[sizeof(int)];
             var value = bytes.Slice(sizeof(int) + sizeof(byte), sizeof(int)).ReadInt32BE();
-            return new ObjEntry(keyval, new Ref(kind, value));
+            return new ObjEntry(keyval, new SickRef(kind, value));
         }
 
-        public KeyValuePair<string, Ref> ReadKey(int index)
+        public KeyValuePair<string, SickRef> ReadKey(int index)
         {
             var obj = Read(index);
-            return new KeyValuePair<string, Ref>(_strings.Read(obj.Key), obj.Value);
+            return new KeyValuePair<string, SickRef>(_strings.Read(obj.Key), obj.Value);
         }
 
-        public Ref ReadRef(int index)
+        public SickRef ReadRef(int index)
         {
             var bytes = ReadSpan(index, sizeof(int), sizeof(byte) + sizeof(int));
             return ConvertRef(bytes);
@@ -166,12 +167,12 @@ namespace SickSharp.Format.Tables
             return bytes[sizeof(int)..];
         }
 
-        public IEnumerator<KeyValuePair<string, Ref>> GetEnumerator()
+        public IEnumerator<KeyValuePair<string, SickRef>> GetEnumerator()
         {
             return Content().GetEnumerator();
         }
 
-        public IEnumerable<KeyValuePair<string, Ref>> Content()
+        public IEnumerable<KeyValuePair<string, SickRef>> Content()
         {
             for (var i = 0; i < Count; i++)
             {
@@ -180,11 +181,11 @@ namespace SickSharp.Format.Tables
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Ref ConvertRef(ReadOnlySpan<byte> bytes)
+        public static SickRef ConvertRef(ReadOnlySpan<byte> bytes)
         {
-            var kind = (RefKind)bytes[0];
+            var kind = (SickKind)bytes[0];
             var value = bytes.Slice(sizeof(byte), sizeof(int)).ReadInt32BE();
-            return new Ref(kind, value);
+            return new SickRef(kind, value);
         }
     }
 }

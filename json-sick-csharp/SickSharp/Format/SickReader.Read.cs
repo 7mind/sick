@@ -7,6 +7,10 @@ namespace SickSharp
 {
     public sealed partial class SickReader
     {
+        /**
+         * Read root value with specified identifier.
+         * <param name="id">Root identifier.</param>
+         */
         public SickJson ReadRoot(string id)
         {
 #if SICK_PROFILE_READER
@@ -28,6 +32,11 @@ namespace SickSharp
             }
         }
 
+        /**
+         * Read root value with specified identifier.
+         * <param name="id">Root identifier.</param>
+         * <param name="value">Output value</param>
+         */
         public bool TryReadRoot(string id, out SickJson value)
         {
             try
@@ -42,7 +51,7 @@ namespace SickSharp
             }
         }
 
-        public SickJson Read(params string[] path)
+        public override SickJson Read(params string[] path)
         {
 #if SICK_PROFILE_READER
             using (var cp = Profiler.OnInvoke("Read()", path))
@@ -72,7 +81,7 @@ namespace SickSharp
             }
         }
 
-        public SickJson Read(ReadOnlySpan<string> path)
+        public override SickJson Read(ReadOnlySpan<string> path)
         {
 #if SICK_PROFILE_READER
             using (var cp = Profiler.OnInvoke("ReadSpan()", path))
@@ -99,7 +108,7 @@ namespace SickSharp
             }
         }
 
-        internal SickJson Resolve(Ref reference)
+        internal SickJson Resolve(SickRef reference)
         {
 #if SICK_PROFILE_READER
             using (var trace = Profiler.OnInvoke("Resolve()", reference))
@@ -107,20 +116,20 @@ namespace SickSharp
             {
                 SickJson ret = reference.Kind switch
                 {
-                    RefKind.Nul => new SickJson.Null(this, reference),
-                    RefKind.Bit => new SickJson.Bool(this, reference),
-                    RefKind.SByte => new SickJson.SByte(this, reference),
-                    RefKind.Short => new SickJson.Short(this, reference),
-                    RefKind.Int => new SickJson.Int(this, reference),
-                    RefKind.Lng => new SickJson.Long(this, reference),
-                    RefKind.BigInt => new SickJson.BigInt(this, reference),
-                    RefKind.Float => new SickJson.Float(this, reference),
-                    RefKind.Double => new SickJson.Double(this, reference),
-                    RefKind.BigDec => new SickJson.BigDec(this, reference),
-                    RefKind.String => new SickJson.String(this, reference),
-                    RefKind.Array => new SickJson.Array(this, reference),
-                    RefKind.Object => new SickJson.Object(this, reference),
-                    RefKind.Root => new SickJson.Root(this, reference),
+                    SickKind.Null => new SickJson.Null(this, reference),
+                    SickKind.Bit => new SickJson.Bool(this, reference),
+                    SickKind.SByte => new SickJson.SByte(this, reference),
+                    SickKind.Short => new SickJson.Short(this, reference),
+                    SickKind.Int => new SickJson.Int(this, reference),
+                    SickKind.Long => new SickJson.Long(this, reference),
+                    SickKind.BigInt => new SickJson.BigInt(this, reference),
+                    SickKind.Float => new SickJson.Float(this, reference),
+                    SickKind.Double => new SickJson.Double(this, reference),
+                    SickKind.BigDec => new SickJson.BigDec(this, reference),
+                    SickKind.String => new SickJson.String(this, reference),
+                    SickKind.Array => new SickJson.Array(this, reference),
+                    SickKind.Object => new SickJson.Object(this, reference),
+                    SickKind.Root => new SickJson.Root(this, reference),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
 

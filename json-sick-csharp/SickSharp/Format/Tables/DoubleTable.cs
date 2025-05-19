@@ -1,11 +1,12 @@
 using System;
+using SickSharp.IO;
 using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
     public sealed class DoubleTable : FixedTable<double>
     {
-        public DoubleTable(SpanStream stream, int offset) : base(stream)
+        public DoubleTable(ISickStream stream, int offset) : base(stream)
         {
             SetStart(offset);
             ReadStandardCount();
