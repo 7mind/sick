@@ -16,7 +16,7 @@ namespace SickSharp.Format.Tables
         }
     }
 
-    internal sealed class OneArrTable : FixedTable<Ref>
+    public sealed class OneArrTable : FixedTable<Ref>
     {
         public OneArrTable(SpanStream stream, int offset) : base(stream)
         {

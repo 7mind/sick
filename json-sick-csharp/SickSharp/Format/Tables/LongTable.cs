@@ -3,7 +3,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
-    internal sealed class LongTable : FixedTable<long>
+    public sealed class LongTable : FixedTable<long>
     {
         public LongTable(SpanStream stream, int offset) : base(stream)
         {

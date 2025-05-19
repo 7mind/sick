@@ -80,7 +80,7 @@ namespace SickSharp.Format.Tables
         public const ushort IndexMemberSize = sizeof(ushort);
     }
 
-    internal sealed class OneObjTable : FixedTable<ObjEntry>
+    public sealed class OneObjTable : FixedTable<ObjEntry>
     {
         private readonly StringTable _strings;
         private readonly int _offset;
@@ -152,6 +152,12 @@ namespace SickSharp.Format.Tables
             return new KeyValuePair<string, Ref>(_strings.Read(obj.Key), obj.Value);
         }
 
+        public Ref ReadRef(int index)
+        {
+            var bytes = ReadSpan(index, sizeof(int), sizeof(byte) + sizeof(int));
+            return ConvertRef(bytes);
+        }
+
         public ReadOnlySpan<byte> ReadKeyRefSpan(int index, out string key)
         {
             var bytes = ReadSpan(index);
@@ -159,7 +165,6 @@ namespace SickSharp.Format.Tables
             key = _strings.Read(keyval);
             return bytes[sizeof(int)..];
         }
-
 
         public IEnumerator<KeyValuePair<string, Ref>> GetEnumerator()
         {

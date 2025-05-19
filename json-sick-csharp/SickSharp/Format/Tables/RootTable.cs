@@ -4,7 +4,7 @@ using SickSharp.Primitives;
 namespace SickSharp.Format.Tables
 {
 
-    internal sealed class RootTable : FixedTable<Root>
+    public sealed class RootTable : FixedTable<Root>
     {
         public RootTable(SpanStream stream, int offset) : base(stream)
         {

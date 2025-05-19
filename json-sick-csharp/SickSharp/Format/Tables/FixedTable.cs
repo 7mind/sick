@@ -6,7 +6,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
-    internal abstract class FixedTable<TV>
+    public abstract class FixedTable<TV>
     {
         protected readonly SpanStream Stream;
 

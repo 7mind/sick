@@ -218,7 +218,7 @@ namespace SickSharp.Encoder
 
         private Ref addString(String s)
         {
-            return new Ref(RefKind.Str, _strings.Add(s));
+            return new Ref(RefKind.String, _strings.Add(s));
         }
         
         private Ref addInt(Int32 s)
@@ -238,12 +238,12 @@ namespace SickSharp.Encoder
 
         private Ref addFloat(Single s)
         {
-            return new Ref(RefKind.Flt, _floats.Add(s));
+            return new Ref(RefKind.Float, _floats.Add(s));
         }
 
         private Ref addDouble(Double s)
         {
-            return new Ref(RefKind.Dbl, _doubles.Add(s));
+            return new Ref(RefKind.Double, _doubles.Add(s));
         }
 
         private Ref addBigDec(BigDecimal s)
@@ -253,12 +253,12 @@ namespace SickSharp.Encoder
 
         private Ref addArr(List<Ref> s)
         {
-            return new Ref(RefKind.Arr, _arrs.Add(s));
+            return new Ref(RefKind.Array, _arrs.Add(s));
         }
 
         private Ref addObj(List<ObjEntry> s)
         {
-            return new Ref(RefKind.Obj, _objs.Add(s));
+            return new Ref(RefKind.Object, _objs.Add(s));
         }
     }
 

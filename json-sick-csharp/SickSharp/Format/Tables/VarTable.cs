@@ -5,7 +5,7 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Format
 {
-    internal abstract class BasicVarTable<TV>
+    public abstract class BasicVarTable<TV>
     {
         private readonly int _dataOffset;
         private readonly int _sizeOffset;
@@ -52,7 +52,7 @@ namespace SickSharp.Format
         protected abstract TV BasicRead(int absoluteStartOffset, int byteLen);
     }
 
-    internal abstract class VarTable<TV> : BasicVarTable<TV>
+    public abstract class VarTable<TV> : BasicVarTable<TV>
     {
         protected VarTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {

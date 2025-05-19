@@ -6,7 +6,7 @@ namespace SickSharp.Format.Tables
 {
     public sealed record BigDecimal(BigInteger Unscaled, int Scale, int Precision, int Signum);
 
-    internal sealed class BigDecTable : VarTable<BigDecimal>
+    public sealed class BigDecTable : VarTable<BigDecimal>
     {
         public BigDecTable(SpanStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {

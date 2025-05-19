@@ -41,22 +41,22 @@ public class SickTests
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
                    loadInMemoryThreshold: 32768))
         {
-            var rootRef = reader.GetRoot(RootName)!;
+            var root = reader.ReadRoot(RootName);
 
-            var o1 = (SickJson.String)reader.Query(rootRef, "info.version");
-            Assert.That(o1.Value, Is.EqualTo("1.0.0"));
+            var o1 = root.Query("info.version").AsString();
+            Assert.That(o1, Is.EqualTo("1.0.0"));
 
-            var o2 = (SickJson.String)reader.Query(rootRef, "swagger");
-            Assert.That(o2.Value, Is.EqualTo("2.0"));
+            var o2 = root.Query("swagger").AsString();
+            Assert.That(o2, Is.EqualTo("2.0"));
 
-            var o3 = (SickJson.String)reader.Query(rootRef, "schemes[0]");
-            Assert.That(o3.Value, Is.EqualTo("http"));
+            var o3 = root.Query("schemes[0]").AsString();
+            Assert.That(o3, Is.EqualTo("http"));
 
-            var o4 = (SickJson.String)reader.Query(rootRef, "schemes.[0]");
-            Assert.That(o4.Value, Is.EqualTo("http"));
+            var o4 = root.Query("schemes.[0]").AsString();
+            Assert.That(o4, Is.EqualTo("http"));
 
-            var o5 = (SickJson.String)reader.Query(rootRef, "schemes.[-1]");
-            Assert.That(o5.Value, Is.EqualTo("http"));
+            var o5 = root.Query("schemes.[-1]").AsString();
+            Assert.That(o5, Is.EqualTo("http"));
         }
     }
 
@@ -69,8 +69,8 @@ public class SickTests
         {
             for (int i = 0; i < 500000; i++)
             {
-                var rootRef = reader.GetRoot(RootName)!;
-                var o3 = (SickJson.String)reader.Query(rootRef, "schemes[0]");
+                var root = reader.ReadRoot(RootName);
+                var o3 = root.Query("schemes[0]").AsString();
                 Debug.Assert(o3 != null);
             }
         }
@@ -94,7 +94,7 @@ public class SickTests
     // }
 
 
-    public int Traverse(Ref reference, SickReader reader, int count, short limit)
+    public int Traverse(SickJson json, int count, short limit)
     {
         // Console.WriteLine(reader.ToJson(reference));
 
@@ -105,56 +105,54 @@ public class SickTests
             return count;
         }
 
-        if (reference.Kind == RefKind.Arr)
+        if (json is SickJson.Array arr)
         {
-            var arr = (SickJson.Array)reader.Resolve(reference);
             if (arr.Count == 0)
             {
                 return next;
             }
 
-            Ref entry;
+            Ref entryRef;
             int index;
             if (readFirst)
             {
-                entry = arr.Content().First();
                 index = 0;
+                entryRef = arr.Content().First();
             }
             else
             {
                 index = arr.Count / 2;
-                entry = arr.Content().ElementAt(index);
+                entryRef = arr.Content().ElementAt(index);
             }
 
-            var entryRef = arr.ReadRef(index);
-            Debug.Assert(entry == entryRef);
-            return Traverse(entryRef, reader, next, limit);
+            var entry = arr.ReadIndex(index);
+            Debug.Assert(entry.Ref == entryRef);
+            return Traverse(entry, next, limit);
         }
 
-        if (reference.Kind == RefKind.Obj)
+        if (json is SickJson.Object obj)
         {
-            var obj = (SickJson.Object)reader.Resolve(reference);
             if (obj.Count == 0)
             {
                 return next;
             }
 
-            KeyValuePair<string, Ref> entry;
+            KeyValuePair<string, Ref> fieldRef;
             int index;
             if (readFirst)
             {
-                entry = obj.Content().First();
                 index = 0;
+                fieldRef = obj.Content().First();
             }
             else
             {
                 index = obj.Count / 2;
-                entry = obj.Content().ElementAt(index);
+                fieldRef = obj.Content().ElementAt(index);
             }
 
-            var fieldVal = obj.ReadRef(entry.Key);
-            Debug.Assert(fieldVal == entry.Value);
-            return Traverse(entry.Value, reader, next, limit);
+            var field = obj.Read(fieldRef.Key);
+            Debug.Assert(field.Ref == fieldRef.Value);
+            return Traverse(field, next, limit);
         }
 
         return count;
@@ -219,14 +217,14 @@ public class SickTests
                 using (var reader = SickReader.OpenFile(input, ISickCacheManager.GlobalPerFile(), ISickProfiler.Noop(),
                            loadInMemoryThreshold: 32768))
                 {
-                    var rootRef = reader.GetRoot(RootName);
+                    var root = reader.ReadRoot(RootName);
 
-                    Stopwatch stopwatch = new Stopwatch();
+                    var stopwatch = new Stopwatch();
                     stopwatch.Start();
                     Console.WriteLine($"Going to perform {iters} traverses...");
                     for (int x = 0; x < iters; x++)
                     {
-                        Traverse(rootRef!, reader, 0, 10);
+                        Traverse(root, 0, 10);
                     }
 
                     stopwatch.Stop();
@@ -234,14 +232,13 @@ public class SickTests
                     Console.WriteLine($"Finished in {stopwatchElapsed.TotalSeconds} sec");
                     Console.WriteLine($"Iters/sec {Convert.ToDouble(iters) / stopwatchElapsed.TotalSeconds}");
 
-                    Debug.Assert(rootRef != null, $"No root entry in {name}");
-                    Console.WriteLine($"{name}: found {RootName}, ref={rootRef}");
+                    Debug.Assert(root != null, $"No root entry in {name}");
+                    Console.WriteLine($"{name}: found {RootName}, ref={root}");
 
-                    switch (rootRef.Kind)
+                    switch (root)
                     {
-                        case RefKind.Obj:
-                            Console.WriteLine(
-                                $"{name}: object with {((SickJson.Object)reader.Resolve(rootRef)).Count} elements");
+                        case SickJson.Object obj:
+                            Console.WriteLine($"{name}: object with {obj.Count} elements");
                             break;
                         default:
                             break;

@@ -1,171 +1,131 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using SickSharp.Format.Tables;
+using System.IO;
 
 namespace SickSharp
 {
     public sealed partial class SickReader
     {
-        internal Ref ReadObjectFieldRef(Ref reference, string field)
+        public SickJson ReadRoot(string id)
         {
 #if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))
+            using (var cp = Profiler.OnInvoke("ReadRoot()", id))
 #endif
             {
-                if (reference.Kind != RefKind.Obj)
+                if (!_roots.TryGetValue(id, out var reference))
                 {
-                    throw new KeyNotFoundException(
-                        $"Tried to find field `{field}` in entity with id `{reference}` which should be an object, but it was `{reference.Kind}`"
-                    );
+                    throw new KeyNotFoundException($"Root `{id}` was not found.");
                 }
 
-                try
-                {
-                    var currentObj = _objs.Read(reference.Value);
-                    var ret = ReadObjectFieldRef(currentObj, field);
+                var result = Resolve(reference);
+
 #if SICK_PROFILE_READER
-                    return cp.OnReturn(ret);
+                return cp.OnReturn(result);
 #else
-                    return ret;
-#endif
-                }
-                catch (Exception ex)
-                {
-                    throw new KeyNotFoundException($"Can not read `{field}` of `{reference}` object.", ex);
-                }
-            }
-        }
-
-        internal Ref ReadObjectFieldRef(OneObjTable obj, string field)
-        {
-#if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef/obj", field, currentObj, clue.Value))
-#endif
-            {
-                var lower = 0;
-                var upper = obj.Count;
-
-                // lookup index buckets only if there is more than 1 element, and object index in use 
-                if (obj is { Count: > 1, UseIndex: true })
-                {
-                    var (_, bucket) = KHash.Bucket(field, _header.Settings.BucketSize);
-                    var probablyLower = obj.BucketValue(bucket);
-
-                    if (probablyLower == ObjIndexing.MaxIndex)
-                    {
-                        throw new KeyNotFoundException(
-                            $"Field `{field}` not found in object `{obj}`."
-                        );
-                    }
-
-                    if (probablyLower >= obj.Count)
-                    {
-                        throw new FormatException(
-                            $"Structural failure: Field `{field}` in object `{obj}` produced bucket index `{probablyLower}` which is more than object size `{obj.Count}`."
-                        );
-                    }
-
-                    lower = probablyLower;
-
-                    // with optimized index there should be no maxIndex elements in the index, and we expect to make exactly ONE iteration
-                    for (var i = bucket + 1; i < _header.Settings.BucketCount; i++)
-                    {
-                        var probablyUpper = obj.BucketValue(i);
-
-                        if (probablyUpper <= obj.Count)
-                        {
-                            upper = probablyUpper;
-                            break;
-                        }
-
-                        if (probablyUpper == ObjIndexing.MaxIndex)
-                        {
-                            continue;
-                        }
-
-                        if (probablyUpper > obj.Count)
-                        {
-                            throw new FormatException(
-                                $"Field `{field}` in object `{obj}` produced bucket index `{probablyUpper}` which is more than object size `{obj.Count}`."
-                            );
-                        }
-                    }
-                }
-
-#if SICK_DEBUG_TRAVEL
-                TotalLookups += 1;
-#endif
-
-                Debug.Assert(lower <= upper);
-                for (var i = lower; i < upper; i++)
-                {
-                    var refBytes = obj.ReadKeyRefSpan(i, out var key);
-                    if (key != field) continue;
-
-#if SICK_DEBUG_TRAVEL
-                    TotalTravel += (i - lower);
-#endif
-
-#if SICK_PROFILE_READER
-                    return cp.OnReturn(OneObjTable.ConvertRef(refBytes));
-#else
-                    return OneObjTable.ConvertRef(refBytes);
-#endif
-                }
-
-                throw new KeyNotFoundException(
-                    $"Field `{field}` not found in object `{obj}`."
-                );
-            }
-        }
-
-        internal SickJson ReadObjectField(Ref reference, string field)
-        {
-            var fieldRef = ReadObjectFieldRef(reference, field);
-            return Resolve(fieldRef);
-        }
-
-        internal Ref ReadArrayElementRef(Ref reference, int index)
-        {
-#if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("ReadObjectFieldRef", reference, field))
-#endif
-            {
-                if (reference.Kind != RefKind.Arr)
-                {
-                    throw new KeyNotFoundException(
-                        $"Tried to find element `{index}` in entity with id `{reference}` which should be an array, but it was `{reference.Kind}`"
-                    );
-                }
-
-                var currentObj = _arrs.Read(reference.Value);
-                var ret = ReadArrayElementRef(currentObj, index);
-
-#if SICK_PROFILE_READER
-                return cp.OnReturn(ret);
-#else
-                return ret;
+                return result;
 #endif
             }
         }
 
-        internal Ref ReadArrayElementRef(OneArrTable arr, int index)
+        public bool TryReadRoot(string id, out SickJson value)
+        {
+            try
+            {
+                value = ReadRoot(id);
+                return true;
+            }
+            catch (Exception)
+            {
+                value = null!;
+                return false;
+            }
+        }
+
+        public SickJson Read(params string[] path)
         {
 #if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("ReadArrayElementRef/obj", reference, iindex))
+            using (var cp = Profiler.OnInvoke("Read()", path))
 #endif
             {
-                var adjustedIndex = index >= 0 ? index : arr.Count + index; // + decrements here because index is negative
-                if (adjustedIndex < 0 || adjustedIndex > arr.Count - 1)
+                if (path.Length < 1)
                 {
-                    throw new KeyNotFoundException($"Index [{index}] not found in object `{arr}`.");
+                    throw new ArgumentException("Can not be empty.", nameof(path));
                 }
 
-                var ret = arr.Read(adjustedIndex);
+                // split path if there is only one field
+                path = path.Length == 1 ? path[0].Split(".") : path;
+
+                var root = ReadRoot(path[0]);
+                if (path.Length == 1)
+                {
+                    return root;
+                }
+
+                var result = root.Read(new ReadOnlySpan<string>(path, 1, path.Length - 1));
+
 #if SICK_PROFILE_READER
-                return cp.OnReturn(ret);
+                return cp.OnReturn(result);
+#else
+                return result;
+#endif
+            }
+        }
+
+        public SickJson Read(ReadOnlySpan<string> path)
+        {
+#if SICK_PROFILE_READER
+            using (var cp = Profiler.OnInvoke("ReadSpan()", path))
+#endif
+            {
+                if (path.Length < 1)
+                {
+                    throw new ArgumentException("Can not be empty.", nameof(path));
+                }
+
+                var root = ReadRoot(path[0]);
+                if (path.Length == 1)
+                {
+                    return root;
+                }
+
+                var result = root.Read(path.Slice(1, path.Length - 1));
+
+#if SICK_PROFILE_READER
+                return cp.OnReturn(result);
+#else
+                return result;
+#endif
+            }
+        }
+
+        internal SickJson Resolve(Ref reference)
+        {
+#if SICK_PROFILE_READER
+            using (var trace = Profiler.OnInvoke("Resolve()", reference))
+#endif
+            {
+                SickJson ret = reference.Kind switch
+                {
+                    RefKind.Nul => new SickJson.Null(this, reference),
+                    RefKind.Bit => new SickJson.Bool(this, reference),
+                    RefKind.SByte => new SickJson.SByte(this, reference),
+                    RefKind.Short => new SickJson.Short(this, reference),
+                    RefKind.Int => new SickJson.Int(this, reference),
+                    RefKind.Lng => new SickJson.Long(this, reference),
+                    RefKind.BigInt => new SickJson.BigInt(this, reference),
+                    RefKind.Float => new SickJson.Float(this, reference),
+                    RefKind.Double => new SickJson.Double(this, reference),
+                    RefKind.BigDec => new SickJson.BigDec(this, reference),
+                    RefKind.String => new SickJson.String(this, reference),
+                    RefKind.Array => new SickJson.Array(this, reference),
+                    RefKind.Object => new SickJson.Object(this, reference),
+                    RefKind.Root => new SickJson.Root(this, reference),
+                    _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
+                };
+
+#if SICK_PROFILE_READER
+                return trace.OnReturn(ret);
 #else
                 return ret;
 #endif
