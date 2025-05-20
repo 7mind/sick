@@ -7,7 +7,7 @@ namespace SickSharp
 {
     public abstract partial class SickJson
     {
-        public sealed class Int : Lazy<int>
+        public sealed class Int : LazySickJson<int>
         {
             internal Int(SickReader reader, SickRef reference) : base(reader, SickKind.Int, reference)
             {

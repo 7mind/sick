@@ -9,7 +9,7 @@ namespace SickSharp
 {
     public abstract partial class SickJson
     {
-        public sealed class Object : Lazy<OneObjTable>
+        public sealed class Object : LazySickJson<OneObjTable>
         {
             internal Object(SickReader reader, SickRef reference) : base(reader, SickKind.Object, reference)
             {

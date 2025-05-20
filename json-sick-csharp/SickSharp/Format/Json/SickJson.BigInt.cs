@@ -9,7 +9,7 @@ namespace SickSharp
 {
     public abstract partial class SickJson
     {
-        public sealed class BigInt : Lazy<BigInteger>
+        public sealed class BigInt : LazySickJson<BigInteger>
         {
             internal BigInt(SickReader reader, SickRef reference) : base(reader, SickKind.BigInt, reference)
             {

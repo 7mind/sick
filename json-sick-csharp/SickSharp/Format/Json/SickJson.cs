@@ -109,13 +109,13 @@ namespace SickSharp
          * Simple lazy implementation.
          * Mostly copy-paste from the System.Lazy.
          */
-        public abstract class Lazy<T> : SickJson
+        public abstract class LazySickJson<T> : SickJson
         {
             private volatile bool _created;
             private T? _value;
             public T Value => _created ? _value! : CreateValue();
 
-            protected Lazy(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
+            protected LazySickJson(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
             {
             }
 

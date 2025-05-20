@@ -11,7 +11,7 @@ namespace SickSharp
 {
     public abstract partial class SickJson
     {
-        public sealed class Array : Lazy<OneArrTable>
+        public sealed class Array : LazySickJson<OneArrTable>
         {
             internal Array(SickReader reader, SickRef reference) : base(reader, SickKind.Array, reference)
             {
