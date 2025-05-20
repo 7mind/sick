@@ -12,7 +12,9 @@ namespace SickSharp.Format.Tables
 {
     public class StringTable : VarTable<string>
     {
+#if SICK_CACHE_STRINGS
         private readonly ConcurrentDictionary<int, string> _cache = new();
+#endif
 
         public StringTable(ISickStream stream, int offset, bool loadIndexes) : base(stream, offset, loadIndexes)
         {
