@@ -8,7 +8,7 @@ namespace SickSharp
         /**
          * Query value at specified path.
          * <param name="query">
-         *      Path query. Each path parameters should be separated by dots.
+         *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
          */
@@ -20,7 +20,7 @@ namespace SickSharp
         /**
          * Try to query value at specified path.
          * <param name="query">
-         *      Path query. Each path parameters should be separated by dots.
+         *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
          * <param name="value">Output JSON value.</param>
@@ -42,7 +42,7 @@ namespace SickSharp
         /**
          * Query value with specified type at specified path.
          * <param name="query">
-         *      Path query. Each path parameters should be separated by dots.
+         *      Dot-separated path with jsonpath-styled array indexing. 
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
          */
@@ -56,7 +56,7 @@ namespace SickSharp
         /**
          * Try to query value with specified type at specified path.
          * <param name="query">
-         *      Path query. Each path parameters should be separated by dots.
+         *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
          * <param name="value">Output JSON value.</param>
@@ -78,7 +78,7 @@ namespace SickSharp
         /**
          * Read value at specified path.
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -91,7 +91,7 @@ namespace SickSharp
          * Read value with specified type at specified path.
          * <param name="value">Output value.</param>
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -112,7 +112,7 @@ namespace SickSharp
         /**
          * Read value with specified type at specified path.
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -127,7 +127,7 @@ namespace SickSharp
          * Try to read value with specified type at specified path.
          * <param name="value">Output value.</param>
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -148,7 +148,7 @@ namespace SickSharp
         /**
          * Read value at specified path.
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -160,7 +160,7 @@ namespace SickSharp
         /**
          * Read value with specified type at specified path.
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -175,7 +175,7 @@ namespace SickSharp
          * Try to read value at specified path.
          * <param name="value">Output value.</param>
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
@@ -197,7 +197,7 @@ namespace SickSharp
          * Try to read value with specified type at specified path.
          * <param name="value">Output value.</param>
          * <param name="path">
-         *      Full value path.
+         *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
