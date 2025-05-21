@@ -94,7 +94,7 @@ public class SickTests
     // }
 
 
-    public int Traverse(SickJson json, int count, short limit)
+    public int Traverse(SickCursor cursor, int count, short limit)
     {
         // Console.WriteLine(reader.ToJson(reference));
 
@@ -105,7 +105,7 @@ public class SickTests
             return count;
         }
 
-        if (json is SickJson.Array arr)
+        if (cursor is SickCursor.Array arr)
         {
             if (arr.Count == 0)
             {
@@ -130,7 +130,7 @@ public class SickTests
             return Traverse(entry, next, limit);
         }
 
-        if (json is SickJson.Object obj)
+        if (cursor is SickCursor.Object obj)
         {
             if (obj.Count == 0)
             {
@@ -237,7 +237,7 @@ public class SickTests
 
                     switch (root)
                     {
-                        case SickJson.Object obj:
+                        case SickCursor.Object obj:
                             Console.WriteLine($"{name}: object with {obj.Count} elements");
                             break;
                         default:

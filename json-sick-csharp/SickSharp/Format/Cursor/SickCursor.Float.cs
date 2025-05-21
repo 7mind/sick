@@ -1,36 +1,39 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Double : LazySickJson<double>
+        public sealed class Float : LazyCursor<float>
         {
-            internal Double(SickReader reader, SickRef reference) : base(reader, SickKind.Double, reference)
+            internal Float(SickReader reader, SickRef reference) : base(reader, SickKind.Float, reference)
             {
             }
 
-            protected override double Create()
+            protected override float Create()
             {
-                return Reader.Doubles.Read(Ref.Value);
+                return Reader.Floats.Read(Ref.Value);
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
-                return onDouble(Value);
+                return onFloat(Value);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
-                return matcher.OnDouble(Value);
+                return matcher.OnFloat(Value);
+            }
+
+            public override float AsFloat()
+            {
+                return Value;
             }
 
             public override double AsDouble()

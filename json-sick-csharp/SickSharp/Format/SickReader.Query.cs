@@ -8,10 +8,12 @@ namespace SickSharp
 {
     public sealed partial class SickReader
     {
-        public override SickJson Query(string query)
+        public override SickCursor Query(string query)
         {
+            ThrowIfDisposed();
+
 #if SICK_PROFILE_READER
-            using (var cp = Profiler.OnInvoke("Query()", path))
+            using (var cp = Profiler.OnInvoke("Query()", query))
 #endif
             {
                 if (string.IsNullOrEmpty(query))

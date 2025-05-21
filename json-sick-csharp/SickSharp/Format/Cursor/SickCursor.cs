@@ -6,12 +6,12 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson : SickObjectReader
+    public abstract partial class SickCursor : SickObjectReader
     {
         protected readonly SickReader Reader;
         public readonly SickRef Ref;
 
-        private SickJson(SickReader reader, SickKind expectedKind, SickRef reference)
+        private SickCursor(SickReader reader, SickKind expectedKind, SickRef reference)
         {
             Debug.Assert(expectedKind == reference.Kind);
             Reader = reader;
@@ -35,7 +35,9 @@ namespace SickSharp
             Func<SickSharp.SickRoot, T> onRoot
         );
 
-        public abstract T? Match<T>(SickJsonMatcher<T> matcher) where T : class;
+        public abstract T? Match<T>(SickCursorMatcher<T> matcher) where T : class;
+
+        public virtual bool IsNull => false;
 
         public virtual bool AsBool()
         {
@@ -67,6 +69,11 @@ namespace SickSharp
             throw new ArgumentException($"Can not get <long> from <{GetType().Name}>.");
         }
 
+        public virtual float AsFloat()
+        {
+            throw new ArgumentException($"Can not get <float> from <{GetType().Name}>.");
+        }
+
         public virtual double AsDouble()
         {
             throw new ArgumentException($"Can not get <double> from <{GetType().Name}>.");
@@ -79,18 +86,18 @@ namespace SickSharp
 
         public virtual Object AsObject()
         {
-            throw new ArgumentException($"Can not get <SickJson.Object> from <{GetType().Name}>.");
+            throw new ArgumentException($"Can not get <SickCursor.Object> from <{GetType().Name}>.");
         }
 
         public virtual Array AsArray()
         {
-            throw new ArgumentException($"Can not get <SickJson.Array> from <{GetType().Name}>.");
+            throw new ArgumentException($"Can not get <SickCursor.Array> from <{GetType().Name}>.");
         }
 
         /**
          * Cast JSON to specified type.
          */
-        public T As<T>() where T : SickJson
+        public T As<T>() where T : SickCursor
         {
             if (this is T t) return t;
             throw new ArgumentException($"Can not convert to <{typeof(T).Name}> from <{GetType().Name}>.");
@@ -99,7 +106,7 @@ namespace SickSharp
         /**
          * Try to cast JSON to specified type.
          */
-        public bool TryAs<T>(out T value) where T : SickJson
+        public bool TryAs<T>(out T value) where T : SickCursor
         {
             value = (this as T)!;
             return value != null!;
@@ -109,13 +116,18 @@ namespace SickSharp
          * Simple lazy implementation.
          * Mostly copy-paste from the System.Lazy.
          */
-        public abstract class LazySickJson<T> : SickJson
+        public abstract class LazyCursor<T> : SickCursor
         {
             private volatile bool _created;
             private T? _value;
+
+            /**
+             * Value of the current cursor.
+             * Value is lazily read from cursor's SickReader instance.
+             */
             public T Value => _created ? _value! : CreateValue();
 
-            protected LazySickJson(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
+            protected LazyCursor(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
             {
             }
 
@@ -127,8 +139,8 @@ namespace SickSharp
                 {
                     if (!_created)
                     {
-                        _created = true;
                         _value = Create();
+                        _created = true;
                     }
 
                     return _value!;

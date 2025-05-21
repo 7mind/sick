@@ -11,8 +11,9 @@ namespace SickSharp
          *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
+         * <returns>Cursor to the queried reference. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public virtual SickJson Query(string query)
+        public virtual SickCursor Query(string query)
         {
             throw new KeyNotFoundException($"Can not query `{query}` from <{GetType().Name}>.");
         }
@@ -25,7 +26,7 @@ namespace SickSharp
          * </param>
          * <param name="value">Output JSON value.</param>
          */
-        public bool TryQuery(string query, out SickJson value)
+        public bool TryQuery(string query, out SickCursor value)
         {
             try
             {
@@ -42,11 +43,12 @@ namespace SickSharp
         /**
          * Query value with specified type at specified path.
          * <param name="query">
-         *      Dot-separated path with jsonpath-styled array indexing. 
+         *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
+        * <returns>Cursor to the queried reference. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public T Query<T>(string query) where T : SickJson
+        public T Query<T>(string query) where T : SickCursor
         {
             var result = Query(query);
             if (result is T t) return t;
@@ -59,9 +61,9 @@ namespace SickSharp
          *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
-         * <param name="value">Output JSON value.</param>
+         * <param name="value">Cursor to the queried reference. Cursor value evaluated lazily and requires active SickReader.</param>
          */
-        public bool TryQuery<T>(string query, out T value) where T : SickJson
+        public bool TryQuery<T>(string query, out T value) where T : SickCursor
         {
             try
             {
@@ -81,21 +83,22 @@ namespace SickSharp
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
+         * <returns>Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public virtual SickJson Read(ReadOnlySpan<string> path)
+        public virtual SickCursor Read(ReadOnlySpan<string> path)
         {
             throw new KeyNotFoundException($"Can not read field `{string.Join(".", path.ToArray())}` from <{GetType().Name}>.");
         }
 
         /**
          * Read value with specified type at specified path.
-         * <param name="value">Output value.</param>
+         * <param name="value">Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</param>
          * <param name="path">
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
-        public bool TryRead(out SickJson value, ReadOnlySpan<string> path)
+        public bool TryRead(out SickCursor value, ReadOnlySpan<string> path)
         {
             try
             {
@@ -115,8 +118,9 @@ namespace SickSharp
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
+         * <returns>Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public T Read<T>(ReadOnlySpan<string> path) where T : SickJson
+        public T Read<T>(ReadOnlySpan<string> path) where T : SickCursor
         {
             var result = Read(path);
             if (result is T t) return t;
@@ -125,13 +129,13 @@ namespace SickSharp
 
         /**
          * Try to read value with specified type at specified path.
-         * <param name="value">Output value.</param>
+         * <param name="value">Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</param>
          * <param name="path">
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
-        public bool TryRead<T>(out T value, ReadOnlySpan<string> path) where T : SickJson
+        public bool TryRead<T>(out T value, ReadOnlySpan<string> path) where T : SickCursor
         {
             try
             {
@@ -151,8 +155,9 @@ namespace SickSharp
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
+         * <returns>Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public virtual SickJson Read(params string[] path)
+        public virtual SickCursor Read(params string[] path)
         {
             throw new KeyNotFoundException($"Can not read field `{string.Join(".", path)}` from <{GetType().Name}>.");
         }
@@ -163,8 +168,9 @@ namespace SickSharp
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
+         * <returns>Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public T Read<T>(params string[] path) where T : SickJson
+        public T Read<T>(params string[] path) where T : SickCursor
         {
             var result = Read(path);
             if (result is T t) return t;
@@ -173,13 +179,13 @@ namespace SickSharp
 
         /**
          * Try to read value at specified path.
-         * <param name="value">Output value.</param>
+         * <param name="value">Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</param>
          * <param name="path">
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
-        public bool TryRead(out SickJson value, params string[] path)
+        public bool TryRead(out SickCursor value, params string[] path)
         {
             try
             {
@@ -195,13 +201,13 @@ namespace SickSharp
 
         /**
          * Try to read value with specified type at specified path.
-         * <param name="value">Output value.</param>
+         * <param name="value">Cursor to the reference of the path. Cursor value evaluated lazily and requires active SickReader.</param>
          * <param name="path">
          *      Path as a segment string array.
          *      Examples: {my, path}; {my, array, [3], path}; {my, array, 3, path}; {my, array, [3], path}
          * </param>
          */
-        public bool TryRead<T>(out T value, params string[] path) where T : SickJson
+        public bool TryRead<T>(out T value, params string[] path) where T : SickCursor
         {
             try
             {

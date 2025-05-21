@@ -5,39 +5,28 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class SByte : SickJson
+        public sealed class Short : SickCursor
         {
-            public readonly sbyte Value;
+            public readonly short Value;
 
-            internal SByte(SickReader reader, SickRef reference) : base(reader, SickKind.SByte, reference)
+            internal Short(SickReader reader, SickRef reference) : base(reader, SickKind.Short, reference)
             {
-                Value = (sbyte)reference.Value;
+                Value = (short)reference.Value;
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
-                return onByte(Value);
+                return onShort(Value);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
-                return matcher.OnByte(Value);
-            }
-
-
-            public override sbyte AsSByte()
-            {
-                return Value;
-            }
-
-            public override byte AsByte()
-            {
-                return (byte)Value;
+                return matcher.OnShort(Value);
             }
 
             public override short AsShort()
@@ -51,6 +40,11 @@ namespace SickSharp
             }
 
             public override long AsLong()
+            {
+                return Value;
+            }
+
+            public override float AsFloat()
             {
                 return Value;
             }

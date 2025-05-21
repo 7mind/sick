@@ -5,38 +5,38 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Int : LazySickJson<int>
+        public sealed class Long : LazyCursor<long>
         {
-            internal Int(SickReader reader, SickRef reference) : base(reader, SickKind.Int, reference)
+            internal Long(SickReader reader, SickRef reference) : base(reader, SickKind.Long, reference)
             {
             }
 
-            protected override int Create()
+            protected override long Create()
             {
-                return Reader.Ints.Read(Ref.Value);
+                return Reader.Longs.Read(Ref.Value);
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
-                return onInt(Value);
+                return onLong(Value);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
-                return matcher.OnInt(Value);
+                return matcher.OnLong(Value);
             }
 
-            public override int AsInt()
+            public override long AsLong()
             {
                 return Value;
             }
 
-            public override long AsLong()
+            public override float AsFloat()
             {
                 return Value;
             }

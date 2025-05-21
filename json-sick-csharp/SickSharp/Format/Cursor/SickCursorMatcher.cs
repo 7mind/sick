@@ -4,7 +4,7 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract class SickJsonMatcher<T> where T : class
+    public abstract class SickCursorMatcher<T> where T : class
     {
         public virtual T? OnNull()
         {
@@ -61,12 +61,12 @@ namespace SickSharp
             return null;
         }
 
-        public virtual T? OnArray(SickJson.Array value)
+        public virtual T? OnArray(SickCursor.Array value)
         {
             return null;
         }
 
-        public virtual T? OnObj(SickJson.Object value)
+        public virtual T? OnObj(SickCursor.Object value)
         {
             return null;
         }

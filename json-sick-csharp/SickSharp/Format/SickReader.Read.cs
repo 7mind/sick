@@ -10,9 +10,12 @@ namespace SickSharp
         /**
          * Read root value with specified identifier.
          * <param name="id">Root identifier.</param>
+         * <returns>Cursor to the requested root. Cursor value evaluated lazily and requires active SickReader.</returns>
          */
-        public SickJson ReadRoot(string id)
+        public SickCursor ReadRoot(string id)
         {
+            ThrowIfDisposed();
+
 #if SICK_PROFILE_READER
             using (var cp = Profiler.OnInvoke("ReadRoot()", id))
 #endif
@@ -22,7 +25,7 @@ namespace SickSharp
                     throw new KeyNotFoundException($"Root `{id}` was not found.");
                 }
 
-                var result = Resolve(reference);
+                var result = GetCursor(reference);
 
 #if SICK_PROFILE_READER
                 return cp.OnReturn(result);
@@ -35,10 +38,12 @@ namespace SickSharp
         /**
          * Read root value with specified identifier.
          * <param name="id">Root identifier.</param>
-         * <param name="value">Output value</param>
+         * <param name="value">Cursor to the requested root. Cursor value evaluated lazily and requires active SickReader.</param>
          */
-        public bool TryReadRoot(string id, out SickJson value)
+        public bool TryReadRoot(string id, out SickCursor value)
         {
+            ThrowIfDisposed();
+
             try
             {
                 value = ReadRoot(id);
@@ -51,8 +56,10 @@ namespace SickSharp
             }
         }
 
-        public override SickJson Read(params string[] path)
+        public override SickCursor Read(params string[] path)
         {
+            ThrowIfDisposed();
+
 #if SICK_PROFILE_READER
             using (var cp = Profiler.OnInvoke("Read()", path))
 #endif
@@ -81,10 +88,12 @@ namespace SickSharp
             }
         }
 
-        public override SickJson Read(ReadOnlySpan<string> path)
+        public override SickCursor Read(ReadOnlySpan<string> path)
         {
+            ThrowIfDisposed();
+
 #if SICK_PROFILE_READER
-            using (var cp = Profiler.OnInvoke("ReadSpan()", path))
+            using (var cp = Profiler.OnInvoke("ReadSpan()", new Lazy<string>(string.Join(".", path.ToArray()))))
 #endif
             {
                 if (path.Length < 1)
@@ -108,28 +117,34 @@ namespace SickSharp
             }
         }
 
-        internal SickJson Resolve(SickRef reference)
+        /**
+         * Resolve cursor for the specified reference.
+         * <param name="reference">Reference where cursor should point.</param>
+         */
+        public SickCursor GetCursor(SickRef reference)
         {
+            ThrowIfDisposed();
+
 #if SICK_PROFILE_READER
             using (var trace = Profiler.OnInvoke("Resolve()", reference))
 #endif
             {
-                SickJson ret = reference.Kind switch
+                SickCursor ret = reference.Kind switch
                 {
-                    SickKind.Null => new SickJson.Null(this, reference),
-                    SickKind.Bit => new SickJson.Bool(this, reference),
-                    SickKind.SByte => new SickJson.SByte(this, reference),
-                    SickKind.Short => new SickJson.Short(this, reference),
-                    SickKind.Int => new SickJson.Int(this, reference),
-                    SickKind.Long => new SickJson.Long(this, reference),
-                    SickKind.BigInt => new SickJson.BigInt(this, reference),
-                    SickKind.Float => new SickJson.Float(this, reference),
-                    SickKind.Double => new SickJson.Double(this, reference),
-                    SickKind.BigDec => new SickJson.BigDec(this, reference),
-                    SickKind.String => new SickJson.String(this, reference),
-                    SickKind.Array => new SickJson.Array(this, reference),
-                    SickKind.Object => new SickJson.Object(this, reference),
-                    SickKind.Root => new SickJson.Root(this, reference),
+                    SickKind.Null => new SickCursor.Null(this, reference),
+                    SickKind.Bit => new SickCursor.Bool(this, reference),
+                    SickKind.SByte => new SickCursor.SByte(this, reference),
+                    SickKind.Short => new SickCursor.Short(this, reference),
+                    SickKind.Int => new SickCursor.Int(this, reference),
+                    SickKind.Long => new SickCursor.Long(this, reference),
+                    SickKind.BigInt => new SickCursor.BigInt(this, reference),
+                    SickKind.Float => new SickCursor.Float(this, reference),
+                    SickKind.Double => new SickCursor.Double(this, reference),
+                    SickKind.BigDec => new SickCursor.BigDec(this, reference),
+                    SickKind.String => new SickCursor.String(this, reference),
+                    SickKind.Array => new SickCursor.Array(this, reference),
+                    SickKind.Object => new SickCursor.Object(this, reference),
+                    SickKind.Root => new SickCursor.Root(this, reference),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
 

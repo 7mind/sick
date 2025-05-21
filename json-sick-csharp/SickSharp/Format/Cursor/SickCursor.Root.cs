@@ -1,31 +1,34 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Null : SickJson
+        public sealed class Root : LazyCursor<SickRoot>
         {
-            internal Null(SickReader reader, SickRef reference) : base(reader, SickKind.Null, reference)
+            internal Root(SickReader reader, SickRef reference) : base(reader, SickKind.Root, reference)
             {
+            }
+
+            protected override SickRoot Create()
+            {
+                return Reader.Root.Read(Ref.Value);
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
-                return onNull();
+                return onRoot(Value);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
-                return matcher.OnNull();
+                return matcher.OnRoot(Value);
             }
         }
     }

@@ -251,7 +251,7 @@ namespace SickSharp.IO
             Debug.Assert(_underlying != null);
 
 #if SICK_PROFILE_READER
-            using (var cp = _profiler.OnInvoke("LoadPageSynchronously", _info, page))
+            using (var cp = _profiler.OnInvoke("LoadPageSynchronously()", page, TotalPages))
 #endif
             {
                 var offset = page * PageSize;

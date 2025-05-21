@@ -1,39 +1,47 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Long : LazySickJson<long>
+        public sealed class Int : LazyCursor<int>
         {
-            internal Long(SickReader reader, SickRef reference) : base(reader, SickKind.Long, reference)
+            internal Int(SickReader reader, SickRef reference) : base(reader, SickKind.Int, reference)
             {
             }
 
-            protected override long Create()
+            protected override int Create()
             {
-                return Reader.Longs.Read(Ref.Value);
+                return Reader.Ints.Read(Ref.Value);
             }
 
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
-                return onLong(Value);
+                return onInt(Value);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
-                return matcher.OnLong(Value);
+                return matcher.OnInt(Value);
+            }
+
+            public override int AsInt()
+            {
+                return Value;
             }
 
             public override long AsLong()
+            {
+                return Value;
+            }
+
+            public override float AsFloat()
             {
                 return Value;
             }

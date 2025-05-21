@@ -4,14 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using SickSharp.Format;
 using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Array : LazySickJson<OneArrTable>
+        public sealed class Array : LazyCursor<OneArrTable>
         {
             internal Array(SickReader reader, SickRef reference) : base(reader, SickKind.Array, reference)
             {
@@ -25,19 +24,19 @@ namespace SickSharp
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
                 return onArray(this);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
                 return matcher.OnArray(this);
             }
 
             public int Count => Value.Count;
 
-            public override SickJson Query(string query)
+            public override SickCursor Query(string query)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Object.Query()", Value))
@@ -59,7 +58,7 @@ namespace SickSharp
                 }
             }
 
-            public override SickJson Read(ReadOnlySpan<string> path)
+            public override SickCursor Read(ReadOnlySpan<string> path)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Array.ReadSpan()", Value))
@@ -92,6 +91,7 @@ namespace SickSharp
             /**
              * Enumerate all array element references.
              * Use with caution.
+             * <returns>Enumerable elements references, for latter usage with SickReader.GetCursor(reference).</returns>
              */
             public IEnumerable<SickRef> GetReferences()
             {
@@ -101,13 +101,14 @@ namespace SickSharp
             /**
              * Enumerate all array elements.
              * Use with caution.
+             * <returns>Enumerable elements cursors. Cursor value evaluated lazily and requires active SickReader.</returns>
              */
-            public IEnumerable<SickJson> GetValues()
+            public IEnumerable<SickCursor> GetValues()
             {
-                return Value.Content().Select(fieldRef => Reader.Resolve(fieldRef));
+                return Value.Content().Select(fieldRef => Reader.GetCursor(fieldRef));
             }
 
-            public override SickJson Read(params string[] path)
+            public override SickCursor Read(params string[] path)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Array.Read()", Value))
@@ -129,7 +130,7 @@ namespace SickSharp
             }
 
 
-            public override SickJson ReadIndex(int index)
+            public override SickCursor ReadIndex(int index)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("SickArray.ReadIndex()", Value, index))
@@ -142,7 +143,7 @@ namespace SickSharp
                     }
 
                     var reference = Value.Read(adjustedIndex);
-                    var result = Reader.Resolve(reference);
+                    var result = Reader.GetCursor(reference);
 #if SICK_PROFILE_READER
                     return trace.OnReturn(result);
 #else
@@ -151,12 +152,12 @@ namespace SickSharp
                 }
             }
 
-            private SickJson ReadIndexString(string stringIndex)
+            private SickCursor ReadIndexString(string stringIndex)
             {
                 var index = ParseBracketIndex(stringIndex);
                 if (!index.HasValue)
                 {
-                    throw new KeyNotFoundException($"Can not read field `{stringIndex}` from <SickJson.Array>.");
+                    throw new KeyNotFoundException($"Can not read field `{stringIndex}` from <SickCursor.Array>.");
                 }
 
                 return ReadIndex(index.Value);

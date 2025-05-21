@@ -7,9 +7,9 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp
 {
-    public abstract partial class SickJson
+    public abstract partial class SickCursor
     {
-        public sealed class Object : LazySickJson<OneObjTable>
+        public sealed class Object : LazyCursor<OneObjTable>
         {
             internal Object(SickReader reader, SickRef reference) : base(reader, SickKind.Object, reference)
             {
@@ -25,12 +25,12 @@ namespace SickSharp
             public override T Match<T>(Func<T> onNull, Func<bool, T> onBool, Func<sbyte, T> onByte, Func<short, T> onShort,
                 Func<int, T> onInt, Func<long, T> onLong, Func<BigInteger, T> onBigInt, Func<float, T> onFloat,
                 Func<double, T> onDouble, Func<BigDecimal, T> onBigDecimal, Func<string, T> onString, Func<Array, T> onArray,
-                Func<Object, T> onObj, Func<SickSharp.SickRoot, T> onRoot)
+                Func<Object, T> onObj, Func<SickRoot, T> onRoot)
             {
                 return onObj(this);
             }
 
-            public override T? Match<T>(SickJsonMatcher<T> matcher) where T : class
+            public override T? Match<T>(SickCursorMatcher<T> matcher) where T : class
             {
                 return matcher.OnObj(this);
             }
@@ -38,6 +38,7 @@ namespace SickSharp
             /**
              * Enumerate all object field references.
              * Use with caution.
+             * <returns>Enumerable with fields (name, reference) pairs, for latter usage with SickReader.GetCursor(reference).</returns>
              */
             public IEnumerable<KeyValuePair<string, SickRef>> GetReferences()
             {
@@ -47,16 +48,17 @@ namespace SickSharp
             /**
              * Enumerate all object fields.
              * Use with caution.
+             * <returns>Enumerable with fields (name, cursor) pairs. Cursor value evaluated lazily and requires active SickReader.</returns>
              */
-            public IEnumerable<KeyValuePair<string, SickJson>> GetValues()
+            public IEnumerable<KeyValuePair<string, SickCursor>> GetValues()
             {
                 foreach (var (fieldKey, fieldRef) in Value.Content())
                 {
-                    yield return new KeyValuePair<string, SickJson>(fieldKey, Reader.Resolve(fieldRef));
+                    yield return new KeyValuePair<string, SickCursor>(fieldKey, Reader.GetCursor(fieldRef));
                 }
             }
 
-            public override SickJson Query(string query)
+            public override SickCursor Query(string query)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Object.Query()", Value))
@@ -78,7 +80,7 @@ namespace SickSharp
                 }
             }
 
-            public override SickJson Read(ReadOnlySpan<string> path)
+            public override SickCursor Read(ReadOnlySpan<string> path)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Object.ReadSpan()", Value))
@@ -107,7 +109,7 @@ namespace SickSharp
                 }
             }
 
-            public override SickJson Read(params string[] path)
+            public override SickCursor Read(params string[] path)
             {
 #if SICK_PROFILE_READER
                 using (var trace = Reader.Profiler.OnInvoke("Object.Read()", Value))
@@ -128,16 +130,16 @@ namespace SickSharp
                 }
             }
 
-            public override KeyValuePair<string, SickJson> ReadKey(int index)
+            public override KeyValuePair<string, SickCursor> ReadKey(int index)
             {
                 var (key, reference) = Value.ReadKey(index);
-                return new KeyValuePair<string, SickJson>(key, Reader.Resolve(reference));
+                return new KeyValuePair<string, SickCursor>(key, Reader.GetCursor(reference));
             }
 
-            public override SickJson ReadIndex(int index)
+            public override SickCursor ReadIndex(int index)
             {
                 var reference = Value.ReadRef(index);
-                return Reader.Resolve(reference);
+                return Reader.GetCursor(reference);
             }
 
             public override Object AsObject()
@@ -145,14 +147,14 @@ namespace SickSharp
                 return this;
             }
 
-            private SickJson ReadField(string field)
+            private SickCursor ReadField(string field)
             {
 #if SICK_PROFILE_READER
-                using (var cp = reader.Profiler.OnInvoke("Object.ReadField()", field, Value))
+                using (var cp = Reader.Profiler.OnInvoke("Object.ReadField()", field, Value))
 #endif
                 {
                     var reference = ReadFieldRef(field);
-                    var result = Reader.Resolve(reference);
+                    var result = Reader.GetCursor(reference);
 
 #if SICK_PROFILE_READER
                     return cp.OnReturn(result);
@@ -165,7 +167,7 @@ namespace SickSharp
             private SickRef ReadFieldRef(string field)
             {
 #if SICK_PROFILE_READER
-                using (var cp = reader.Profiler.OnInvoke("Object.ReadFieldRef()", field, Value))
+                using (var cp = Reader.Profiler.OnInvoke("Object.ReadFieldRef()", field, Value))
 #endif
                 {
                     var lower = 0;
