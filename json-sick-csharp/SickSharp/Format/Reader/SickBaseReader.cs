@@ -11,7 +11,7 @@ namespace SickSharp
          *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
-         * <returns>Cursor to the queried reference. Cursor value evaluated lazily and requires active SickReader.</returns>
+         * <returns>Result object as a Cursor. Caution: the lifetime of a Cursor is bound to the lifetime of the Reader.</returns>
          */
         public virtual SickCursor Query(string query)
         {
@@ -46,7 +46,7 @@ namespace SickSharp
          *      Dot-separated path with jsonpath-styled array indexing.
          *      Examples: `my.path`; `my.array[3].path`; `my.array.3.path`; `my.array.[3].path`
          * </param>
-        * <returns>Cursor to the queried reference. Cursor value evaluated lazily and requires active SickReader.</returns>
+        * <returns>Result object as a Cursor. Caution: the lifetime of a Cursor is bound to the lifetime of the Reader.</returns>
          */
         public T Query<T>(string query) where T : SickCursor
         {
