@@ -9,9 +9,8 @@ function run-publish-scala() {
 
   
   if [[ "$CI_BRANCH_TAG" =~ ^v.*$ ]] ; then
-      sbt +clean +test +publishSigned sonatypeBundleRelease
+      sbt +clean +test +publishSigned sonaUpload sonaRelease
   else
-#      sbt +clean +test +publishSigned
-      echo "Publishing is temporarily broken"
+      sbt +clean +test +publishSigned
   fi
 }
