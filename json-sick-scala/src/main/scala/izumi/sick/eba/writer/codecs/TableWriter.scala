@@ -59,13 +59,17 @@ private object TableWriter {
       assert(afterHeader == chan.position())
 
       chan.position(afterPos)
-
-      afterPos - beforePos
+      val added = afterPos - beforePos
+      added
     }
   }
 
   object SinglePassInMemory extends TableWriter {
+    var counter = 0
+
     def writeTable[T](stream: OutputStream, table: EBATable[T], codec: EBAEncoder[T]): Long = {
+      val bldr = ByteString.newBuilder
+
       val elemCount = table.size
 
       var added: Long = 0L
@@ -81,8 +85,6 @@ private object TableWriter {
 
       val realOffsets = computeOffsetsFromSizes(sizes, 0)
       val lastOffset = realOffsets.lastOption.map(lastOffset => lastOffset + sizes.last).getOrElse(0)
-
-      val bldr = ByteString.newBuilder
 
       var headerSz = IntCodec.encodeTo(elemCount, bldr)
       realOffsets.foreach(i => headerSz += IntCodec.encodeTo(i, bldr))
@@ -101,6 +103,7 @@ private object TableWriter {
   object DoublePass extends TableWriter {
     def writeTable[T](stream: OutputStream, table: EBATable[T], codec: EBAEncoder[T]): Long = {
       val elemCount = table.size
+
       val sizes = new Array[Int](elemCount)
       table.forEach {
         (v, i) =>

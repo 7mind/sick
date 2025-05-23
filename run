@@ -71,7 +71,6 @@ function verify-cache() {
 
 function update-self(){
   if [[ "${CI:-false}" == "false" && "${MOBALA_SELF_UPDATE}" == 1 ]] ; then
-    set -xe
     download-file "${MOBALA_BASE}/mobala-resolver.sh" "${script_path}"
     chmod +x "${script_path}"
   fi

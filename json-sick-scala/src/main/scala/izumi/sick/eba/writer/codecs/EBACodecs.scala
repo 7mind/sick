@@ -100,7 +100,7 @@ object EBACodecs {
     override final val blobSize = 1
 
     override def encodeSlow(value: Byte): ByteString = {
-      ByteString(value)
+      ByteString1C(Array(value))
     }
 
     override def encodeTo(value: Byte, b: ByteStringBuilder): Int = {
@@ -264,7 +264,7 @@ object EBACodecs {
   }
 
   implicit object ObjectEntryCodec extends EBACodecFixed[(RefVal, Ref)] {
-    override final val blobSize = Integer.BYTES * 2 + 1
+    override final val blobSize = RefValCodec.blobSize + RefCodec.blobSize
 
     override def encodeSlow(value: (RefVal, Ref)): ByteString = {
       val out = RefValCodec.encodeSlow(value._1) ++ RefCodec.encodeSlow(value._2)
@@ -395,13 +395,13 @@ object EBACodecs {
 
     override def encodeTo(value: Seq[T], b: ByteStringBuilder): Int = {
       val sz = value.length
-      b.putInt(sz)(using ByteOrder.BIG_ENDIAN)
+      val hdr = IntCodec.encodeTo(sz, b)
       value.foreach(codecFixed.encodeTo(_, b))
-      elementSize * sz
+      hdr + elementSize * sz
     }
 
     override def computeSize(value: Seq[T]): Int = {
-      value.size * elementSize
+      IntCodec.blobSize + value.size * elementSize
     }
 
     override def decode(it: DataInput): Seq[T] = {
@@ -427,11 +427,10 @@ object EBACodecs {
 
     override def encodeTo(value: Arr, b: ByteStringBuilder): Int = {
       underlying.encodeTo(value.values, b)
-      elementSize * value.values.length
     }
 
     override def computeSize(value: Arr): Int = {
-      value.values.length * elementSize
+      underlying.computeSize(value.values)
     }
 
     override def decode(it: DataInput): Arr = {
@@ -509,7 +508,6 @@ object EBACodecs {
 
     override def encodeTo(value: Obj, bldr: ByteStringBuilder): Int = {
       val bucketCount: Short = packSettings.objectIndexBucketCount
-      val indexingThreshold: Short = packSettings.minObjectKeysBeforeIndexing
 
       val valuesSz = value.values.size
 
@@ -535,7 +533,7 @@ object EBACodecs {
       }
 
       val index: Array[Int] = {
-        if (objEntriesSortedByCBFHash.length <= indexingThreshold) {
+        if (objEntriesSortedByCBFHash.length <= packSettings.minObjectKeysBeforeIndexing) {
           val res = new Array[Int](1); res(0) = ObjConstants.noIndexMarker; res // if the object is small, we put an array with one marker element
         } else {
           val index = Array.fill(bucketCount.toInt)(ObjConstants.maxIndex)
@@ -576,6 +574,7 @@ object EBACodecs {
           CharCodec.encodeTo(i.toChar, bldr)
       }
       assert(bldr.length == oldLength + Character.BYTES * bucketCount || bldr.length == oldLength + Character.BYTES * 1)
+      val indexSize = bldr.length - oldLength
 
       val objectEntries = {
         val objsCasted = objEntriesSortedByCBFHash.asInstanceOf[Array[(RefVal, Ref)]]
@@ -587,12 +586,17 @@ object EBACodecs {
         }
         objsCasted
       }
-      ObjectEntrySeqCodec.encodeTo(ArraySeq.unsafeWrapArray(objectEntries), bldr)
-      elementSize * valuesSz
+      val seqSize = ObjectEntrySeqCodec.encodeTo(ArraySeq.unsafeWrapArray(objectEntries), bldr)
+      indexSize + seqSize
     }
 
     override def computeSize(value: Obj): Int = {
-      value.values.size * elementSize
+      val indexSize = if (value.values.size <= packSettings.minObjectKeysBeforeIndexing) {
+        Character.BYTES * 1
+      } else {
+        Character.BYTES * packSettings.objectIndexBucketCount
+      }
+      indexSize + IntCodec.blobSize + value.values.size * ObjectEntrySeqCodec.elementSize
     }
 
     override def decode(it: DataInput): Obj = {

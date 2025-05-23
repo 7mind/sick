@@ -34,6 +34,6 @@ final case class EBATable[+V](
 
   override def toString: String = {
     s"""$name:
-       |${data.map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
+       |${data.zipWithIndex.map { case (v, k) => s"$k=$v" }.mkString("\n")}""".stripMargin
   }
 }
