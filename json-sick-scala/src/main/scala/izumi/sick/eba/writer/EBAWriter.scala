@@ -4,7 +4,7 @@ import izumi.sick.eba.writer.codecs.EBACodecs
 import izumi.sick.eba.writer.codecs.EBACodecs.{ArrCodec, BigDecimalCodec, BigIntCodec, DoubleCodec, EBAEncoderTable, FixedSizeTableCodec, FloatCodec, IntCodec, LongCodec, ObjCodec, RootCodec, ShortCodec, StringCodec}
 import izumi.sick.eba.writer.codecs.util.computeOffsetsFromSizes
 import izumi.sick.eba.{EBAStructure, EBATable}
-import izumi.sick.model
+import izumi.sick.model.{SICKWriterParameters, TableWriteStrategy}
 import izumi.sick.thirdparty.akka.util.ByteString
 
 import java.io.{ByteArrayOutputStream, File, FileOutputStream}
@@ -16,8 +16,8 @@ object EBAWriter {
 
   final case class EBAInfo(version: Int, headerLen: Int, offsets: Seq[Int], length: Long)
 
-  def writeBytes(structure: EBAStructure, params: model.SICKWriterParameters): (ByteString, EBAInfo) = {
-    assert(params.tableWriteStrategy != model.TableWriteStrategy.StreamRepositioning)
+  def writeBytes(structure: EBAStructure, params: SICKWriterParameters): (ByteString, EBAInfo) = {
+    assert(params.tableWriteStrategy != TableWriteStrategy.StreamRepositioning)
 
     val encoders = new EBACodecs(params)
     val tables = tablesWithEncoders(structure, encoders)
@@ -60,17 +60,17 @@ object EBAWriter {
     }
   }
 
-  def writeTempFile(structure: EBAStructure, params: model.SICKWriterParameters): (Path, EBAInfo) = {
+  def writeTempFile(structure: EBAStructure, params: SICKWriterParameters): (Path, EBAInfo) = {
     val f = Files.createTempFile("sick", "bin")
     val info = writeFile(structure, f, params)
     (f, info)
   }
 
-  def writeFile(structure: EBAStructure, path: Path, params: model.SICKWriterParameters): EBAInfo = {
+  def writeFile(structure: EBAStructure, path: Path, params: SICKWriterParameters): EBAInfo = {
     writeFile(structure, path.toFile, params)
   }
 
-  def writeFile(structure: EBAStructure, file: File, params: model.SICKWriterParameters): EBAInfo = {
+  def writeFile(structure: EBAStructure, file: File, params: SICKWriterParameters): EBAInfo = {
     val out = new FileOutputStream(file, false)
 
     val encoders = new EBACodecs(params)
