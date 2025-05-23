@@ -2,9 +2,11 @@ package izumi.sick.eba
 
 import izumi.sick.model.Ref.RefVal
 
+import scala.collection.immutable.ArraySeq
+
 final case class EBATable[+V](
   name: String,
-  data: Map[RefVal, V],
+  data: ArraySeq[V],
 ) {
   @inline def apply(k: RefVal): V = data(k)
 
@@ -16,16 +18,22 @@ final case class EBATable[+V](
     (0 until size).map(i => data(RefVal(i)))
   }
 
-  @inline def forEach(f: V => Unit): Unit = {
-    asIterable.foreach(f)
+  @inline def forEach(f: (V, Int) => Unit): Unit = {
+    var i = 0
+    val sz = data.size
+    while (i < sz) {
+      f(data(RefVal(i)), i)
+
+      i += 1
+    }
   }
 
   @inline def mapValues[T](f: V => T): EBATable[T] = {
-    EBATable(name, data.view.mapValues(f).toMap)
+    EBATable(name, data.map(f))
   }
 
   override def toString: String = {
     s"""$name:
-       |${data.toSeq.sortBy(_._1).map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
+       |${data.map { case (k, v) => s"$k=$v" }.mkString("\n")}""".stripMargin
   }
 }

@@ -6,6 +6,7 @@ import izumi.sick.model.*
 
 import java.io.{ByteArrayInputStream, DataInputStream, InputStream}
 import java.nio.file.{Files, Path}
+import scala.reflect.classTag
 
 object EagerEBAReader {
 
@@ -45,7 +46,7 @@ object EagerEBAReader {
     val strTable: EBATable[String] = EBADecoderTable.readTable[String](it)
 
     val arrTable: EBATable[Arr] = EBADecoderTable.readTable[Arr](it)
-    val objTable: EBATable[Obj] = FixedSizeArrayTableDecoder[Obj](using ObjCodec(strTable, settings), implicitly).readTable(it)
+    val objTable: EBATable[Obj] = FixedSizeArrayTableDecoder[Obj](using classTag, ObjCodec(strTable, settings), implicitly).readTable(it)
     val rootTable: EBATable[Root] = EBADecoderTable.readTable[Root](it)
 
     EBAStructure(

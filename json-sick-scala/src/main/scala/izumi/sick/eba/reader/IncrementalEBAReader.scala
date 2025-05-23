@@ -1,15 +1,16 @@
 package izumi.sick.eba.reader
 
 import io.circe.Json
-import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.eba.reader.incremental.{IncrementalJValue, IncrementalTableFixed, IncrementalTableVar, OneObjTable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, IntCodec, RefCodec, ShortCodec}
+import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.model.*
 
 import java.io.{BufferedInputStream, ByteArrayInputStream, DataInputStream, InputStream}
 import java.nio.file.{Files, Path}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
+import scala.reflect.classTag
 import scala.util.Try
 
 object IncrementalEBAReader {
@@ -66,13 +67,13 @@ object IncrementalEBAReader {
     val arrTable: IncrementalTableVar[IncrementalTableFixed[Ref]] = {
       IncrementalTableVar.allocateWith(it, offsets(7), eagerOffsets) {
         (it, offset, _) =>
-          IncrementalTableFixed.allocate[Ref](it, offset)(using RefCodec, new DebugTableName("OneArr"))
-      }(using new DebugTableName(DebugTableName.Arrays.tableName))
+          IncrementalTableFixed.allocate[Ref](it, offset)(using classTag, RefCodec, new DebugTableName("OneArr"))
+      }(using classTag, new DebugTableName(DebugTableName.Arrays.tableName))
     }
     val objTable: IncrementalTableVar[OneObjTable] = IncrementalTableVar.allocateWith(it, offsets(8), eagerOffsets) {
       (it, offset, _) =>
         OneObjTable.allocate(it, offset, strTable, objectIndexBucketCount)
-    }(using new DebugTableName(DebugTableName.Objects.tableName))
+    }(using classTag, new DebugTableName(DebugTableName.Objects.tableName))
     val rootTable: IncrementalTableFixed[Root] = IncrementalTableFixed.allocate[Root](it, offsets(9))
 
     val roots = rootTable

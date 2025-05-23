@@ -7,6 +7,7 @@ import izumi.sick.model.{Obj, Ref, RefKind}
 import izumi.sick.tools.CBFHash
 
 import java.io.DataInputStream
+import scala.collection.mutable
 
 final class OneObjTable private (
   it: DataInputStream,
@@ -117,7 +118,9 @@ final class OneObjTable private (
   }
 
   def readAllObj(): Obj = {
-    Obj(readAll().toMap)
+    val b = mutable.HashMap.newBuilder[RefVal, Ref]
+    (0 until count).foreach(i => b.addOne(readElem(i)))
+    Obj(b.result())
   }
 
   def iterator: Iterator[(String, Ref)] = {

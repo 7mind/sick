@@ -5,8 +5,9 @@ import izumi.sick.eba.reader.incremental.util.{EBACodecFixedOps, asEBATable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, EBACodecFixed, IntCodec}
 
 import java.io.DataInputStream
+import scala.reflect.ClassTag
 
-final class IncrementalTableFixed[T] private (
+final class IncrementalTableFixed[T: ClassTag] private (
   it: DataInputStream,
   startOffset: Long,
 )(implicit
@@ -43,5 +44,5 @@ final class IncrementalTableFixed[T] private (
 }
 
 object IncrementalTableFixed {
-  def allocate[T: EBACodecFixed: DebugTableName](it: DataInputStream, offset: Long) = new IncrementalTableFixed[T](it, offset)
+  def allocate[T: ClassTag: EBACodecFixed: DebugTableName](it: DataInputStream, offset: Long) = new IncrementalTableFixed[T](it, offset)
 }

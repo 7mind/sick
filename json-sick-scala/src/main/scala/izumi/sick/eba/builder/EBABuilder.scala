@@ -1,7 +1,6 @@
 package izumi.sick.eba.builder
 
 import izumi.sick.eba.{EBAStructure, SICKSettings}
-import izumi.sick.model
 import izumi.sick.model.*
 
 /** RW index */
@@ -75,29 +74,29 @@ class EBABuilder private (
 
   }*/
 
-  def addString(s: String): Ref = model.Ref(RefKind.TStr, strings.insert(s))
-  def addInt(s: Int): Ref = model.Ref(RefKind.TInt, ints.insert(s))
-  def addLong(s: Long): Ref = model.Ref(RefKind.TLng, longs.insert(s))
-  def addBigInt(s: BigInt): Ref = model.Ref(RefKind.TBigInt, bigints.insert(s))
-  def addFloat(s: Float): Ref = model.Ref(RefKind.TFlt, floats.insert(s))
-  def addDouble(s: Double): Ref = model.Ref(RefKind.TDbl, doubles.insert(s))
-  def addBigDec(s: BigDecimal): Ref = model.Ref(RefKind.TBigDec, bigDecimals.insert(s))
-  def addArr(s: Arr): Ref = model.Ref(RefKind.TArr, arrs.insert(s))
-  def addObj(s: Obj): Ref = model.Ref(RefKind.TObj, objs.insert(s))
-  def addRoot(s: Root): Ref = model.Ref(RefKind.TRoot, roots.insert(s))
+  def addString(s: String): Ref = Ref(RefKind.TStr, strings.insert(s))
+  def addInt(s: Int): Ref = Ref(RefKind.TInt, ints.insert(s))
+  def addLong(s: Long): Ref = Ref(RefKind.TLng, longs.insert(s))
+  def addBigInt(s: BigInt): Ref = Ref(RefKind.TBigInt, bigints.insert(s))
+  def addFloat(s: Float): Ref = Ref(RefKind.TFlt, floats.insert(s))
+  def addDouble(s: Double): Ref = Ref(RefKind.TDbl, doubles.insert(s))
+  def addBigDec(s: BigDecimal): Ref = Ref(RefKind.TBigDec, bigDecimals.insert(s))
+  def addArr(s: Arr): Ref = Ref(RefKind.TArr, arrs.insert(s))
+  def addObj(s: Obj): Ref = Ref(RefKind.TObj, objs.insert(s))
+  def addRoot(s: Root): Ref = Ref(RefKind.TRoot, roots.insert(s))
 }
 
 object EBABuilder {
-  def apply(dedup: Boolean): EBABuilder = {
-    val strings = GenericRefTableBuilder[String](dedup = true)
+  def apply(dedup: Boolean, dedupPrimitives: Boolean): EBABuilder = {
+    val strings = GenericRefTableBuilder[String](dedup = dedupPrimitives)
 
-    val ints = GenericRefTableBuilder[Int](dedup = true)
-    val longs = GenericRefTableBuilder[Long](dedup = true)
-    val bigints = GenericRefTableBuilder[BigInt](dedup = true)
+    val ints = GenericRefTableBuilder[Int](dedup = dedupPrimitives)
+    val longs = GenericRefTableBuilder[Long](dedup = dedupPrimitives)
+    val bigints = GenericRefTableBuilder[BigInt](dedup = dedupPrimitives)
 
-    val floats = GenericRefTableBuilder[Float](dedup = true)
-    val doubles = GenericRefTableBuilder[Double](dedup = true)
-    val bigDecimals = GenericRefTableBuilder[BigDecimal](dedup = true)
+    val floats = GenericRefTableBuilder[Float](dedup = dedupPrimitives)
+    val doubles = GenericRefTableBuilder[Double](dedup = dedupPrimitives)
+    val bigDecimals = GenericRefTableBuilder[BigDecimal](dedup = dedupPrimitives)
 
     val arrs = GenericRefTableBuilder[Arr](dedup)
     val objs = GenericRefTableBuilder[Obj](dedup)
