@@ -2,9 +2,10 @@ package izumi.sick.eba.reader.incremental
 
 import izumi.sick.eba.EBATable
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, EBACodecFixed}
-import izumi.sick.model.Ref.RefVal
 
 import java.io.{DataInputStream, EOFException, IOException, InputStream}
+import scala.collection.immutable.ArraySeq
+import scala.reflect.ClassTag
 
 object util {
 
@@ -45,8 +46,8 @@ object util {
     ((arr(offset) & 0xFF) << 8 | (arr(offset + 1) & 0xFF) << 0).toChar
   }
 
-  def asEBATable[T: DebugTableName](elems: List[T]): EBATable[T] = {
-    EBATable[T](implicitly[DebugTableName[T]].tableName, elems.iterator.zipWithIndex.map { case (v, k) => (RefVal(k), v) }.toMap)
+  def asEBATable[T: ClassTag: DebugTableName](elems: IterableOnce[T]): EBATable[T] = {
+    EBATable[T](implicitly[DebugTableName[T]].tableName, ArraySeq.from(elems))
   }
 
 }

@@ -50,11 +50,11 @@ class EBAReaderWriterTest extends AnyWordSpec {
             val json = Files.readAllBytes(input.toPath)
             val parsed = parser.parse(new String(json, StandardCharsets.UTF_8)).toOption.get
 
-            Seq(true, false).foreach {
-              dedup =>
-                println(s"dedup = $dedup")
+            Seq(true, false).flatMap(x => Seq((x, true), (x, false))).flatMap(y => Seq((y._1, y._2, true), (y._1, y._2, false))).foreach {
+              case (dedup, dedupPrimitives, avoidBigDecimals) =>
+                println(s"dedup = $dedup dedupPrims = $dedupPrimitives noBigDec = $avoidBigDecimals")
                 val before = System.nanoTime()
-                val eba = SICK.packJson(parsed, rootname, dedup = dedup)
+                val eba = SICK.packJson(parsed, rootname, dedup = dedup, dedupPrimitives = dedupPrimitives, avoidBigDecimals = avoidBigDecimals)
                 val roIndex = eba.index
                 val root = eba.root
                 val rwIndex = eba.source
@@ -64,12 +64,17 @@ class EBAReaderWriterTest extends AnyWordSpec {
                   try Files.readAllBytes(dataFile)
                   finally Files.delete(dataFile)
 
-                strategy match {
-                  case TableWriteStrategy.StreamRepositioning =>
-                  case _ =>
-                    val (packedBytes, _) = EBAWriter.writeBytes(roIndex, SICKWriterParameters(strategy))
-                    assert(packedBytes == ByteString(raw))
+                val bytesStrategy = strategy match {
+                  case TableWriteStrategy.StreamRepositioning => TableWriteStrategy.SinglePassInMemory
+                  case _ => strategy
                 }
+                val (packedBytes, _) = EBAWriter.writeBytes(roIndex, SICKWriterParameters(bytesStrategy))
+                Predef.assert(
+                  packedBytes == ByteString(raw),
+                  packedBytes.iterator.zipWithIndex.find {
+                    case (b, i) => i > raw.length || raw(i) != b
+                  },
+                )
                 val after = System.nanoTime()
 
                 val newRoot = roIndex.findRoot(rootname).get.ref
@@ -77,8 +82,8 @@ class EBAReaderWriterTest extends AnyWordSpec {
 
                 println(s"Original root: $root -> $newRoot")
                 println("Frozen:")
-                roIndex.roots.data.foreach {
-                  case (k, v) =>
+                roIndex.roots.forEach {
+                  case (v, k) =>
                     println(s"ROOT ${roIndex.strings.data(k)}: $k->$v")
                 }
                 println(roIndex.summary)

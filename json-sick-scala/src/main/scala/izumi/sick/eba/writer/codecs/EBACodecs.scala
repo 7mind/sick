@@ -1,21 +1,22 @@
 package izumi.sick.eba.writer.codecs
 
 import izumi.sick.eba.writer.codecs.EBACodecs.{EBACodecFixedArray, EBACodecVar, EBAEncoderTable}
+import izumi.sick.eba.writer.codecs.util.computeSizesFromOffsets
 import izumi.sick.eba.{EBATable, SICKSettings}
 import izumi.sick.model.*
 import izumi.sick.model.Ref.RefVal
-import izumi.sick.thirdparty.akka.util.ByteString
+import izumi.sick.thirdparty.akka.util.ByteString.ByteString1C
+import izumi.sick.thirdparty.akka.util.{ByteString, ByteStringBuilder}
 import izumi.sick.tools.CBFHash
 
 import java.io.{DataInput, OutputStream}
 import java.math.{BigInteger, MathContext}
 import java.nio.charset.StandardCharsets
-import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.ByteOrder
 import scala.annotation.unused
-import scala.collection.immutable.{ArraySeq, HashMap}
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.reflect.{ClassTag, classTag}
-import izumi.sick.eba.writer.codecs.util.computeSizesFromOffsets
 
 @SuppressWarnings(Array("UnsafeTraversableMethods"))
 class EBACodecs(
@@ -40,13 +41,17 @@ class EBACodecs(
 object EBACodecs {
 
   abstract class EBAEncoder[T] {
-    def encode(value: T): ByteString
+    def encodeSlow(value: T): ByteString = { val b = ByteString.newBuilder; encodeTo(value, b); b.result() }
+    def encodeTo(value: T, b: ByteStringBuilder): Int
+    def computeSize(value: T): Int
   }
 
   abstract class EBACodecFixed[T] extends EBAEncoder[T] {
     def blobSize: Int
 
     def decode(it: DataInput): T
+
+    override final def computeSize(value: T): Int = blobSize
   }
 
   abstract class EBACodecVar[T] extends EBAEncoder[T] {
@@ -94,8 +99,13 @@ object EBACodecs {
   implicit object ByteCodec extends EBACodecFixed[Byte] {
     override final val blobSize = 1
 
-    override def encode(value: Byte): ByteString = {
-      ByteString(value)
+    override def encodeSlow(value: Byte): ByteString = {
+      ByteString1C(Array(value))
+    }
+
+    override def encodeTo(value: Byte, b: ByteStringBuilder): Int = {
+      b.putByte(value)
+      blobSize
     }
 
     override def decode(it: DataInput): Byte = {
@@ -106,8 +116,9 @@ object EBACodecs {
   implicit object ShortCodec extends EBACodecFixed[Short] {
     override final val blobSize = java.lang.Short.BYTES
 
-    override def encode(value: Short): ByteString = {
-      fromByteBuffer(blobSize)(_.putShort(value))
+    override def encodeTo(value: Short, b: ByteStringBuilder): Int = {
+      b.putShort(value.toInt)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Short = {
@@ -119,8 +130,9 @@ object EBACodecs {
   implicit object CharCodec extends EBACodecFixed[Char] {
     override final val blobSize = java.lang.Character.BYTES
 
-    override def encode(value: Char): ByteString = {
-      fromByteBuffer(blobSize)(_.putChar(value))
+    override def encodeTo(value: Char, b: ByteStringBuilder): Int = {
+      b.putShort(value.toInt)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Char = {
@@ -131,8 +143,18 @@ object EBACodecs {
   implicit object IntCodec extends EBACodecFixed[Int] {
     override final val blobSize = java.lang.Integer.BYTES
 
-    override def encode(value: Int): ByteString = {
-      fromByteBuffer(blobSize)(_.putInt(value))
+    override def encodeSlow(value: Int): ByteString = {
+      val target = new Array[Byte](4)
+      target(0) = (value >>> 24).toByte
+      target(1) = (value >>> 16).toByte
+      target(2) = (value >>> 8).toByte
+      target(3) = (value >>> 0).toByte
+      ByteString1C(target)
+    }
+
+    override def encodeTo(value: Int, b: ByteStringBuilder): Int = {
+      b.putInt(value)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Int = {
@@ -145,8 +167,22 @@ object EBACodecs {
   implicit object LongCodec extends EBACodecFixed[Long] {
     override final val blobSize = java.lang.Long.BYTES
 
-    override def encode(value: Long): ByteString = {
-      fromByteBuffer(blobSize)(_.putLong(value))
+    override def encodeSlow(value: Long): ByteString = {
+      val target = new Array[Byte](8)
+      target(0) = (value >>> 56).toByte
+      target(1) = (value >>> 48).toByte
+      target(2) = (value >>> 40).toByte
+      target(3) = (value >>> 32).toByte
+      target(4) = (value >>> 24).toByte
+      target(5) = (value >>> 16).toByte
+      target(6) = (value >>> 8).toByte
+      target(7) = (value >>> 0).toByte
+      ByteString.ByteString1C(target)
+    }
+
+    override def encodeTo(value: Long, b: ByteStringBuilder): Int = {
+      b.putLong(value)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Long = {
@@ -157,8 +193,13 @@ object EBACodecs {
   implicit object FloatCodec extends EBACodecFixed[Float] {
     override final val blobSize = java.lang.Float.BYTES
 
-    override def encode(value: Float): ByteString = {
-      fromByteBuffer(blobSize)(_.putFloat(value))
+    override def encodeSlow(value: Float): ByteString = {
+      IntCodec.encodeSlow(java.lang.Float.floatToRawIntBits(value))
+    }
+
+    override def encodeTo(value: Float, b: ByteStringBuilder): Int = {
+      b.putFloat(value)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Float = {
@@ -169,8 +210,13 @@ object EBACodecs {
   implicit object DoubleCodec extends EBACodecFixed[Double] {
     override final val blobSize = java.lang.Double.BYTES
 
-    override def encode(value: Double): ByteString = {
-      fromByteBuffer(blobSize)(_.putDouble(value))
+    override def encodeSlow(value: Double): ByteString = {
+      LongCodec.encodeSlow(java.lang.Double.doubleToRawLongBits(value))
+    }
+
+    override def encodeTo(value: Double, b: ByteStringBuilder): Int = {
+      b.putDouble(value)(ByteOrder.BIG_ENDIAN)
+      blobSize
     }
 
     override def decode(it: DataInput): Double = {
@@ -181,8 +227,13 @@ object EBACodecs {
   implicit object RefKindCodec extends EBACodecFixed[RefKind] {
     override final val blobSize = 1
 
-    override def encode(value: RefKind): ByteString = {
-      ByteCodec.encode(value.index)
+    override def encodeSlow(value: RefKind): ByteString = {
+      ByteCodec.encodeSlow(value.index)
+    }
+
+    override def encodeTo(value: RefKind, b: ByteStringBuilder): Int = {
+      ByteCodec.encodeTo(value.index, b)
+      blobSize
     }
 
     override def decode(it: DataInput): RefKind = {
@@ -193,10 +244,16 @@ object EBACodecs {
   implicit object RefCodec extends EBACodecFixed[Ref] {
     override final val blobSize = 1 + Integer.BYTES
 
-    override def encode(value: Ref): ByteString = {
-      val out = RefKindCodec.encode(value.kind) ++ RefValCodec.encode(value.ref)
+    override def encodeSlow(value: Ref): ByteString = {
+      val out = RefKindCodec.encodeSlow(value.kind) ++ RefValCodec.encodeSlow(value.ref)
       assert(out.size == blobSize)
       out
+    }
+
+    override def encodeTo(value: Ref, b: ByteStringBuilder): Int = {
+      RefKindCodec.encodeTo(value.kind, b)
+      RefValCodec.encodeTo(value.ref, b)
+      blobSize
     }
 
     override def decode(it: DataInput): Ref = {
@@ -207,12 +264,18 @@ object EBACodecs {
   }
 
   implicit object ObjectEntryCodec extends EBACodecFixed[(RefVal, Ref)] {
-    override final val blobSize = Integer.BYTES * 2 + 1
+    override final val blobSize = RefValCodec.blobSize + RefCodec.blobSize
 
-    override def encode(value: (RefVal, Ref)): ByteString = {
-      val out = RefValCodec.encode(value._1) ++ RefCodec.encode(value._2)
+    override def encodeSlow(value: (RefVal, Ref)): ByteString = {
+      val out = RefValCodec.encodeSlow(value._1) ++ RefCodec.encodeSlow(value._2)
       assert(out.size == blobSize)
       out
+    }
+
+    override def encodeTo(value: (RefVal, Ref), b: ByteStringBuilder): Int = {
+      RefValCodec.encodeTo(value._1, b)
+      RefCodec.encodeTo(value._2, b)
+      blobSize
     }
 
     override def decode(it: DataInput): (RefVal, Ref) = {
@@ -225,8 +288,13 @@ object EBACodecs {
   implicit object RootCodec extends EBACodecFixed[Root] {
     override final val blobSize = ObjectEntryCodec.blobSize
 
-    override def encode(value: Root): ByteString = {
-      ObjectEntryCodec.encode(value.id, value.ref)
+    override def encodeSlow(value: Root): ByteString = {
+      ObjectEntryCodec.encodeSlow((value.id, value.ref))
+    }
+
+    override def encodeTo(value: Root, b: ByteStringBuilder): Int = {
+      ObjectEntryCodec.encodeTo((value.id, value.ref), b)
+      blobSize
     }
 
     override def decode(it: DataInput): Root = {
@@ -237,9 +305,20 @@ object EBACodecs {
 
   // primitive variable-size types
 
-  implicit val StringCodec: EBACodecVar[String] = new EBACodecVar[String] {
-    override def encode(value: String): ByteString = {
-      ByteString.fromArrayUnsafe(value.getBytes(StandardCharsets.UTF_8))
+  implicit object StringCodec extends EBACodecVar[String] {
+    override def encodeSlow(value: String): ByteString = {
+      ByteString.ByteString1C(value.getBytes(StandardCharsets.UTF_8))
+    }
+
+    override def encodeTo(value: String, b: ByteStringBuilder): Int = {
+      val bytes = value.getBytes(StandardCharsets.UTF_8)
+      val sz = bytes.length
+      b.putBytes(bytes)
+      sz
+    }
+
+    override def computeSize(value: String): Int = {
+      value.getBytes(StandardCharsets.UTF_8).length
     }
 
     override def decode(it: DataInput, length: Int): String = {
@@ -249,9 +328,20 @@ object EBACodecs {
     }
   }
 
-  implicit val BigIntCodec: EBACodecVar[BigInt] = new EBACodecVar[BigInt] {
-    override def encode(value: BigInt): ByteString = {
-      ByteString.fromArrayUnsafe(value.toByteArray)
+  implicit object BigIntCodec extends EBACodecVar[BigInt] {
+    override def encodeSlow(value: BigInt): ByteString = {
+      ByteString.ByteString1C(value.toByteArray)
+    }
+
+    override def encodeTo(value: BigInt, b: ByteStringBuilder): Int = {
+      val bytes = value.toByteArray
+      val sz = bytes.length
+      b.putBytes(bytes)
+      sz
+    }
+
+    override def computeSize(value: BigInt): Int = {
+      value.bigInteger.bitLength() / 8 + 1
     }
 
     override def decode(it: DataInput, length: Int): BigInt = {
@@ -261,12 +351,19 @@ object EBACodecs {
     }
   }
 
-  implicit val BigDecimalCodec: EBACodecVar[BigDecimal] = new EBACodecVar[BigDecimal] {
-    override def encode(value: BigDecimal): ByteString = {
-      IntCodec.encode(value.underlying().signum())
-        ++ IntCodec.encode(value.underlying().precision())
-        ++ IntCodec.encode(value.underlying().scale())
-        ++ ByteString(value.underlying().unscaledValue().toByteArray)
+  implicit object BigDecimalCodec extends EBACodecVar[BigDecimal] {
+    override def encodeTo(value: BigDecimal, b: ByteStringBuilder): Int = {
+      IntCodec.encodeTo(value.underlying().signum(), b)
+      IntCodec.encodeTo(value.underlying().precision(), b)
+      IntCodec.encodeTo(value.underlying().scale(), b)
+      val bytes = value.underlying().unscaledValue().toByteArray
+      val sz = bytes.length
+      b.putBytes(bytes)
+      IntCodec.blobSize * 3 + sz
+    }
+
+    override def computeSize(value: BigDecimal): Int = {
+      IntCodec.blobSize * 3 + (value.underlying().unscaledValue().bitLength() / 8 + 1)
     }
 
     override def decode(it: DataInput, length: Int): BigDecimal = {
@@ -291,14 +388,20 @@ object EBACodecs {
 
   // arrays of primitive types
 
-  implicit def FixedSizeSeqCodec[T: ClassTag](implicit codecFixed: EBACodecFixed[T]): EBACodecFixedArray[Seq[T]] = new EBACodecFixedArray[Seq[T]] {
+  @inline implicit def FixedSizeSeqCodec[T: ClassTag: EBACodecFixed]: EBACodecFixedArray[Seq[T]] = new FixedSizeSeqCodec[T]
+
+  final class FixedSizeSeqCodec[T: ClassTag](implicit codecFixed: EBACodecFixed[T]) extends EBACodecFixedArray[Seq[T]] {
     override def elementSize: Int = codecFixed.blobSize
 
-    override def encode(value: Seq[T]): ByteString = {
-      val b = ByteString.newBuilder
-      b.putInt(value.length)(using ByteOrder.BIG_ENDIAN)
-      value.foreach(b ++= codecFixed.encode(_))
-      b.result()
+    override def encodeTo(value: Seq[T], b: ByteStringBuilder): Int = {
+      val sz = value.length
+      val hdr = IntCodec.encodeTo(sz, b)
+      value.foreach(codecFixed.encodeTo(_, b))
+      hdr + elementSize * sz
+    }
+
+    override def computeSize(value: Seq[T]): Int = {
+      IntCodec.blobSize + value.size * elementSize
     }
 
     override def decode(it: DataInput): Seq[T] = {
@@ -313,13 +416,21 @@ object EBACodecs {
     }
   }
 
-  implicit val ArrCodec: EBACodecFixedArray[Arr] = new EBACodecFixedArray[Arr] {
+  implicit object ArrCodec extends EBACodecFixedArray[Arr] {
     private val underlying: EBACodecFixedArray[Seq[Ref]] = FixedSizeSeqCodec(using classTag, RefCodec)
 
     override def elementSize: Int = RefCodec.blobSize
 
-    override def encode(value: Arr): ByteString = {
-      underlying.encode(value.values)
+    override def encodeSlow(value: Arr): ByteString = {
+      underlying.encodeSlow(value.values)
+    }
+
+    override def encodeTo(value: Arr, b: ByteStringBuilder): Int = {
+      underlying.encodeTo(value.values, b)
+    }
+
+    override def computeSize(value: Arr): Int = {
+      underlying.computeSize(value.values)
     }
 
     override def decode(it: DataInput): Arr = {
@@ -329,32 +440,37 @@ object EBACodecs {
 
   // tables of primitive types
 
-  implicit def FixedSizeTableCodec[T](implicit elemCodec: EBACodecFixed[T], debugTableName: DebugTableName[T]): EBADecoderTable[T] & EBAEncoderTable[T] =
-    new EBADecoderTable[T] with EBAEncoderTable[T] {
+  @inline implicit def FixedSizeTableCodec[T: ClassTag: EBACodecFixed: DebugTableName]: EBADecoderTable[T] & EBAEncoderTable[T] = new FixedSizeTableCodec[T]
 
-      override def writeTable(stream: OutputStream, table: EBATable[T]): Long = {
-        val elemCount = table.size
-        stream.write(IntCodec.encode(elemCount).toArrayUnsafe())
-        var totalTableSize: Long = IntCodec.blobSize.toLong
-        table.forEach {
-          elem =>
-            stream.write(elemCodec.encode(elem).toArrayUnsafe())
-            totalTableSize += elemCodec.blobSize
-        }
-        totalTableSize
-      }
+  final class FixedSizeTableCodec[T: ClassTag](implicit elemCodec: EBACodecFixed[T], debugTableName: DebugTableName[T])
+    extends EBADecoderTable[T]
+    with EBAEncoderTable[T] {
 
-      override def readTable(it: DataInput): EBATable[T] = {
-        val count = IntCodec.decode(it)
-        var i = 0
-        val b = HashMap.newBuilder[RefVal, T]
-        while (i < count) {
-          val elem = elemCodec.decode(it)
-          b.addOne(RefVal(i) -> elem)
-          i += 1
-        }
-        new EBATable(debugTableName.tableName, b.result())
+    override def writeTable(stream: OutputStream, table: EBATable[T]): Long = {
+      val elemCount = table.size
+      val b = ByteString.newBuilder
+      IntCodec.encodeTo(elemCount, b)
+      var totalTableSize: Long = IntCodec.blobSize.toLong
+      table.forEach {
+        (elem, _) =>
+          elemCodec.encodeTo(elem, b)
+          totalTableSize += elemCodec.blobSize
       }
+      stream.write(b.result().toArrayUnsafe())
+      totalTableSize
+    }
+
+    override def readTable(it: DataInput): EBATable[T] = {
+      val count = IntCodec.decode(it)
+      var i = 0
+      val b = new Array[T](count)
+      while (i < count) {
+        val elem = elemCodec.decode(it)
+        b(i) = elem
+        i += 1
+      }
+      new EBATable(debugTableName.tableName, ArraySeq.unsafeWrapArray(b))
+    }
 
 //    override def write(stream: FileOutputStream, table: EBATable[T], params: SICKWriterParameters): Long = {
 //      val before = stream.getChannel.position()
@@ -368,7 +484,7 @@ object EBACodecs {
 //      val after = stream.getChannel.position()
 //      after - before
 //    }
-    }
+  }
 
   // objects
 
@@ -385,46 +501,51 @@ object EBACodecs {
     @inline final def bucketSize(bucketCount: Short): Long = range / bucketCount
   }
 
-  def ObjCodec(strings: EBATable[String], packSettings: SICKSettings): EBACodecFixedArray[Obj] = new EBACodecFixedArray[Obj] {
+  final class ObjCodec(strings: EBATable[String], packSettings: SICKSettings) extends EBACodecFixedArray[Obj] {
     override def elementSize: Int = ObjectEntryCodec.blobSize
 
     private val ObjectEntrySeqCodec: EBACodecFixedArray[Seq[(RefVal, Ref)]] = FixedSizeSeqCodec[(RefVal, Ref)](using classTag, ObjectEntryCodec)
 
-    @SuppressWarnings(Array("UnnecessaryConversion"))
-    override def encode(value: Obj): ByteString = {
+    override def encodeTo(value: Obj, bldr: ByteStringBuilder): Int = {
       val bucketCount: Short = packSettings.objectIndexBucketCount
-      val indexingThreshold: Short = packSettings.minObjectKeysBeforeIndexing
 
-      val objEntriesSortedByCBFHash: ArraySeq[((RefVal, Ref), (Long, Int))] = {
+      val valuesSz = value.values.size
+
+      val objEntriesSortedByCBFHash: Array[((RefVal, Ref), (Long, Int))] = {
         val bucketSize = ObjConstants.bucketSize(bucketCount)
-        value.values
-          .to(ArraySeq)
-          .map {
-            case (k, v) =>
-              val kval = strings(k)
-              val hash = CBFHash.compute(kval)
-              val bucket = (hash / bucketSize).toInt
-              ((k, v), (hash, bucket))
-          }.sortBy(_._2._1)
+        val arr = new Array[(?, ?)](valuesSz).asInstanceOf[Array[((RefVal, Ref), (Long, Int))]]
+
+        var i = 0
+        value.values.foreachEntry {
+          (k, v) =>
+            val str = strings(k) // fixme string table elements are encoded to utf8 twice, here and in table codec
+            val hash = CBFHash.compute(str)
+            val bucket = (hash / bucketSize).toInt
+            arr(i) = ((k, v), (hash, bucket))
+            i += 1
+        }
+        java.util.Arrays.sort(arr, Ordering.by[((RefVal, Ref), (Long, Int)), Long](_._2._1))
+        arr
       }
 
-      if (objEntriesSortedByCBFHash.size >= ObjConstants.maxIndex) {
+      if (objEntriesSortedByCBFHash.length >= ObjConstants.maxIndex) {
         throw new RuntimeException(s"Too many keys in object, object can't contain more than ${ObjConstants.noIndexMarker}")
       }
 
-      val index: mutable.ArrayBuffer[Int] = {
-        if (objEntriesSortedByCBFHash.size <= indexingThreshold) {
-          mutable.ArrayBuffer(ObjConstants.noIndexMarker) // if the object is small, we put an array with one marker element
+      val index: Array[Int] = {
+        if (objEntriesSortedByCBFHash.length <= packSettings.minObjectKeysBeforeIndexing) {
+          val res = new Array[Int](1); res(0) = ObjConstants.noIndexMarker; res // if the object is small, we put an array with one marker element
         } else {
-          val index = mutable.ArrayBuffer.fill(bucketCount.toInt)(ObjConstants.maxIndex)
+          val index = Array.fill(bucketCount.toInt)(ObjConstants.maxIndex)
+          val sz = objEntriesSortedByCBFHash.length
           var idx = 0
-          objEntriesSortedByCBFHash.foreach {
-            case ((_, _), (_, bucket)) =>
-              val currentVal = index(bucket)
-              if (currentVal == ObjConstants.maxIndex) {
-                index(bucket) = idx
-              }
-              idx += 1
+          while (idx < sz) {
+            val bucket = objEntriesSortedByCBFHash(idx)._2._2
+            val currentVal = index(bucket)
+            if (currentVal == ObjConstants.maxIndex) {
+              index(bucket) = idx
+            }
+            idx += 1
           }
           index
         }
@@ -432,7 +553,7 @@ object EBACodecs {
       assert(index.length == 1 || index.length == bucketCount)
 
       if (index.length == bucketCount) {
-        var last = objEntriesSortedByCBFHash.size
+        var last = objEntriesSortedByCBFHash.length
         var i = bucketCount - 1
         while (i >= 0) {
           if (index(i) == ObjConstants.maxIndex) {
@@ -446,17 +567,36 @@ object EBACodecs {
         throw new IllegalStateException(s"Wrong index size: ${index.length}, expected $bucketCount or 1")
       }
 
-      val indexHeader = index.foldLeft(ByteString.empty) {
-        (b, i) =>
+      val oldLength = bldr.length
+      index.foreach {
+        i =>
           assert(i >= 0 && i <= ObjConstants.noIndexMarker)
-          b ++ CharCodec.encode(i.toChar)
+          CharCodec.encodeTo(i.toChar, bldr)
       }
-      assert(indexHeader.size == Character.BYTES * bucketCount || indexHeader.size == Character.BYTES * 1)
+      assert(bldr.length == oldLength + Character.BYTES * bucketCount || bldr.length == oldLength + Character.BYTES * 1)
+      val indexSize = bldr.length - oldLength
 
-      val objectEntries = objEntriesSortedByCBFHash.map(_._1)
-      val objectEntryArray = ObjectEntrySeqCodec.encode(objectEntries)
+      val objectEntries = {
+        val objsCasted = objEntriesSortedByCBFHash.asInstanceOf[Array[(RefVal, Ref)]]
+        val sz = objsCasted.length
+        var i = 0
+        while (i < sz) {
+          objsCasted(i) = objEntriesSortedByCBFHash(i)._1
+          i += 1
+        }
+        objsCasted
+      }
+      val seqSize = ObjectEntrySeqCodec.encodeTo(ArraySeq.unsafeWrapArray(objectEntries), bldr)
+      indexSize + seqSize
+    }
 
-      indexHeader ++ objectEntryArray
+    override def computeSize(value: Obj): Int = {
+      val indexSize = if (value.values.size <= packSettings.minObjectKeysBeforeIndexing) {
+        Character.BYTES * 1
+      } else {
+        Character.BYTES * packSettings.objectIndexBucketCount
+      }
+      indexSize + IntCodec.blobSize + value.values.size * ObjectEntrySeqCodec.elementSize
     }
 
     override def decode(it: DataInput): Obj = {
@@ -473,58 +613,55 @@ object EBACodecs {
         ObjectEntrySeqCodec.decode(it)
       }
 
-      Obj(Map.from(entries))
+      Obj(mutable.HashMap.from(entries))
     }
+  }
+  object ObjCodec {
+    def apply(strings: EBATable[String], packSettings: SICKSettings): ObjCodec = new ObjCodec(strings, packSettings)
   }
 
   // tables of variable sized elements
 
-  implicit def VarSizeTableDecoder[T](implicit varSizeCodec: EBACodecVar[T], debugTableName: DebugTableName[T]): EBADecoderTable[T] = new EBADecoderTable[T] {
+  @inline implicit def VarSizeTableDecoder[T: ClassTag: EBACodecVar: DebugTableName]: EBADecoderTable[T] = new VarSizeTableDecoder[T]
+
+  final class VarSizeTableDecoder[T: ClassTag](implicit varSizeCodec: EBACodecVar[T], debugTableName: DebugTableName[T]) extends EBADecoderTable[T] {
     override def readTable(it: DataInput): EBATable[T] = {
       val elemCount = IntCodec.decode(it)
 
-      val offsets = ArraySeq.fill(elemCount + 1) {
-        IntCodec.decode(it)
-      }
-      val sizes = computeSizesFromOffsets(offsets)
-      val sizesSz = sizes.size
+      val offsets = Array.fill(elemCount + 1)(IntCodec.decode(it))
+      val sizes = computeSizesFromOffsets(new mutable.ArraySeq.ofInt(offsets))
+      val sizesSz = sizes.length
 
-      val b = HashMap.newBuilder[RefVal, T]
+      val b = new Array[T](sizesSz)
       var i = 0
       while (i < sizesSz) {
         val sz = sizes(i)
-        b += (RefVal(i) -> varSizeCodec.decode(it, sz))
+        b(i) = varSizeCodec.decode(it, sz)
         i += 1
       }
-      val elems = b.result()
-      new EBATable[T](debugTableName.tableName, elems)
+      new EBATable[T](debugTableName.tableName, ArraySeq.unsafeWrapArray(b))
     }
   }
 
   // tables of variable sized arrays of primitives
 
-  implicit def FixedSizeArrayTableDecoder[T](implicit fxArrCodec: EBACodecFixedArray[T], debugTableName: DebugTableName[T]): EBADecoderTable[T] = new EBADecoderTable[T] {
+  @inline implicit def FixedSizeArrayTableDecoder[T: ClassTag: EBACodecFixedArray: DebugTableName]: EBADecoderTable[T] = new FixedSizeArrayTableDecoder[T]
+
+  final class FixedSizeArrayTableDecoder[T: ClassTag](implicit fxArrCodec: EBACodecFixedArray[T], debugTableName: DebugTableName[T]) extends EBADecoderTable[T] {
     override def readTable(it: DataInput): EBATable[T] = {
       val elemCount = IntCodec.decode(it)
 
       // ignore offsets when reading table fully in-memory
       it.skipBytes(IntCodec.blobSize * (elemCount + 1))
 
-      val b = HashMap.newBuilder[RefVal, T]
+      val b = new Array[T](elemCount)
       var i = 0
       while (i < elemCount) {
-        b += (RefVal(i) -> fxArrCodec.decode(it))
+        b(i) = fxArrCodec.decode(it)
         i += 1
       }
-      val elems = b.result()
-      new EBATable[T](debugTableName.tableName, elems)
+      new EBATable[T](debugTableName.tableName, ArraySeq.unsafeWrapArray(b))
     }
-  }
-
-  private def fromByteBuffer(blobSize: Int)(b: ByteBuffer => Any): ByteString = {
-    val bb = ByteBuffer.allocate(blobSize)
-    b(bb)
-    ByteString.fromArrayUnsafe(bb.array())
   }
 
 }

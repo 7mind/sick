@@ -6,8 +6,9 @@ import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, EBACodecVar, IntC
 
 import java.io.DataInputStream
 import scala.collection.immutable.ArraySeq
+import scala.reflect.ClassTag
 
-final class IncrementalTableVar[T] private (
+final class IncrementalTableVar[T: ClassTag] private (
   it: DataInputStream,
   offset: Long,
   eagerOffsets: Boolean,
@@ -68,12 +69,17 @@ final class IncrementalTableVar[T] private (
 }
 
 object IncrementalTableVar {
-  def allocate[T: EBACodecVar: DebugTableName](it: DataInputStream, offset: Long, eagerOffsets: Boolean): IncrementalTableVar[T] = {
+  def allocate[T: ClassTag: EBACodecVar: DebugTableName](it: DataInputStream, offset: Long, eagerOffsets: Boolean): IncrementalTableVar[T] = {
     val codec = implicitly[EBACodecVar[T]]
     new IncrementalTableVar[T](it, offset, eagerOffsets, (it, _, size) => codec.decode(it, size))
   }
 
-  def allocateWith[T: DebugTableName](it: DataInputStream, offset: Long, eagerOffsets: Boolean)(f: (DataInputStream, Long, Int) => T): IncrementalTableVar[T] = {
+  def allocateWith[T: ClassTag: DebugTableName](
+    it: DataInputStream,
+    offset: Long,
+    eagerOffsets: Boolean,
+  )(f: (DataInputStream, Long, Int) => T
+  ): IncrementalTableVar[T] = {
     new IncrementalTableVar[T](it, offset, eagerOffsets, f)
   }
 }

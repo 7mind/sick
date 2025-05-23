@@ -1,16 +1,16 @@
 package izumi.sick.eba.writer
 
 import izumi.sick.eba.writer.codecs.EBACodecs
-import izumi.sick.eba.writer.codecs.EBACodecs.{EBAEncoderTable, IntCodec, ObjCodec, ShortCodec}
+import izumi.sick.eba.writer.codecs.EBACodecs.{ArrCodec, BigDecimalCodec, BigIntCodec, DoubleCodec, EBAEncoderTable, FixedSizeTableCodec, FloatCodec, IntCodec, LongCodec, ObjCodec, RootCodec, ShortCodec, StringCodec}
 import izumi.sick.eba.writer.codecs.util.computeOffsetsFromSizes
 import izumi.sick.eba.{EBAStructure, EBATable}
-import izumi.sick.model.*
+import izumi.sick.model.{SICKWriterParameters, TableWriteStrategy}
 import izumi.sick.thirdparty.akka.util.ByteString
 
 import java.io.{ByteArrayOutputStream, File, FileOutputStream}
 import java.nio.file.{Files, Path}
 import scala.collection.immutable.ArraySeq
-import scala.collection.mutable
+import scala.reflect.classTag
 
 object EBAWriter {
 
@@ -19,34 +19,44 @@ object EBAWriter {
   def writeBytes(structure: EBAStructure, params: SICKWriterParameters): (ByteString, EBAInfo) = {
     assert(params.tableWriteStrategy != TableWriteStrategy.StreamRepositioning)
 
-    val out = new ByteArrayOutputStream()
     val encoders = new EBACodecs(params)
     val tables = tablesWithEncoders(structure, encoders)
+    val tablesSz = tables.length
 
+    object out extends ByteArrayOutputStream() {
+      def buf0: Array[Byte] = this.buf
+      def length: Int = this.count
+    }
     try {
       val version = 0
-      val headerLen = (2 + tables.length) * Integer.BYTES + java.lang.Short.BYTES
+      val headerLen = (2 + tablesSz) * Integer.BYTES + java.lang.Short.BYTES
 
-      val sizes = mutable.ArrayBuffer.empty[Int]
-      tables.foreach {
-        case EBATableWithEncoder(p, encoder) =>
-          val len = encoder.writeTable(out, p)
-          sizes.append(len.intValue)
+      val sizes = new Array[Int](tablesSz)
+      var i = 0
+      while (i < tablesSz) {
+        val table = tables(i)
+        val len = table.encoder.writeTable(out, table.table)
+        sizes(i) = len.intValue
+
+        i += 1
       }
 
       val realOffsets = computeOffsetsFromSizes(sizes, headerLen)
-      assert(realOffsets.length == tables.size)
+      assert(realOffsets.length == tablesSz)
 
-      val header = Seq((Seq(version, tables.length) ++ realOffsets).foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_)))
-        ++ Seq(ShortCodec.encode(structure.settings.objectIndexBucketCount))
+      val output = ByteString.newBuilder
+      // header
+      IntCodec.encodeTo(version, output)
+      IntCodec.encodeTo(tablesSz, output)
+      realOffsets.foreach(IntCodec.encodeTo(_, output))
+      ShortCodec.encodeTo(structure.settings.objectIndexBucketCount, output)
 
-      val data = out.toByteArray
-      val headerBytes = header.foldLeft(ByteString.empty)(_ ++ _)
+      // data
+      output.addAll(ByteString.ByteString1(out.buf0, 0, out.length))
 
-      val output = ByteString(headerBytes.toArray) ++ ByteString(data)
-      (output, EBAInfo(version, headerLen, realOffsets, output.length.toLong))
+      (output.result(), EBAInfo(version, headerLen, ArraySeq.unsafeWrapArray(realOffsets), output.length.toLong))
     } finally {
-      if (out != null) out.close()
+      out.close()
     }
   }
 
@@ -65,60 +75,64 @@ object EBAWriter {
 
     val encoders = new EBACodecs(params)
     val tables = tablesWithEncoders(structure, encoders)
+    val tablesSz = tables.length
 
     try {
       val chan = out.getChannel
       chan.truncate(0)
 
       val version = 0
-      val headerLen = (2 + tables.length) * Integer.BYTES + java.lang.Short.BYTES
+      val headerLen = (2 + tablesSz) * Integer.BYTES + java.lang.Short.BYTES
 
-      val dummyOffsets = new Array[Int](tables.size)
+      val dummyOffsets = new Array[Int](tablesSz)
       // at this point we don't know dummyOffsets yet, so we write zeros
       val dummyHeader =
-        Seq((Seq(version, tables.length) ++ dummyOffsets).foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_)))
-          ++ Seq(ShortCodec.encode(structure.settings.objectIndexBucketCount))
+        Seq((Seq(version, tablesSz) ++ dummyOffsets).foldLeft(ByteString.empty)(_ ++ IntCodec.encodeSlow(_)))
+          ++ Seq(ShortCodec.encodeSlow(structure.settings.objectIndexBucketCount))
 
-      out.write(dummyHeader.foldLeft(ByteString.empty)(_ ++ _).toArray)
+      out.write(dummyHeader.foldLeft(ByteString.empty)(_ ++ _).toArrayUnsafe())
 
-      val sizes = mutable.ArrayBuffer.empty[Int]
-      tables.foreach {
-        case EBATableWithEncoder(p, encoder) =>
-          val len = encoder.writeTable(out, p)
-          sizes.append(len.intValue)
+      val sizes = new Array[Int](tablesSz)
+      var i = 0
+      while (i < tablesSz) {
+        val table = tables(i)
+        val len = table.encoder.writeTable(out, table.table)
+        sizes(i) = len.intValue
+
+        i += 1
       }
 
       // now we know the lengths, so we can write correct dummyOffsets
       val realOffsets = computeOffsetsFromSizes(sizes, headerLen)
-      assert(realOffsets.length == tables.size)
+      assert(realOffsets.length == tablesSz)
 
-      assert(dummyOffsets.length == sizes.size)
-      assert(dummyOffsets.length == tables.size)
+      assert(dummyOffsets.length == sizes.length)
+      assert(dummyOffsets.length == tablesSz)
 
       chan.position(Integer.BYTES * 2)
-      out.write(realOffsets.foldLeft(ByteString.empty)(_ ++ IntCodec.encode(_)).toArray)
+      out.write(realOffsets.foldLeft(ByteString.empty)(_ ++ IntCodec.encodeSlow(_)).toArrayUnsafe())
       out.flush()
 
-      EBAInfo(version, headerLen, realOffsets, file.length())
+      EBAInfo(version, headerLen, ArraySeq.unsafeWrapArray(realOffsets), file.length())
     } finally {
       if (out != null) out.close()
     }
   }
 
-  private def tablesWithEncoders(structure: EBAStructure, encoders: EBACodecs): ArraySeq[EBATableWithEncoder] = {
+  private def tablesWithEncoders(structure: EBAStructure, encoders: EBACodecs): Array[EBATableWithEncoder] = {
     import encoders.{FixedSizeArrayTableEncoder, VarSizeTableEncoder}
 
-    val tablesWithEncoders = ArraySeq(
-      EBATableWithEncoder(structure.ints),
-      EBATableWithEncoder(structure.longs),
-      EBATableWithEncoder(structure.bigints),
-      EBATableWithEncoder(structure.floats),
-      EBATableWithEncoder(structure.doubles),
-      EBATableWithEncoder(structure.bigDecimals),
-      EBATableWithEncoder(structure.strings),
-      EBATableWithEncoder(structure.arrs),
-      EBATableWithEncoder(structure.objs)(FixedSizeArrayTableEncoder(using ObjCodec(structure.strings, structure.settings))),
-      EBATableWithEncoder(structure.roots),
+    val tablesWithEncoders = Array[EBATableWithEncoder](
+      EBATableWithEncoder(structure.ints)(using FixedSizeTableCodec(using classTag, IntCodec, implicitly)),
+      EBATableWithEncoder(structure.longs)(using FixedSizeTableCodec(using classTag, LongCodec, implicitly)),
+      EBATableWithEncoder(structure.bigints)(using VarSizeTableEncoder(using BigIntCodec)),
+      EBATableWithEncoder(structure.floats)(using FixedSizeTableCodec(using classTag, FloatCodec, implicitly)),
+      EBATableWithEncoder(structure.doubles)(using FixedSizeTableCodec(using classTag, DoubleCodec, implicitly)),
+      EBATableWithEncoder(structure.bigDecimals)(using VarSizeTableEncoder(using BigDecimalCodec)),
+      EBATableWithEncoder(structure.strings)(using VarSizeTableEncoder(using StringCodec)),
+      EBATableWithEncoder(structure.arrs)(using FixedSizeArrayTableEncoder(using ArrCodec)),
+      EBATableWithEncoder(structure.objs)(using FixedSizeArrayTableEncoder(using ObjCodec(structure.strings, structure.settings))),
+      EBATableWithEncoder(structure.roots)(using FixedSizeTableCodec(using classTag, RootCodec, implicitly)),
     )
     assert(structure.tables.length == tablesWithEncoders.length)
 
@@ -131,10 +145,12 @@ object EBAWriter {
     val encoder: EBAEncoderTable[T]
   }
   private object EBATableWithEncoder {
-    def apply[T0](table0: EBATable[T0])(implicit codec0: EBAEncoderTable[T0]): EBATableWithEncoder { type T = T0 } = new EBATableWithEncoder {
-      override type T = T0
-      override val table: EBATable[T0] = table0
-      override val encoder: EBAEncoderTable[T0] = codec0
+    def apply[T0](table0: EBATable[T0])(implicit codec0: EBAEncoderTable[T0]): EBATableWithEncoder { type T = T0 } = {
+      new EBATableWithEncoder {
+        override type T = T0
+        override val table: EBATable[T0] = table0
+        override val encoder: EBAEncoderTable[T0] = codec0
+      }
     }
     def unapply(arg: EBATableWithEncoder): Some[(EBATable[arg.T], EBAEncoderTable[arg.T])] = Some(arg.table, arg.encoder)
   }

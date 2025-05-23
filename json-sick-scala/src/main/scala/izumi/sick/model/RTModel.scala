@@ -91,6 +91,6 @@ object Ref {
 
 final case class Arr(values: Vector[Ref])
 
-final case class Obj(values: Map[RefVal, Ref])
+final case class Obj(values: collection.Map[RefVal, Ref])
 
 final case class Root(id: RefVal, ref: Ref)
