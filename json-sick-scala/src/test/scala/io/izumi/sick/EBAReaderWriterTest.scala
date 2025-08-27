@@ -6,6 +6,7 @@ import izumi.sick.SICK
 import izumi.sick.eba.reader.incremental.IncrementalJValue
 import izumi.sick.eba.reader.{EagerEBAReader, IncrementalEBAReader}
 import izumi.sick.eba.writer.EBAWriter
+import izumi.sick.eba.writer.codecs.EBACodecs.DebugTableName
 import izumi.sick.eba.{EBAStructure, SICKSettings}
 import izumi.sick.model.*
 import izumi.sick.sickcirce.CirceTraverser.*
@@ -14,6 +15,8 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import java.util.concurrent.atomic.AtomicInteger
+import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 import scala.jdk.CollectionConverters.*
 
@@ -22,6 +25,8 @@ class EBAReaderWriterTest extends AnyWordSpec {
   private val out: Path = Paths.get("..", "output")
   private val rootname = "sample.json"
   private val iters = 100_000
+
+  // NB: The tests are executed sequentially and due to temporal interdependency should be left sequential (unless fixed)
 
   "write test" in {
     val allInputs = Files
@@ -42,6 +47,8 @@ class EBAReaderWriterTest extends AnyWordSpec {
         var ccnodedup: Int = 0
         var sumDedup: Long = 0
         var sumNodedup: Long = 0
+
+        val tableCounters = DebugTableName.allTableNames.map(_ -> new AtomicInteger(0)).toMap
 
         allInputs.foreach {
           input =>
@@ -121,7 +128,9 @@ class EBAReaderWriterTest extends AnyWordSpec {
 
                 println(s"Eager reading...")
                 val readStructure: EBAStructure = EagerEBAReader.readEBAStructure(Files.newInputStream(outFile))
+                val eagerJson = readStructure.reconstruct(readStructure.roots.data.head.ref)
                 assert(readStructure == roIndex)
+                assertSameJson(avoidBigDecimals, parsed, eagerJson)
                 println(s"Eager reading succeeded")
 
                 println(s"Incremental reading...")
@@ -132,11 +141,20 @@ class EBAReaderWriterTest extends AnyWordSpec {
                 }
                 assert(incStructure == roIndex)
                 assert(incStructure == readStructure)
-                assert(incJson == parsed)
+                assertSameJson(avoidBigDecimals, incJson, parsed)
                 println(s"Incremental reading succeeded")
+
+                incStructure.tables.foreach {
+                  table => tableCounters(table.name).addAndGet(table.data.size)
+                }
 
                 println()
             }
+        }
+
+        tableCounters.foreach {
+          case (k, vSize) =>
+            assert(vSize.get() > 0, s"Table `$k` is not tested!")
         }
 
         println(s"strategy: $strategy")
@@ -145,7 +163,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
     }
   }
 
-  "eager read test" in {
+  "eager read test #2" in {
     val inputs: Seq[Path] = {
       val ds = Files.newDirectoryStream(out, "*.bin")
       try ds.asScala.toSeq
@@ -190,7 +208,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
     }
   }
 
-  "incremental read test" in {
+  "incremental read test #2" in {
     val inputs: Seq[Path] = {
       val ds = Files.newDirectoryStream(out, "*.bin")
       try ds.asScala.toSeq
@@ -244,7 +262,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
     }
   }
 
-  def traverse(ref: Ref, reader: IncrementalEBAReader, count: Int, limit: Int): Int = {
+  @tailrec private def traverse(ref: Ref, reader: IncrementalEBAReader, count: Int, limit: Int): Int = {
     val readFirst = false
     val next = count + 1
     if (count >= limit) {
@@ -285,6 +303,21 @@ class EBAReaderWriterTest extends AnyWordSpec {
       assert(fieldVal == value)
       traverse(value, reader, next, limit)
     } else count
+  }
+
+  private def assertSameJson(avoidBigDecimals: Boolean, parsedJson: Json, sickJson: Json): Unit = {
+    assert(sickJson.hcursor.keys.toSet.flatten == parsedJson.hcursor.keys.toSet.flatten)
+    sickJson.hcursor.keys.iterator.flatten.foreach {
+      k =>
+        val egVal = sickJson.hcursor.downField(k).focus.get
+        val parsedVal = parsedJson.hcursor.downField(k).focus.get
+        if (avoidBigDecimals && (egVal != parsedVal)) {
+          assert(egVal.isNumber && parsedVal.isNumber)
+          assert(egVal.asNumber.get.toDouble == parsedVal.asNumber.get.toDouble)
+        } else {
+          assert(egVal == parsedVal, s"${egVal.asNumber.fold("": Any)(_.getClass)} ${parsedVal.asNumber.fold("": Any)(_.getClass)}")
+        }
+    }
   }
 
 }

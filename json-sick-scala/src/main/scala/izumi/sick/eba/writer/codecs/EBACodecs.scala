@@ -92,6 +92,19 @@ object EBACodecs {
     implicit final def Arrays: DebugTableName[Arr] = new DebugTableName("Arrays")
     implicit final def Objects: DebugTableName[Obj] = new DebugTableName("Objects")
     implicit final def Roots: DebugTableName[Root] = new DebugTableName("Roots")
+
+    def allTableNames: Set[String] = Set(
+      Strings.tableName,
+      Integers.tableName,
+      Longs.tableName,
+      Bigints.tableName,
+      Floats.tableName,
+      Doubles.tableName,
+      BigDecs.tableName,
+      Arrays.tableName,
+      Objects.tableName,
+      Roots.tableName,
+    )
   }
 
   // primitive fixed types
