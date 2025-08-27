@@ -350,11 +350,18 @@ namespace SickSharp.Encoder
         }
     }
 
-    class BigDecEncoder : IVarByteEncoder<BigDecimal>
+    public class BigDecEncoder : IVarByteEncoder<BigDecimal>
     {
         public byte[] Bytes(BigDecimal value)
         {
-            throw new NotImplementedException("Cannot encode C# BigDecimal");
+            var elements = new List<byte[]>
+            {
+                Fixed.IntEncoder.Bytes(value.Signum),
+                Fixed.IntEncoder.Bytes(value.Precision),
+                Fixed.IntEncoder.Bytes(value.Scale),
+                value.Unscaled.ToByteArray(isBigEndian: true)
+            };
+            return elements.Concatenate();
         }
     }
 

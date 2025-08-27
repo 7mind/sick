@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
+using SickSharp.Decoder;
 using SickSharp.IO;
-using SickSharp.Primitives;
 
 namespace SickSharp.Format.Tables
 {
@@ -15,10 +15,7 @@ namespace SickSharp.Format.Tables
 
         protected override BigDecimal Convert(ReadOnlySpan<byte> bytes)
         {
-            var signum = bytes[..sizeof(int)].ReadInt32BE();
-            var precision = bytes[sizeof(int)..(sizeof(int) * 2 + 1)].ReadInt32BE();
-            var scale = bytes[(sizeof(int) * 2)..(sizeof(int) * 3 + 1)].ReadInt32BE();
-            return new BigDecimal(new BigInteger(bytes[sizeof(int)..]), scale, precision, signum);
+            return BigDecimalDecoder.Decode(bytes);
         }
     }
 }

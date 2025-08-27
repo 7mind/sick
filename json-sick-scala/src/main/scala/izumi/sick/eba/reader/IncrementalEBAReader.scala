@@ -1,6 +1,5 @@
 package izumi.sick.eba.reader
 
-import io.circe.Json
 import izumi.sick.eba.reader.incremental.{IncrementalJValue, IncrementalTableFixed, IncrementalTableVar, OneObjTable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, IntCodec, RefCodec, ShortCodec}
 import izumi.sick.eba.{EBAStructure, SICKSettings}

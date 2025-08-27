@@ -204,6 +204,8 @@ namespace SickSharp.Encoder
                 case double d:
                     val = d;
                     break;
+                // We can't ever get BigDecimal values from Json.NET because it doesn't support them:
+                // https://stackoverflow.com/questions/38864934/how-do-i-deserialize-a-high-precision-decimal-value-with-json-net
                 default:
                     throw new InvalidDataException($"BUG: Unexpected float: `{v}`");
             }

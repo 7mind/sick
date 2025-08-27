@@ -1,9 +1,6 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices.ComTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SickSharp.Format;
-using SickSharp.Format.Tables;
 using SickSharp.IO;
 using Index = SickSharp.Encoder.Index;
 
