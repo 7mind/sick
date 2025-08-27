@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using SickSharp.Decoder;
 using SickSharp.IO;
 
 namespace SickSharp.Format.Tables
@@ -12,7 +13,7 @@ namespace SickSharp.Format.Tables
 
         protected override BigInteger Convert(ReadOnlySpan<byte> bytes)
         {
-            return new BigInteger(bytes);
+            return BigIntDecoder.Decode(bytes);
         }
     }
 }

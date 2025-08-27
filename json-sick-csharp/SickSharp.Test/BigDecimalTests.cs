@@ -5,7 +5,6 @@ using SickSharp.Format.Tables;
 
 namespace SickSharp.Test;
 
-[TestFixture]
 public class BigDecimalTests
 {
     private readonly BigDecEncoder _encoder = new();

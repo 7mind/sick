@@ -342,11 +342,11 @@ namespace SickSharp.Encoder
         }
     }
 
-    class BigIntEncoder : IVarByteEncoder<BigInteger>
+    public class BigIntEncoder : IVarByteEncoder<BigInteger>
     {
         public byte[] Bytes(BigInteger value)
         {
-            return value.ToByteArray();
+            return value.ToByteArray(isBigEndian: true);
         }
     }
 
