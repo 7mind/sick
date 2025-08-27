@@ -54,6 +54,32 @@ public class BigDecimalTests
         AssertRoundTrip(original6, "Large scientific notation");
     }
 
+    [Test]
+    public void TestJavaCompat()
+    {
+        var testCases = new[]
+        {
+            (value: "100", expectedBytes: new byte[] { 0x64 }),
+            (value: "-100", expectedBytes: [0x9C]),
+            (value: "-10000000000", expectedBytes: [0xFD, 0xAB, 0xF4, 0x1C, 0x00]),
+            (value: "10000000000", expectedBytes: [0x02, 0x54, 0x0B, 0xE4, 0x00]),
+            (value: "10000000", expectedBytes: [0x00, 0x98, 0x96, 0x80]),
+            (value: "-10000000", expectedBytes: [0xFF, 0x67, 0x69, 0x80])
+        };
+
+        foreach (var (value, expectedBytes) in testCases)
+        {
+            var original = new BigDecimal(BigInteger.Parse(value), 2, 5, 1);
+            var encoded = _encoder.Bytes(original);
+
+            Assert.That(encoded[(sizeof(int) * 3)..], Is.EqualTo(expectedBytes),
+                $"C# Encoder for {value} should match Java format");
+
+            var decoded = BigDecimalDecoder.Decode(encoded);
+            Assert.That(decoded, Is.EqualTo(original), $"Round-trip failed for {value}");
+        }
+    }
+
     private void AssertRoundTrip(BigDecimal original, string testCase)
     {
         var encoded = _encoder.Bytes(original);
@@ -62,6 +88,6 @@ public class BigDecimalTests
 
         var decoded = BigDecimalDecoder.Decode(encoded);
 
-        Assert.That(decoded, Is.EqualTo(original));
+        Assert.That(decoded, Is.EqualTo(original), $"Round-trip failed for {testCase}");
     }
 }

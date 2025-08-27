@@ -53,7 +53,7 @@ public class BigIntTests
             var encoded = _encoder.Bytes(original);
 
             Assert.That(encoded, Is.EqualTo(expectedBytes),
-                $"C# BigInteger.ToByteArray() for {value} should match Java format");
+                $"C# Encoder for {value} should match Java format");
 
             var decoded = BigIntDecoder.Decode(encoded);
             Assert.That(decoded, Is.EqualTo(original), $"Round-trip failed for {value}");
