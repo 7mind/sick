@@ -236,49 +236,6 @@ class IncrementalEBAReader(
     }
   }
 
-  def resolveFull(ref: Ref): Json = {
-    ref.kind match {
-      case RefKind.TNul =>
-        Json.Null
-      case RefKind.TBit =>
-        Json.fromBoolean(ref.ref == 1)
-
-      case RefKind.TByte =>
-        Json.fromInt(ref.ref)
-      case RefKind.TShort =>
-        Json.fromInt(ref.ref)
-
-      case RefKind.TInt =>
-        Json.fromInt(intTable.readElem(ref.ref))
-      case RefKind.TLng =>
-        Json.fromLong(longTable.readElem(ref.ref))
-      case RefKind.TBigInt =>
-        Json.fromBigInt(bigIntTable.readElem(ref.ref))
-
-      case RefKind.TFlt =>
-        Json.fromFloat(floatTable.readElem(ref.ref)).get
-      case RefKind.TDbl =>
-        Json.fromDouble(doubleTable.readElem(ref.ref)).get
-      case RefKind.TBigDec =>
-        Json.fromBigDecimal(bigDecTable.readElem(ref.ref))
-
-      case RefKind.TStr =>
-        Json.fromString(strTable.readElem(ref.ref))
-
-      case RefKind.TArr =>
-        val arr = arrTable.readElem(ref.ref)
-        Json.fromValues(arr.readAll().map(resolveFull))
-      case RefKind.TObj =>
-        val obj = objTable.readElem(ref.ref)
-        Json.fromFields(obj.readAll().map {
-          case (k, v) =>
-            (strTable.readElem(k), resolveFull(v))
-        })
-      case RefKind.TRoot =>
-        resolveFull(rootTable.readElem(ref.ref).ref)
-    }
-  }
-
   def readAll(): EBAStructure = {
     EBAStructure(
       intTable.readAllTable(),
