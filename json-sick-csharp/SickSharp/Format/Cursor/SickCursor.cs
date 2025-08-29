@@ -10,12 +10,14 @@ namespace SickSharp
     {
         protected readonly SickReader Reader;
         public readonly SickRef Ref;
+        public readonly SickPath Path;
 
-        private SickCursor(SickReader reader, SickKind expectedKind, SickRef reference)
+        private SickCursor(SickReader reader, SickKind expectedKind, SickRef reference, SickPath path)
         {
             Debug.Assert(expectedKind == reference.Kind);
             Reader = reader;
             Ref = reference;
+            Path = path;
         }
 
         public abstract T Match<T>(
@@ -127,7 +129,7 @@ namespace SickSharp
              */
             public T Value => _created ? _value! : CreateValue();
 
-            protected LazyCursor(SickReader reader, SickKind expectedKind, SickRef reference) : base(reader, expectedKind, reference)
+            protected LazyCursor(SickReader reader, SickKind expectedKind, SickRef reference, SickPath path) : base(reader, expectedKind, reference, path)
             {
             }
 

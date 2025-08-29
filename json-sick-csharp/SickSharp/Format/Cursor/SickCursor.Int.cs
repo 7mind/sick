@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Int : LazyCursor<int>
         {
-            internal Int(SickReader reader, SickRef reference) : base(reader, SickKind.Int, reference)
+            internal Int(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Int, reference, path)
             {
             }
 

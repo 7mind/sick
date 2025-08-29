@@ -11,7 +11,7 @@ namespace SickSharp
         {
             public readonly bool Value;
 
-            internal Bool(SickReader reader, SickRef reference) : base(reader, SickKind.Bit, reference)
+            internal Bool(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Bit, reference, path)
             {
                 Value = reference.Value == 1;
             }

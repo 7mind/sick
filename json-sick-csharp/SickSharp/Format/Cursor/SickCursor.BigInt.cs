@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class BigInt : LazyCursor<BigInteger>
         {
-            internal BigInt(SickReader reader, SickRef reference) : base(reader, SickKind.BigInt, reference)
+            internal BigInt(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.BigInt, reference, path)
             {
             }
 

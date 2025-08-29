@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class BigDec : LazyCursor<BigDecimal>
         {
-            internal BigDec(SickReader reader, SickRef reference) : base(reader, SickKind.BigDec, reference)
+            internal BigDec(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.BigDec, reference, path)
             {
             }
 

@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Root : LazyCursor<SickRoot>
         {
-            internal Root(SickReader reader, SickRef reference) : base(reader, SickKind.Root, reference)
+            internal Root(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Root, reference, path)
             {
             }
 

@@ -25,7 +25,7 @@ namespace SickSharp
                     throw new KeyNotFoundException($"Root `{id}` was not found.");
                 }
 
-                var result = GetCursor(reference);
+                var result = GetCursor(reference, SickPath.Single(id));
 
 #if SICK_PROFILE_READER
                 return cp.OnReturn(result);
@@ -120,8 +120,9 @@ namespace SickSharp
         /**
          * Resolve cursor for the specified reference.
          * <param name="reference">Reference where cursor should point.</param>
+         * <param name="path">Path to reference.</param>
          */
-        public SickCursor GetCursor(SickRef reference)
+        public SickCursor GetCursor(SickRef reference, SickPath path)
         {
             ThrowIfDisposed();
 
@@ -131,20 +132,20 @@ namespace SickSharp
             {
                 SickCursor ret = reference.Kind switch
                 {
-                    SickKind.Null => new SickCursor.Null(this, reference),
-                    SickKind.Bit => new SickCursor.Bool(this, reference),
-                    SickKind.SByte => new SickCursor.SByte(this, reference),
-                    SickKind.Short => new SickCursor.Short(this, reference),
-                    SickKind.Int => new SickCursor.Int(this, reference),
-                    SickKind.Long => new SickCursor.Long(this, reference),
-                    SickKind.BigInt => new SickCursor.BigInt(this, reference),
-                    SickKind.Float => new SickCursor.Float(this, reference),
-                    SickKind.Double => new SickCursor.Double(this, reference),
-                    SickKind.BigDec => new SickCursor.BigDec(this, reference),
-                    SickKind.String => new SickCursor.String(this, reference),
-                    SickKind.Array => new SickCursor.Array(this, reference),
-                    SickKind.Object => new SickCursor.Object(this, reference),
-                    SickKind.Root => new SickCursor.Root(this, reference),
+                    SickKind.Null => new SickCursor.Null(this, reference, path),
+                    SickKind.Bit => new SickCursor.Bool(this, reference, path),
+                    SickKind.SByte => new SickCursor.SByte(this, reference, path),
+                    SickKind.Short => new SickCursor.Short(this, reference, path),
+                    SickKind.Int => new SickCursor.Int(this, reference, path),
+                    SickKind.Long => new SickCursor.Long(this, reference, path),
+                    SickKind.BigInt => new SickCursor.BigInt(this, reference, path),
+                    SickKind.Float => new SickCursor.Float(this, reference, path),
+                    SickKind.Double => new SickCursor.Double(this, reference, path),
+                    SickKind.BigDec => new SickCursor.BigDec(this, reference, path),
+                    SickKind.String => new SickCursor.String(this, reference, path),
+                    SickKind.Array => new SickCursor.Array(this, reference, path),
+                    SickKind.Object => new SickCursor.Object(this, reference, path),
+                    SickKind.Root => new SickCursor.Root(this, reference, path),
                     _ => throw new InvalidDataException($"BUG: Unknown reference: `{reference}`")
                 };
 

@@ -11,7 +11,7 @@ namespace SickSharp
         {
             public readonly short Value;
 
-            internal Short(SickReader reader, SickRef reference) : base(reader, SickKind.Short, reference)
+            internal Short(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Short, reference, path)
             {
                 Value = (short)reference.Value;
             }

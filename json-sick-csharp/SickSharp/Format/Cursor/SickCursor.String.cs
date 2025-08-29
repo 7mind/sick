@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class String : LazyCursor<string>
         {
-            internal String(SickReader reader, SickRef reference) : base(reader, SickKind.String, reference)
+            internal String(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.String, reference, path)
             {
             }
 

@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Float : LazyCursor<float>
         {
-            internal Float(SickReader reader, SickRef reference) : base(reader, SickKind.Float, reference)
+            internal Float(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Float, reference, path)
             {
             }
 

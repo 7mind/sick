@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Double : LazyCursor<double>
         {
-            internal Double(SickReader reader, SickRef reference) : base(reader, SickKind.Double, reference)
+            internal Double(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Double, reference, path)
             {
             }
 

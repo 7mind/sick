@@ -11,7 +11,7 @@ namespace SickSharp
         {
             public readonly sbyte Value;
 
-            internal SByte(SickReader reader, SickRef reference) : base(reader, SickKind.SByte, reference)
+            internal SByte(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.SByte, reference, path)
             {
                 Value = (sbyte)reference.Value;
             }

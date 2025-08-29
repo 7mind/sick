@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 using SickSharp.Format.Tables;
 
@@ -11,7 +12,7 @@ namespace SickSharp
     {
         public sealed class Object : LazyCursor<OneObjTable>
         {
-            internal Object(SickReader reader, SickRef reference) : base(reader, SickKind.Object, reference)
+            internal Object(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Object, reference, path)
             {
             }
 
@@ -54,7 +55,7 @@ namespace SickSharp
             {
                 foreach (var (fieldKey, fieldRef) in Value.Content())
                 {
-                    yield return new KeyValuePair<string, SickCursor>(fieldKey, Reader.GetCursor(fieldRef));
+                    yield return new KeyValuePair<string, SickCursor>(fieldKey, Reader.GetCursor(fieldRef, Path.Append(fieldKey)));
                 }
             }
 
@@ -133,13 +134,13 @@ namespace SickSharp
             public override KeyValuePair<string, SickCursor> ReadKey(int index)
             {
                 var (key, reference) = Value.ReadKey(index);
-                return new KeyValuePair<string, SickCursor>(key, Reader.GetCursor(reference));
+                return new KeyValuePair<string, SickCursor>(key, Reader.GetCursor(reference, Path.Append(key)));
             }
 
             public override SickCursor ReadIndex(int index)
             {
-                var reference = Value.ReadRef(index);
-                return Reader.GetCursor(reference);
+                var (key, reference) = Value.ReadKey(index);
+                return Reader.GetCursor(reference, Path.Append(key));
             }
 
             public override Object AsObject()
@@ -154,7 +155,7 @@ namespace SickSharp
 #endif
                 {
                     var reference = ReadFieldRef(field);
-                    var result = Reader.GetCursor(reference);
+                    var result = Reader.GetCursor(reference, Path.Append(field));
 
 #if SICK_PROFILE_READER
                     return cp.OnReturn(result);

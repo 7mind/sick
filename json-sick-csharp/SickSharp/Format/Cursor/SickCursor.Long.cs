@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Long : LazyCursor<long>
         {
-            internal Long(SickReader reader, SickRef reference) : base(reader, SickKind.Long, reference)
+            internal Long(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Long, reference, path)
             {
             }
 

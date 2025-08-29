@@ -12,7 +12,7 @@ namespace SickSharp
     {
         public sealed class Array : LazyCursor<OneArrTable>
         {
-            internal Array(SickReader reader, SickRef reference) : base(reader, SickKind.Array, reference)
+            internal Array(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Array, reference, path)
             {
             }
 
@@ -105,7 +105,10 @@ namespace SickSharp
              */
             public IEnumerable<SickCursor> GetValues()
             {
-                return Value.Content().Select(fieldRef => Reader.GetCursor(fieldRef));
+                return Value.Content().Select((fieldRef, idx) =>
+                {
+                    return Reader.GetCursor(fieldRef, Path.Append(idx));
+                });
             }
 
             public override SickCursor Read(params string[] path)
@@ -143,7 +146,7 @@ namespace SickSharp
                     }
 
                     var reference = Value.Read(adjustedIndex);
-                    var result = Reader.GetCursor(reference);
+                    var result = Reader.GetCursor(reference, Path.Append(adjustedIndex));
 #if SICK_PROFILE_READER
                     return trace.OnReturn(result);
 #else

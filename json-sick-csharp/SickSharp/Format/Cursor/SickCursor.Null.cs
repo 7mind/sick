@@ -9,7 +9,7 @@ namespace SickSharp
     {
         public sealed class Null : SickCursor
         {
-            internal Null(SickReader reader, SickRef reference) : base(reader, SickKind.Null, reference)
+            internal Null(SickReader reader, SickRef reference, SickPath path) : base(reader, SickKind.Null, reference, path)
             {
             }
 
