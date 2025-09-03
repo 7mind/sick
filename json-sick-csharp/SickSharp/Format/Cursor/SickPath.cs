@@ -1,3 +1,4 @@
+#nullable enable
 using System.Collections.Generic;
 using System.Linq;
 
@@ -51,10 +52,10 @@ namespace SickSharp
 
         public static SickPath FromQuery(string query)
         {
-            SickPath current = null;
+            SickPath current = null!;
             foreach (var part in SickReader.ParseQuery(query))
             {
-                current = current == null ? Single(part) : current.Append(part);
+                current = current == null! ? Single(part) : current.Append(part);
             }
 
             return current;

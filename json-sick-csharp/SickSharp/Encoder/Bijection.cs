@@ -2,58 +2,49 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SickSharp.Format.Tables;
 
 namespace SickSharp.Encoder
 {
-    public struct Option<T>
+    internal readonly struct Option<T>
     {
         public static Option<T> None => default;
-        public static Option<T> Some(T value) => new Option<T>(value);
+        public static Option<T> Some(T value) => new(value);
 
-        readonly bool isSome;
-        readonly T value;
+        private readonly bool _isSome;
+        private readonly T _value;
 
-        Option(T value)
+        public Option(T value)
         {
-            this.value = value;
-            isSome = this.value is { };
+            _value = value;
+            _isSome = _value is not null;
         }
 
         public bool IsSome(out T value)
         {
-            value = this.value;
-            return isSome;
+            value = _value;
+            return _isSome;
         }
-        
-        public B Match<B>(Func<T, B> Some, Func<B> None) =>
-            isSome
-                ? Some(value)
-                : None();
+
+        public TB Match<TB>(Func<T, TB> onSome, Func<TB> onNone)
+        {
+            return _isSome ? onSome(_value) : onNone();
+        }
 
         public T UsafeGet()
         {
-            if (isSome)
-            {
-                return value; 
-            }
-
-            throw new KeyNotFoundException();
+            return _isSome ? _value : throw new KeyNotFoundException();
         }
     }
 
-    public static class OutExtensions
+    internal static class OutExtensions
     {
-        public static Option<V> TryGetValue<K, V>(this IDictionary<K, V> self, K Key)
+        public static Option<TV> TryGetValue<TK, TV>(this IDictionary<TK, TV> self, TK key)
         {
-            V value;
-            return self.TryGetValue(Key, out value)
-                ? Option<V>.Some(value)
-                : Option<V>.None;
+            return self.TryGetValue(key, out var value) ? Option<TV>.Some(value) : Option<TV>.None;
         }
     }
 
-    class ListComparer<T> : IEqualityComparer<List<T>>
+    internal class ListComparer<T> : IEqualityComparer<List<T>>
     {
         public bool Equals(List<T> x, List<T> y)
         {
@@ -62,7 +53,7 @@ namespace SickSharp.Encoder
 
         public int GetHashCode(List<T> obj)
         {
-            int hashcode = 0;
+            var hashcode = 0;
             foreach (T t in obj)
             {
                 if (t != null)
@@ -70,19 +61,20 @@ namespace SickSharp.Encoder
                     hashcode ^= t.GetHashCode();
                 }
             }
+
             return hashcode;
         }
     }
-    
-    public class Bijection<V>
+
+    internal class Bijection<TV>
     {
         public string Name { get; }
-        private readonly Dictionary<int, V> _mapping;
-        private readonly Dictionary<V, int> _reverse;
+        private readonly Dictionary<int, TV> _mapping;
+        private readonly Dictionary<TV, int> _reverse;
         private readonly Dictionary<int, int> _counters;
-        private readonly IEqualityComparer<V>? _comparer;
+        private readonly IEqualityComparer<TV>? _comparer;
 
-        public Bijection(string name, Dictionary<int, V> mapping, Dictionary<V, int> reverse, Dictionary<int, int> counters, IEqualityComparer<V>? comparer)
+        public Bijection(string name, Dictionary<int, TV> mapping, Dictionary<TV, int> reverse, Dictionary<int, int> counters, IEqualityComparer<TV>? comparer)
         {
             Name = name;
             _mapping = mapping;
@@ -90,27 +82,27 @@ namespace SickSharp.Encoder
             _counters = counters;
             _comparer = comparer;
         }
-        
-        public Option<V> Get(int idx)
+
+        public Option<TV> Get(int idx)
         {
-            return _mapping.TryGetValue(Key: idx);
+            return _mapping.TryGetValue(key: idx);
         }
 
-        public Option<int> RevGet(V value)
+        public Option<int> RevGet(TV value)
         {
-            return _reverse.TryGetValue(Key: value);
+            return _reverse.TryGetValue(key: value);
         }
 
-        public List<V> AsList()
+        public List<TV> AsList()
         {
             if (Size() > 0)
             {
                 return Enumerable.Range(0, Size()).Select(idx => _mapping[idx]).ToList();
             }
 
-            return new List<V>();
+            return new List<TV>();
         }
-        
+
         public int Freq(int key)
         {
             return _counters[key];
@@ -126,10 +118,10 @@ namespace SickSharp.Encoder
             return _mapping.Count;
         }
 
-        public Bijection<V> Rewrite(Func<V, V> mapping)
+        public Bijection<TV> Rewrite(Func<TV, TV> mapping)
         {
             var rev = _comparer != null ? _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value, _comparer) : _reverse.ToDictionary(kv => mapping(kv.Key), kv => kv.Value);
-            return new Bijection<V>(
+            return new Bijection<TV>(
                 Name,
                 _mapping.ToDictionary(kv => kv.Key, kv => mapping(kv.Value)),
                 rev,
@@ -137,12 +129,11 @@ namespace SickSharp.Encoder
                 _comparer
             );
         }
-        
-        public int Add(V value)
+
+        public int Add(TV value)
         {
-            if (_reverse.ContainsKey(value))
+            if (_reverse.TryGetValue(value, out var ret))
             {
-                var ret = _reverse[value];
                 _counters[ret] += 1;
                 return ret;
             }
@@ -153,54 +144,49 @@ namespace SickSharp.Encoder
             _counters[idx] = 1;
             return idx;
         }
-        
-        public static Bijection<V> Create(string name, IEqualityComparer<V>? comparer) 
+
+        public static Bijection<TV> Create(string name, IEqualityComparer<TV>? comparer)
         {
             if (comparer == null)
             {
-                return new Bijection<V>(name, 
-                    new Dictionary<int, V>(), 
-                    new Dictionary<V, int>(),
+                return new Bijection<TV>(name,
+                    new Dictionary<int, TV>(),
+                    new Dictionary<TV, int>(),
                     new Dictionary<int, int>(),
                     null
                 );
             }
             else
             {
-                return new Bijection<V>(name, 
-                    new Dictionary<int, V>(), 
-                    new Dictionary<V, int>(comparer),
+                return new Bijection<TV>(name,
+                    new Dictionary<int, TV>(),
+                    new Dictionary<TV, int>(comparer),
                     new Dictionary<int, int>(),
                     comparer
                 );
-
             }
         }
 
-        public static Bijection<V> FromMonothonic(string name, List<(int Idx, V Value, int Freq)> content, IEqualityComparer<V>? comparer) 
+        public static Bijection<TV> FromMonothonic(string name, List<(int Idx, TV Value, int Freq)> content, IEqualityComparer<TV>? comparer)
         {
-
             var data = content.ToDictionary(v => v.Idx, v => v.Value);
-            var revdata = comparer != null ?  content.ToDictionary(v => v.Value, v => v.Idx, comparer) : content.ToDictionary(v => v.Value, v => v.Idx);
+            var revdata = comparer != null ? content.ToDictionary(v => v.Value, v => v.Idx, comparer) : content.ToDictionary(v => v.Value, v => v.Idx);
             var freq = content.ToDictionary(v => v.Idx, v => v.Freq);
 
-            return new Bijection<V>(name, data, revdata, freq, comparer);
+            return new Bijection<TV>(name, data, revdata, freq, comparer);
         }
     }
 
-    public interface IRemappable<V>
+    internal interface IRemappable<TV>
     {
-        public V Remap(V value, Dictionary<SickRef, SickRef> mapping);
+        public TV Remap(TV value, Dictionary<SickRef, SickRef> mapping);
     }
-    
-    public static class BijectionExt
+
+    internal static class BijectionExt
     {
-        public static Bijection<V> Rewrite<V>(this Bijection<V> src, IRemappable<V> mapper, Dictionary<SickRef, SickRef> mapping) where V : class
+        public static Bijection<TV> Rewrite<TV>(this Bijection<TV> src, IRemappable<TV> mapper, Dictionary<SickRef, SickRef> mapping) where TV : class
         {
             return src.Rewrite(v => mapper.Remap(v, mapping));
         }
     }
-    
-
-
 }

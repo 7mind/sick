@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -10,33 +9,39 @@ using SickSharp.Primitives;
 
 namespace SickSharp.Encoder
 {
-    public class Index
+    public record SerializedIndex(byte[] Data);
+
+    public record SerializedTable(string Name, byte[] Data);
+
+    public class SickIndex
     {
-        private Bijection<Int32> _ints;
-        private Bijection<Int64> _longs;
-        private Bijection<BigInteger> _bigints;
-        
-        private Bijection<Single> _floats;
-        private Bijection<Double> _doubles;
-        private Bijection<BigDecimal> _bigDecs;
-        
-        private Bijection<String> _strings;
-        private Bijection<List<SickRef>> _arrs;
-        private Bijection<List<ObjEntry>> _objs;
-        private Bijection<SickRoot> _roots;
+        private readonly Bijection<int> _ints;
+        private readonly Bijection<long> _longs;
+        private readonly Bijection<BigInteger> _bigints;
+
+        private readonly Bijection<Single> _floats;
+        private readonly Bijection<Double> _doubles;
+        private readonly Bijection<BigDecimal> _bigDecs;
+
+        private readonly Bijection<String> _strings;
+        private readonly Bijection<List<SickRef>> _arrs;
+        private readonly Bijection<List<ObjEntry>> _objs;
+        private readonly Bijection<SickRoot> _roots;
         public readonly ObjIndexing Settings;
 
-        public Index(
-            Bijection<int> ints, 
-            Bijection<long> longs, 
-            Bijection<BigInteger> bigints, 
-            Bijection<float> floats, 
-            Bijection<double> doubles, 
-            Bijection<BigDecimal> bigDecs, 
-            Bijection<string> strings, 
-            Bijection<List<SickRef>> arrs, 
-            Bijection<List<ObjEntry>> objs, 
-            Bijection<SickRoot> roots, ObjIndexing settings)
+        internal SickIndex(
+            Bijection<int> ints,
+            Bijection<long> longs,
+            Bijection<BigInteger> bigints,
+            Bijection<float> floats,
+            Bijection<double> doubles,
+            Bijection<BigDecimal> bigDecs,
+            Bijection<string> strings,
+            Bijection<List<SickRef>> arrs,
+            Bijection<List<ObjEntry>> objs,
+            Bijection<SickRoot> roots,
+            ObjIndexing settings
+        )
         {
             // _bytes = bytes;
             // _shorts = shorts;
@@ -53,21 +58,28 @@ namespace SickSharp.Encoder
             _bigints = bigints;
         }
 
-        public static Index Create(ushort buckets = 128, ushort limit = 2)
+        public static SerializedIndex Serialize(JToken token, string root = "data", ushort buckets = 128, ushort limit = 2)
         {
-            return new Index(
-                Bijection<int>.Create("ints", null),
-                Bijection<long>.Create("longs", null),
-                Bijection<BigInteger>.Create("bigints", null),
-                Bijection<Single>.Create("floats", null),
-                Bijection<Double>.Create("doubles", null),
-                Bijection<BigDecimal>.Create("bigdecs", null),
-                Bijection<String>.Create("strings", null),
-                Bijection<List<SickRef>>.Create("arrays", new ListComparer<SickRef>()),
-                Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
-                Bijection<SickRoot>.Create("roots", null),
-                new ObjIndexing(buckets, limit)
-                );
+            var index = Create(buckets, limit);
+            index.Append(root, token);
+            return index.Serialize();
+        }
+
+        public static SickIndex Create(ushort buckets = 128, ushort limit = 2)
+        {
+            return new SickIndex(
+                ints: Bijection<int>.Create("ints", null),
+                longs: Bijection<long>.Create("longs", null),
+                bigints: Bijection<BigInteger>.Create("bigints", null),
+                floats: Bijection<Single>.Create("floats", null),
+                doubles: Bijection<Double>.Create("doubles", null),
+                bigDecs: Bijection<BigDecimal>.Create("bigdecs", null),
+                strings: Bijection<String>.Create("strings", null),
+                arrs: Bijection<List<SickRef>>.Create("arrays", new ListComparer<SickRef>()),
+                objs: Bijection<List<ObjEntry>>.Create("objects", new ListComparer<ObjEntry>()),
+                roots: Bijection<SickRoot>.Create("roots", null),
+                settings: new ObjIndexing(buckets, limit)
+            );
         }
 
         public List<SerializedTable> SerializedTables()
@@ -81,78 +93,77 @@ namespace SickSharp.Encoder
                 new(_doubles.Name, new FixedArrayByteEncoder<double>(Fixed.DoubleEncoder).Bytes(_doubles.AsList())),
                 new(_bigDecs.Name, new VarArrayEncoder<BigDecimal>(Variable.BigDecimalEncoder).Bytes(_bigDecs.AsList())),
                 new(_strings.Name, new VarArrayEncoder<string>(Variable.StringEncoder).Bytes(_strings.AsList())),
-                new(_arrs.Name,  new FixedArrayEncoder<List<SickRef>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
-                new(_objs.Name,  new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, Settings)).Bytes(_objs.AsList())),
-                new(_roots.Name,  FixedArray.RootListEncoder.Bytes(_roots.AsList())),
+                new(_arrs.Name, new FixedArrayEncoder<List<SickRef>>(FixedArray.RefListEncoder).Bytes(_arrs.AsList())),
+                new(_objs.Name, new FixedArrayEncoder<List<ObjEntry>>(FixedArray.ObjListEncoder(_strings, Settings)).Bytes(_objs.AsList())),
+                new(_roots.Name, FixedArray.RootListEncoder.Bytes(_roots.AsList())),
             };
         }
 
         public SerializedIndex Serialize()
         {
             var version = 0;
-            var tables = SerializedTables().Select(d => d.data).ToList();
+            var tables = SerializedTables().Select(d => d.Data).ToList();
             var headerLen = (2 + tables.Count) * Fixed.IntEncoder.BlobSize() + Fixed.UInt16Encoder.BlobSize();
             var offsets = tables.ComputeOffsets(headerLen);
 
-            
-            var header = new List<byte[]> {
+            var header = new List<byte[]>
+            {
                 Fixed.IntEncoder.Bytes(version),
                 new FixedArrayByteEncoder<int>(Fixed.IntEncoder).Bytes(offsets),
                 Fixed.UInt16Encoder.Bytes(Settings.BucketCount),
-            } ;
+            };
 
             var everything = (header.Concat(tables).ToList()).Concatenate();
             return new SerializedIndex(everything);
         }
 
         // this can be externalized so Index won't depend on json.net
-        public SickRef append(String id, JToken json)
+        public SickRef Append(string id, JToken json)
         {
-            var idRef = addString(id);
-            var rootRef = traverse(json);
+            var idRef = AddString(id);
+            var rootRef = Traverse(json);
             var root = new SickRoot(idRef.Value, rootRef);
             return _roots.RevGet(root).Match(
-                Some: some => throw new InvalidDataException($"Cannot find root '{root}'"), 
-                None: () => new SickRef(SickKind.Root, _roots.Add(root))
-                );
+                onSome: some => throw new InvalidDataException($"Cannot find root '{root}'"),
+                onNone: () => new SickRef(SickKind.Root, _roots.Add(root))
+            );
         }
 
-        private SickRef traverse(JToken json)
+        private SickRef Traverse(JToken json)
         {
             return json switch
             {
                 JObject v =>
-                    addObj(
-                        v.Properties().Select(e => new ObjEntry(addString(e.Name).Value, traverse(e.Value))).ToList()
-                        ),
+                    AddObj(
+                        v.Properties().Select(e => new ObjEntry(AddString(e.Name).Value, Traverse(e.Value))).ToList()
+                    ),
                 JArray v =>
-                    addArr(v.Select(e => traverse(e)).ToList()),
+                    AddArr(v.Select(Traverse).ToList()),
                 JValue v =>
                     v.Type switch
                     {
-                        JTokenType.Integer => handleInt(v),
-                        JTokenType.Float => handleFloat(v),
-                        JTokenType.String => addString((string)v.Value),
-                        JTokenType.Boolean => new SickRef(SickKind.Bit, Convert.ToInt32((bool)v.Value)),
+                        JTokenType.Integer => HandleInt(v),
+                        JTokenType.Float => HandleFloat(v),
+                        JTokenType.String => AddString(v.Value<string>()!),
+                        JTokenType.Boolean => new SickRef(SickKind.Bit, Convert.ToInt32(v.Value<bool>()!)),
                         JTokenType.Null => new SickRef(SickKind.Null, 0),
-                        JTokenType.Date => addString(((DateTime)v.Value).ToString()),
-                        _ => throw new NotImplementedException($"BUG: unknown value `{v}`")
-                    ,
+                        JTokenType.Date => AddString(v.Value<DateTime>()!.ToString()),
+                        _ => throw new NotImplementedException($"BUG: unknown value `{v}`"),
                     },
-                _ => 
+                _ =>
                     throw new NotImplementedException($"BUG: unknown token `{json}`"),
             };
         }
 
-        private SickRef handleInt(JValue v)
+        private SickRef HandleInt(JValue v)
         {
             long val;
             switch (v.Value)
             {
-                case Int64 int64:
+                case long int64:
                     val = int64;
                     break;
-                case Int32 int32:
+                case int int32:
                     val = int32;
                     break;
                 case uint uint32:
@@ -168,32 +179,32 @@ namespace SickSharp.Encoder
                     val = uint16;
                     break;
                 case BigInteger bigint:
-                    return addBigInt(bigint);
+                    return AddBigInt(bigint);
                 case BigDecimal bigDecimal:
-                    return addBigDec(bigDecimal);
+                    return AddBigDec(bigDecimal);
                 default:
                     throw new InvalidDataException($"BUG: Unexpected integer: `{v.Value}`");
             }
 
-            if (val <= SByte.MaxValue && val >= SByte.MinValue)
+            if (val <= sbyte.MaxValue && val >= sbyte.MinValue)
             {
                 return new SickRef(SickKind.SByte, (sbyte)val);
             }
 
-            if (val <= Int16.MaxValue && val >= Int16.MinValue)
+            if (val <= short.MaxValue && val >= short.MinValue)
             {
                 return new SickRef(SickKind.Short, (short)val);
             }
 
-            if (val <= Int32.MaxValue && val >= Int32.MinValue)
+            if (val <= int.MaxValue && val >= int.MinValue)
             {
-                return addInt(Convert.ToInt32(val));
+                return AddInt(Convert.ToInt32(val));
             }
 
-            return addLong(val);
+            return AddLong(val);
         }
 
-        private SickRef handleFloat(JValue v)
+        private SickRef HandleFloat(JValue v)
         {
             double val;
             switch (v.Value)
@@ -210,61 +221,57 @@ namespace SickSharp.Encoder
                     throw new InvalidDataException($"BUG: Unexpected float: `{v}`");
             }
 
-            if (val <= Single.MaxValue && val >= Single.MinValue)
+            if (val <= float.MaxValue && val >= float.MinValue)
             {
-                return addFloat(Convert.ToSingle(val));
+                return AddFloat(Convert.ToSingle(val));
             }
 
-            return addDouble(val);
+            return AddDouble(val);
         }
 
-        private SickRef addString(String s)
+        private SickRef AddString(string s)
         {
             return new SickRef(SickKind.String, _strings.Add(s));
         }
-        
-        private SickRef addInt(Int32 s)
+
+        private SickRef AddInt(int s)
         {
             return new SickRef(SickKind.Int, _ints.Add(s));
         }
 
-        private SickRef addLong(Int64 s)
+        private SickRef AddLong(long s)
         {
             return new SickRef(SickKind.Long, _longs.Add(s));
         }
 
-        private SickRef addBigInt(BigInteger s)
+        private SickRef AddBigInt(BigInteger s)
         {
             return new SickRef(SickKind.BigInt, _bigints.Add(s));
         }
 
-        private SickRef addFloat(Single s)
+        private SickRef AddFloat(float s)
         {
             return new SickRef(SickKind.Float, _floats.Add(s));
         }
 
-        private SickRef addDouble(Double s)
+        private SickRef AddDouble(Double s)
         {
             return new SickRef(SickKind.Double, _doubles.Add(s));
         }
 
-        private SickRef addBigDec(BigDecimal s)
+        private SickRef AddBigDec(BigDecimal s)
         {
             return new SickRef(SickKind.BigDec, _bigDecs.Add(s));
         }
 
-        private SickRef addArr(List<SickRef> s)
+        private SickRef AddArr(List<SickRef> s)
         {
             return new SickRef(SickKind.Array, _arrs.Add(s));
         }
 
-        private SickRef addObj(List<ObjEntry> s)
+        private SickRef AddObj(List<ObjEntry> s)
         {
             return new SickRef(SickKind.Object, _objs.Add(s));
         }
     }
-
-    public record SerializedIndex(byte[] data);
-    public record SerializedTable(string name, byte[] data);
-
 }

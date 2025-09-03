@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SickSharp.Encoder;
 using SickSharp.IO;
-using Index = SickSharp.Encoder.Index;
 
 namespace SickSharp.Test;
 
@@ -264,12 +264,12 @@ public class SickTests
         jreader.DateParseHandling = DateParseHandling.None;
 
         var loaded = JToken.Load(jreader);
-        var index = Index.Create();
-        var root = index.append(RootName, loaded);
+        var index = SickIndex.Create();
+        var root = index.Append(RootName, loaded);
 
         using (BinaryWriter binWriter = new BinaryWriter(File.Open(outPath, FileMode.Create)))
         {
-            var data = index.Serialize().data;
+            var data = index.Serialize().Data;
             Console.WriteLine(
                 $"Serialized with {index.Settings.BucketCount} buckets and {index.Settings.Limit} limit, size: {data.Length} bytes, source: {new FileInfo(inPath).Name}");
             binWriter.Write(data);

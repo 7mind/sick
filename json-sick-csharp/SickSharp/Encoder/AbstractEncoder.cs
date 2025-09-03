@@ -4,38 +4,41 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using SickSharp.Format.Tables;
 using SickSharp.Primitives;
 
+[assembly: InternalsVisibleTo("SickSharp.Test")]
+
 namespace SickSharp.Encoder
 {
-    public interface IByteEncoder<T>
+    internal interface IByteEncoder<T>
     {
         public byte[] Bytes(T value);
     }
 
-    public interface IFixedByteEncoder<T> : IByteEncoder<T>
+    internal interface IFixedByteEncoder<T> : IByteEncoder<T>
     {
         public int BlobSize();
     }
 
-    public class Fixed
+    internal static class Fixed
     {
-        public static readonly IFixedByteEncoder<SByte> ByteEncoder = new ByteEncoder();
-        public static IFixedByteEncoder<Int16> ShortEncoder = new ShortEncoder();
-        public static readonly IFixedByteEncoder<Int32> IntEncoder = new IntEncoder();
-        public static readonly IFixedByteEncoder<UInt16> UInt16Encoder = new UInt16Encoder();
-        public static readonly IFixedByteEncoder<Int64> LongEncoder = new LongEncoder();
-        public static IFixedByteEncoder<Single> FloatEncoder = new FloatEncoder();
-        public static IFixedByteEncoder<Double> DoubleEncoder = new DoubleEncoder();
+        public static readonly IFixedByteEncoder<sbyte> ByteEncoder = new ByteEncoder();
+        public static readonly IFixedByteEncoder<short> ShortEncoder = new ShortEncoder();
+        public static readonly IFixedByteEncoder<int> IntEncoder = new IntEncoder();
+        public static readonly IFixedByteEncoder<ushort> UInt16Encoder = new UInt16Encoder();
+        public static readonly IFixedByteEncoder<long> LongEncoder = new LongEncoder();
+        public static readonly IFixedByteEncoder<float> FloatEncoder = new FloatEncoder();
+        public static readonly IFixedByteEncoder<double> DoubleEncoder = new DoubleEncoder();
         public static readonly IFixedByteEncoder<SickKind> RefKindEncoder = new RefKindEncoder();
         public static readonly IFixedByteEncoder<SickRef> RefEncoder = new RefEncoder();
-        public static IFixedByteEncoder<ObjEntry> ObjEntryEncoder = new ObjEntryEncoder();
-        public static IFixedByteEncoder<SickRoot> RootEncoder = new RootEncoder();
+        public static readonly IFixedByteEncoder<ObjEntry> ObjEntryEncoder = new ObjEntryEncoder();
+        public static readonly IFixedByteEncoder<SickRoot> RootEncoder = new RootEncoder();
     }
 
-    class ByteEncoder : IFixedByteEncoder<SByte>
+    internal class ByteEncoder : IFixedByteEncoder<sbyte>
     {
         public byte[] Bytes(sbyte value)
         {
@@ -48,7 +51,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class ShortEncoder : IFixedByteEncoder<Int16>
+    internal class ShortEncoder : IFixedByteEncoder<short>
     {
         public byte[] Bytes(short value)
         {
@@ -61,7 +64,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class IntEncoder : IFixedByteEncoder<Int32>
+    internal class IntEncoder : IFixedByteEncoder<int>
     {
         public byte[] Bytes(int value)
         {
@@ -74,9 +77,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    class UInt16Encoder : IFixedByteEncoder<UInt16>
+    internal class UInt16Encoder : IFixedByteEncoder<ushort>
     {
-        public byte[] Bytes(UInt16 value)
+        public byte[] Bytes(ushort value)
         {
             return BitConverter.IsLittleEndian ? BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(value)) : BitConverter.GetBytes(value);
         }
@@ -87,7 +90,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class LongEncoder : IFixedByteEncoder<Int64>
+    internal class LongEncoder : IFixedByteEncoder<long>
     {
         public byte[] Bytes(long value)
         {
@@ -100,7 +103,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class FloatEncoder : IFixedByteEncoder<Single>
+    internal class FloatEncoder : IFixedByteEncoder<float>
     {
         public byte[] Bytes(float value)
         {
@@ -114,7 +117,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class DoubleEncoder : IFixedByteEncoder<Double>
+    internal class DoubleEncoder : IFixedByteEncoder<double>
     {
         public byte[] Bytes(double value)
         {
@@ -128,7 +131,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefKindEncoder : IFixedByteEncoder<SickKind>
+    internal class RefKindEncoder : IFixedByteEncoder<SickKind>
     {
         public byte[] Bytes(SickKind value)
         {
@@ -141,7 +144,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefEncoder : IFixedByteEncoder<SickRef>
+    internal class RefEncoder : IFixedByteEncoder<SickRef>
     {
         public byte[] Bytes(SickRef value)
         {
@@ -154,11 +157,11 @@ namespace SickSharp.Encoder
         }
     }
 
-    class ObjEntryEncoder : IFixedByteEncoder<ObjEntry>
+    internal class ObjEntryEncoder : IFixedByteEncoder<ObjEntry>
     {
         public byte[] Bytes(ObjEntry value)
         {
-            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Value), }).Concatenate();
+            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Value) }).Concatenate();
         }
 
         public int BlobSize()
@@ -167,11 +170,11 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RootEncoder : IFixedByteEncoder<SickRoot>
+    internal class RootEncoder : IFixedByteEncoder<SickRoot>
     {
         public byte[] Bytes(SickRoot value)
         {
-            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Reference), }).Concatenate();
+            return (new List<byte[]> { Fixed.IntEncoder.Bytes(value.Key), Fixed.RefEncoder.Bytes(value.Reference) }).Concatenate();
         }
 
         public int BlobSize()
@@ -181,14 +184,14 @@ namespace SickSharp.Encoder
     }
 
 
-    public interface IFixedArrayByteEncoder<T> : IByteEncoder<T>
+    internal interface IFixedArrayByteEncoder<T> : IByteEncoder<T>
     {
         public int ElementSize();
     }
 
-    class FixedArrayByteEncoder<T> : IFixedArrayByteEncoder<List<T>>
+    internal class FixedArrayByteEncoder<T> : IFixedArrayByteEncoder<List<T>>
     {
-        private IFixedByteEncoder<T> _elementEncoder;
+        private readonly IFixedByteEncoder<T> _elementEncoder;
 
         public FixedArrayByteEncoder(IFixedByteEncoder<T> elementEncoder)
         {
@@ -207,7 +210,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class RefListEncoder : IFixedArrayByteEncoder<List<SickRef>>
+    internal class RefListEncoder : IFixedArrayByteEncoder<List<SickRef>>
     {
         public byte[] Bytes(List<SickRef> value)
         {
@@ -220,7 +223,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    class ObjListEncoder : IFixedArrayByteEncoder<List<ObjEntry>>
+    internal class ObjListEncoder : IFixedArrayByteEncoder<List<ObjEntry>>
     {
         private readonly Bijection<string> _strings;
         private readonly ObjIndexing _settings;
@@ -251,7 +254,7 @@ namespace SickSharp.Encoder
                     toIndex.Add(new ObjIndexEntry(objEntry.Key, objEntry.Value, hash, bucket));
                 }
 
-                var ordered = toIndex.OrderBy(obj => obj.hash).ToList();
+                var ordered = toIndex.OrderBy(obj => obj.Hash).ToList();
 
                 data = ordered.Select(e => new ObjEntry(e.Key, e.Value)).ToList();
 
@@ -260,11 +263,11 @@ namespace SickSharp.Encoder
                 for (var i = 0; i < ordered.Count; i++)
                 {
                     var e = ordered[i];
-                    var currentVal = startIndexes[e.bucket];
+                    var currentVal = startIndexes[e.Bucket];
                     if (currentVal == ObjIndexing.MaxIndex)
                     {
                         Debug.Assert(i >= 0 && i < ObjIndexing.MaxIndex);
-                        startIndexes[e.bucket] = (ushort)i;
+                        startIndexes[e.Bucket] = (ushort)i;
                     }
                 }
 
@@ -291,7 +294,7 @@ namespace SickSharp.Encoder
             var elements = new List<byte[]>
             {
                 new FixedArrayByteEncoder<UInt16>(Fixed.UInt16Encoder).Bytes(index)[Fixed.IntEncoder.BlobSize()..],
-                new FixedArrayByteEncoder<ObjEntry>(Fixed.ObjEntryEncoder).Bytes(data),
+                new FixedArrayByteEncoder<ObjEntry>(Fixed.ObjEntryEncoder).Bytes(data)
             };
             return elements.Concatenate();
         }
@@ -302,10 +305,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    public record ObjIndexEntry(int Key, SickRef Value, long hash, int bucket);
+    internal record ObjIndexEntry(int Key, SickRef Value, long Hash, int Bucket);
 
-
-    class RootListEncoder : IFixedArrayByteEncoder<List<SickRoot>>
+    internal class RootListEncoder : IFixedArrayByteEncoder<List<SickRoot>>
     {
         public byte[] Bytes(List<SickRoot> value)
         {
@@ -318,23 +320,23 @@ namespace SickSharp.Encoder
         }
     }
 
-    class FixedArray
+    internal static class FixedArray
     {
         public static IFixedArrayByteEncoder<List<ObjEntry>> ObjListEncoder(Bijection<string> strings, ObjIndexing settings)
         {
             return new ObjListEncoder(strings, settings);
         }
 
-        public static IFixedArrayByteEncoder<List<SickRef>> RefListEncoder = new RefListEncoder();
-        public static IFixedArrayByteEncoder<List<SickRoot>> RootListEncoder = new RootListEncoder();
+        public static readonly IFixedArrayByteEncoder<List<SickRef>> RefListEncoder = new RefListEncoder();
+        public static readonly IFixedArrayByteEncoder<List<SickRoot>> RootListEncoder = new RootListEncoder();
     }
 
 
-    public interface IVarByteEncoder<T> : IByteEncoder<T>
+    internal interface IVarByteEncoder<T> : IByteEncoder<T>
     {
     }
 
-    class StringEncoder : IVarByteEncoder<string>
+    internal class StringEncoder : IVarByteEncoder<string>
     {
         public byte[] Bytes(string value)
         {
@@ -342,7 +344,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    public class BigIntEncoder : IVarByteEncoder<BigInteger>
+    internal class BigIntEncoder : IVarByteEncoder<BigInteger>
     {
         public byte[] Bytes(BigInteger value)
         {
@@ -350,7 +352,7 @@ namespace SickSharp.Encoder
         }
     }
 
-    public class BigDecEncoder : IVarByteEncoder<BigDecimal>
+    internal class BigDecEncoder : IVarByteEncoder<BigDecimal>
     {
         public byte[] Bytes(BigDecimal value)
         {
@@ -365,21 +367,20 @@ namespace SickSharp.Encoder
         }
     }
 
-    public class Variable
+    internal static class Variable
     {
-        public static IVarByteEncoder<String> StringEncoder = new StringEncoder();
-        public static IVarByteEncoder<BigInteger> BigIntEncoder = new BigIntEncoder();
-        public static IVarByteEncoder<BigDecimal> BigDecimalEncoder = new BigDecEncoder();
+        public static readonly IVarByteEncoder<string> StringEncoder = new StringEncoder();
+        public static readonly IVarByteEncoder<BigInteger> BigIntEncoder = new BigIntEncoder();
+        public static readonly IVarByteEncoder<BigDecimal> BigDecimalEncoder = new BigDecEncoder();
     }
 
-
-    public interface IVarArrayByteEncoder<T> : IByteEncoder<List<T>>
+    internal interface IVarArrayByteEncoder<T> : IByteEncoder<List<T>>
     {
     }
 
-    class VarArrayEncoder<T> : IVarArrayByteEncoder<T>
+    internal class VarArrayEncoder<T> : IVarArrayByteEncoder<T>
     {
-        private IVarByteEncoder<T> _elementEncoder;
+        private readonly IVarByteEncoder<T> _elementEncoder;
 
         public VarArrayEncoder(IVarByteEncoder<T> elementEncoder)
         {
@@ -396,9 +397,9 @@ namespace SickSharp.Encoder
         }
     }
 
-    class FixedArrayEncoder<T> : IVarArrayByteEncoder<T>
+    internal class FixedArrayEncoder<T> : IVarArrayByteEncoder<T>
     {
-        private IFixedArrayByteEncoder<T> _elementEncoder;
+        private readonly IFixedArrayByteEncoder<T> _elementEncoder;
 
         public FixedArrayEncoder(IFixedArrayByteEncoder<T> elementEncoder)
         {
