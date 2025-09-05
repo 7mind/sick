@@ -5,6 +5,8 @@ val circeVersion = "0.14.13"
 val scalatestVersion = "3.2.19"
 val zstdVersion = "1.5.7-4"
 val nodeTypesVersion = "18.11.9"
+// Can't convert latest node due to error: `not found: type TReturn`
+// val nodeTypesVersion = "24.3.1"
 
 lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
@@ -57,16 +59,14 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += "com.github.luben" % "zstd-jni" % zstdVersion % Test
   )
   .jsSettings(
-    // sourced https://github.com/ScalablyTyped/Demos/blob/558213f6e21e6afbc6f015e06d053038f3a4e66f/build.sbt#L325
+    // sourced from https://github.com/ScalablyTyped/Demos/blob/558213f6e21e6afbc6f015e06d053038f3a4e66f/build.sbt#L325
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv,
     stStdlib := List("esnext"),
     stUseScalaJsDom := false,
-    Compile / npmDependencies ++= Seq(
+    scalaJSLinkerConfig := { scalaJSLinkerConfig.value.withBatchMode(true).withModuleKind(ModuleKind.CommonJSModule) },
+    Test / npmDependencies ++= Seq(
       "@types/node" -> nodeTypesVersion
     ),
-//    Compile / npmDependencies ++= Seq(
-//      "@types/node" -> "24.3.1" // Can't convert latest node due to error: `not found: type TReturn`
-//    )
   )
   .jsConfigure(
     project =>
