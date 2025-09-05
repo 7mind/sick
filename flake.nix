@@ -13,22 +13,27 @@
             inherit system;
             config.allowUnfree = true;
           };
+          sharedPkgs = with pkgs.buildPackages; [
+            ncurses
+            graalvm-ce
+            sbt
+            dotnet-sdk_9
+            nodejs
+
+            git
+
+            openssl
+          ];
         in
         {
-          devShells.default = pkgs.mkShell {
-            nativeBuildInputs = with pkgs.buildPackages; [
-              ncurses
-              graalvm-ce
-              sbt
-              dotnet-sdk_9
+          devShells.default = pkgs.mkShell { nativeBuildInputs = sharedPkgs; };
 
-              git
+          # use nix develop .#ide to enable JetBrains Rider from nixpkgs
+          devShells.ide = pkgs.mkShell {
+            nativeBuildInputs = with pkgs.buildPackages; sharedPkgs ++ [
               jetbrains.rider
-              
-              openssl
             ];
             # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-
           };
         }
       );
