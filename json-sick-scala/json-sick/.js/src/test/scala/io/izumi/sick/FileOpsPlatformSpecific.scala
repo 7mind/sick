@@ -1,7 +1,8 @@
 package io.izumi.sick
 
 // Using manual bindings to avoid CI errors caused by ScalablyTyped. Uncomment "@types/node" and sbt-converter and ScalablyTypedConverterPlugin and its options to use generated bindings.
-import manualNodeBindings.{Fs, Path}
+import io.izumi.sick.manualNodeBindings.{Fs, Path}
+import izumi.sick.jsapi.{bytesToUint8Array, uint8ArrayToBytes}
 //import typings.node.fsMod as Fs
 //import typings.node.fsMod.MakeDirectoryOptions
 //import typings.node.pathMod as Path
@@ -68,15 +69,11 @@ abstract class FileOpsPlatformSpecific extends FileOps {
   override def readAllBytes(path: String): Array[Byte] = {
 //    val buffer = Fs.readFileSync_Buffer(path)
     val buffer = Fs.readFileSync(path)
-    val uint8Array = buffer.subarray()
-    new Int8Array(uint8Array.buffer, uint8Array.byteOffset, uint8Array.length).toArray
+    uint8ArrayToBytes(buffer.subarray())
   }
 
   override def writeAllBytes(path: String, bytes: Array[Byte]): Unit = {
-    import scala.scalajs.js.typedarray.*
-    val int8Array = bytes.toTypedArray
-    val uint8Array = new Uint8Array(int8Array.buffer, int8Array.byteOffset, int8Array.length)
-    Fs.writeFileSync(path, uint8Array)
+    Fs.writeFileSync(path, bytesToUint8Array(bytes))
   }
 
   override def delete(path: String): Unit = {

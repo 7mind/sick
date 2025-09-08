@@ -21,8 +21,7 @@ object SickJsAPI {
     */
   @JSExportTopLevel("decodeSickUint8Array")
   def decodeSickUint8Array(uint8Array: Uint8Array): js.Dictionary[js.Any] = {
-    val bytes = new Int8Array(uint8Array.buffer, uint8Array.byteOffset, uint8Array.length).toArray
-    val roIndex = EagerEBAReader.readEBABytes(bytes)
+    val roIndex = EagerEBAReader.readEBABytes(uint8ArrayToBytes(uint8Array))
     roIndex.roots.asIterable
       .map {
         root =>
@@ -62,6 +61,19 @@ object SickJsAPI {
     encodeToSickUint8ArrayImpl(objs)(io.circe.jawn.parse(_).toTry.get)
   }
 
+  /**
+    * Accepts dictionary where keys are root names and values are Uint8Arrays containing valid UTF-8 text that parse into JSON, returns a SICK-encoded binary Uint8Array
+    *
+    * `encodeJSONBytesToSickUint8Array({ data: new Uint8Array(file.buffer)}) => Uint8Array`
+    */
+  @JSExportTopLevel("encodeJSONBytesToSickUint8Array")
+  def encodeJSONBytesToSickUint8Array(objs: js.Dictionary[Uint8Array]): Uint8Array = {
+    encodeToSickUint8ArrayImpl(objs) {
+      uint8Array =>
+        io.circe.jawn.parseByteArray(uint8ArrayToBytes(uint8Array)).toTry.get
+    }
+  }
+
   private def encodeToSickUint8ArrayImpl[A](objs: js.Dictionary[A])(f: A => Json): Uint8Array = {
     val jsons = objs.iterator.map {
       case (rootName, a) =>
@@ -70,7 +82,6 @@ object SickJsAPI {
     val roIndex = SICK.packJsons(jsons, dedup = false, dedupPrimitives = false, avoidBigDecimals = false, SICKSettings.default).index
     val res = EBAWriter.writeBytes(roIndex, SICKWriterParameters(TableWriteStrategy.SinglePassInMemory))
     val bytes = res._1.toArrayUnsafe()
-    val int8Array = bytes.toTypedArray
-    new Uint8Array(int8Array.buffer, int8Array.byteOffset, int8Array.length)
+    bytesToUint8Array(bytes)
   }
 }

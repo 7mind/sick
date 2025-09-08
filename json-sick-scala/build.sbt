@@ -104,6 +104,15 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
  * encodeJSONStringsToSickUint8Array({ data: '{ "a": 1 }'}) => Uint8Array
  *
  * // export function encodeJSONStringsToSickUint8Array(objs: {[key: string]: string}): Uint8Array;
+ *
+ * @function encodeJSONBytesToSickUint8Array
+ *
+ * Accepts dictionary where keys are root names and values are Uint8Arrays containing valid UTF-8 text that parse into JSON, returns a SICK-encoded binary Uint8Array
+ *
+ * @example
+ * encodeJSONBytesToSickUint8Array({ data: new Uint8Array(file.buffer)}) => Uint8Array
+ *
+ * // export function encodeJSONBytesToSickUint8Array(objs: {[key: string]: Uint8Array}): Uint8Array;
  */
 """.stripMargin)
     },
