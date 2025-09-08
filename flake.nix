@@ -15,21 +15,35 @@
           };
         in
         {
-          devShells.default = pkgs.mkShell {
-            nativeBuildInputs = with pkgs.buildPackages; [
-              ncurses
-              graalvm-ce
-              sbt
-              dotnet-sdk_9
+          devShells = {
+            default = pkgs.mkShell {
+              nativeBuildInputs = with pkgs.buildPackages; [
+                ncurses
+                graalvm-ce
+                sbt
+                dotnet-sdk_9
 
-              git
-              jetbrains.rider
+                git
+                jetbrains.rider
               
-              openssl
-            ];
-            # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+                openssl
+              ];
+              # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+            };
+            ci = pkgs.mkShell {
+              nativeBuildInputs = with pkgs.buildPackages; [
+                ncurses
+                graalvm-ce
+                sbt
+                dotnet-sdk_9
 
+                git
+              
+                openssl
+              ];
+              # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+            }; 
           };
-        }
+        };
       );
 }
