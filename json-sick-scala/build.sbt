@@ -61,11 +61,17 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(
     // sourced from https://github.com/ScalablyTyped/Demos/blob/558213f6e21e6afbc6f015e06d053038f3a4e66f/build.sbt#L325
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv,
-    stStdlib := List("esnext"),
-    stUseScalaJsDom := false,
+//    stStdlib := List("esnext"),
+//    stUseScalaJsDom := false,
+//    Test / npmDependencies ++= Seq(
+//      // Using manual bindings to avoid CI errors caused by ScalablyTyped. Uncomment "@types/node" and sbt-converter and ScalablyTypedConverterPlugin and its options to use generated bindings.
+//      "@types/node" -> nodeTypesVersion
+//    ),
+    libraryDependencies += "io.circe" %%% "circe-scalajs" % circeVersion,
     scalaJSLinkerConfig := {
       scalaJSLinkerConfig.value
-        .withBatchMode(true).withModuleKind(ModuleKind.CommonJSModule)
+        .withBatchMode(true)
+        .withModuleKind(ModuleKind.CommonJSModule)
         .withJSHeader("""/**
  * @function decodeSickUint8Array
  * Accepts an instance of `Uint8Array`, returns a dictionary where keys are root names and values are JSON
@@ -101,16 +107,12 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
  */
 """.stripMargin)
     },
-    Test / npmDependencies ++= Seq(
-      "@types/node" -> nodeTypesVersion
-    ),
-    libraryDependencies += "io.circe" %%% "circe-scalajs" % circeVersion,
   )
   .jsConfigure(
     project =>
       project
         .enablePlugins(ScalaJSBundlerPlugin)
-        .enablePlugins(ScalablyTypedConverterPlugin)
+//        .enablePlugins(ScalablyTypedConverterPlugin)
   )
 
 lazy val `json-sickJVM` = `json-sick`.jvm

@@ -1,11 +1,51 @@
 package io.izumi.sick
 
-import typings.node.fsMod as Fs
-import typings.node.fsMod.MakeDirectoryOptions
-import typings.node.pathMod as Path
+// Using manual bindings to avoid CI errors caused by ScalablyTyped. Uncomment "@types/node" and sbt-converter and ScalablyTypedConverterPlugin and its options to use generated bindings.
+import manualNodeBindings.{Fs, Path}
+//import typings.node.fsMod as Fs
+//import typings.node.fsMod.MakeDirectoryOptions
+//import typings.node.pathMod as Path
 
 import java.io.{ByteArrayInputStream, InputStream}
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray.{Int8Array, Uint8Array}
+
+object manualNodeBindings {
+
+  @JSImport("fs", JSImport.Namespace)
+  @js.native
+  object Fs extends js.Any {
+    def statSync(path: String): js.UndefOr[Stat] = js.native
+    def readdirSync(path: String): js.Array[String] = js.native
+    def writeFileSync(path: String, array: Uint8Array): Unit = js.native
+    def unlinkSync(path: String): Unit = js.native
+    def mkdirSync(path: String, options: js.Object): js.UndefOr[String] = js.native
+
+    def readFileSync(path: String): Buffer = js.native
+  }
+
+  @JSImport("path", JSImport.Namespace)
+  @js.native
+  object Path extends js.Any {
+    def join(s: String*): String = js.native
+    def basename(s: String): String = js.native
+  }
+
+  @js.native
+  trait Stat extends js.Object {
+    def isDirectory(): Boolean = js.native
+    def isFile(): Boolean = js.native
+
+    var size: Double = js.native
+  }
+
+  @js.native
+  trait Buffer extends js.Object {
+    def subarray(): Uint8Array
+  }
+
+}
 
 abstract class FileOpsPlatformSpecific extends FileOps {
 
@@ -14,7 +54,7 @@ abstract class FileOpsPlatformSpecific extends FileOps {
   }
 
   override def walkFiles(path: String, predicate: String => Boolean): List[FileInfo] = {
-    val stats = Fs.statSync.apply(path).get
+    val stats = Fs.statSync(path).get
     if (stats.isDirectory()) {
       Fs.readdirSync(path).toList.flatMap(name => walkFiles(Path.join(path, name), predicate))
     } else if (stats.isFile()) {
@@ -26,7 +66,8 @@ abstract class FileOpsPlatformSpecific extends FileOps {
   }
 
   override def readAllBytes(path: String): Array[Byte] = {
-    val buffer = Fs.readFileSync_Buffer(path)
+//    val buffer = Fs.readFileSync_Buffer(path)
+    val buffer = Fs.readFileSync(path)
     val uint8Array = buffer.subarray()
     new Int8Array(uint8Array.buffer, uint8Array.byteOffset, uint8Array.length).toArray
   }
@@ -47,6 +88,7 @@ abstract class FileOpsPlatformSpecific extends FileOps {
   }
 
   override def createDirectories(path: String): Unit = {
-    val _ = Fs.mkdirSync(path, MakeDirectoryOptions().setRecursive(true))
+//    val _ = Fs.mkdirSync(path, MakeDirectoryOptions().setRecursive(true))
+    val _ = Fs.mkdirSync(path, js.Dynamic.literal(recursive = true))
   }
 }
