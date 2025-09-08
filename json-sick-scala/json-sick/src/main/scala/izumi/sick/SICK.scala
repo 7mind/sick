@@ -16,6 +16,16 @@ object SICK {
     EBA(structure, root, rwIndex)
   }
 
+  def packJsons(jsons: Map[String, Json], dedup: Boolean, dedupPrimitives: Boolean, avoidBigDecimals: Boolean, settings: SICKSettings = SICKSettings.default): EBAs = {
+    val rwIndex = EBABuilder(dedup, dedupPrimitives)
+    val roots = jsons.map {
+      case (name, json) =>
+        rwIndex.append(name, json, avoidBigDecimals)
+    }.toList
+    val structure = rwIndex.freeze(settings)
+    EBAs(structure, roots, rwIndex)
+  }
+
   final val writer: EBAWriter.type = EBAWriter
 
   final val incrementalReader: IncrementalEBAReader.type = IncrementalEBAReader
@@ -23,4 +33,6 @@ object SICK {
   final val eagerReader: EagerEBAReader.type = EagerEBAReader
 
   final case class EBA(index: EBAStructure, root: Ref, source: EBABuilder)
+
+  final case class EBAs(index: EBAStructure, roots: List[Ref], source: EBABuilder)
 }

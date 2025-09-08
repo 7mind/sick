@@ -47,7 +47,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
             println("=" * 80)
             println(s"Processing $input")
             val json = FileOps.readAllBytes(input.path)
-            val parsed = jawn.parse(new String(json, StandardCharsets.UTF_8)).toOption.get
+            val parsed = jawn.parse(new String(json, StandardCharsets.UTF_8)).toTry.get
 
             Seq(true, false).flatMap(x => Seq((x, true), (x, false))).flatMap(y => Seq((y._1, y._2, true), (y._1, y._2, false))).foreach {
               case (dedup, dedupPrimitives, avoidBigDecimals) =>

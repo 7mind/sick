@@ -32,8 +32,9 @@ abstract class FileOpsPlatformSpecific extends FileOps {
   }
 
   override def writeAllBytes(path: String, bytes: Array[Byte]): Unit = {
-    import scala.scalajs.js.JSConverters.*
-    val uint8Array = Uint8Array.from(bytes.toJSArray, (_: Byte).toShort)
+    import scala.scalajs.js.typedarray.*
+    val int8Array = bytes.toTypedArray
+    val uint8Array = new Uint8Array(int8Array.buffer, int8Array.byteOffset, int8Array.length)
     Fs.writeFileSync(path, uint8Array)
   }
 
