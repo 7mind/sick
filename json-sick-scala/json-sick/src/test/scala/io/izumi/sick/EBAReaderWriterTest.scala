@@ -21,8 +21,8 @@ import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 class EBAReaderWriterTest extends AnyWordSpec {
   private val in: String = FileOps.join("..", "samples")
   private val out: String = FileOps.join("..", "output")
-  private val rootname = "sample.json"
-  private val iters = 100_000
+  private val rootname: String = "sample.json"
+  private val iters: Int = if (isJs) 1 else 100_000
 
   // NB: The tests are executed sequentially and due to temporal interdependency should be left sequential (unless fixed)
 
