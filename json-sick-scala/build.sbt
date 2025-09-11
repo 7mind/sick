@@ -68,6 +68,10 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
 //      "@types/node" -> nodeTypesVersion
 //    ),
     libraryDependencies += "io.circe" %%% "circe-scalajs" % circeVersion,
+    Compile / fullOptJS / artifactPath := {
+      def outerRef = ProjectRef(file("."), "json-sick-scala")
+      (outerRef / target).value / "dist" / s"${moduleName.value}-${scalaBinaryVersion.value}-fullOpt.js"
+    },
     scalaJSLinkerConfig := {
       scalaJSLinkerConfig.value
         .withBatchMode(true)
