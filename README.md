@@ -148,6 +148,8 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 | Scala    | Yes                    | Yes                    | No             | No              | Circe         | N/A         |
 | C#       | Yes                    | Yes                    | No             | No              | JSON.Net      | Custom      |
 
+Also we provide basic JavaScript implementation backed by Scala.JS.
+
 #### Supported types
 
 A type marker is represented as a single-byte unsigned integer. The possible values are:
