@@ -153,8 +153,8 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 | Cursors 🧭 | ✅ | ✅ | ❌ |
 | Stream Encoder 🌊 | ❌ | ❌ | ❌ |
 | Stream Decoder 🌀 | ❌ | ❌ | ❌ |
-| Encoder AST 🌳 | Circe | JSON.Net | Json |
-| Decoder AST 🌿 | Circe | Custom | Json |
+| Encoder AST 🌳 | Circe | JSON.Net | JS Objects/Json |
+| Decoder AST 🌿 | Circe | Custom | JS Objects/Json |
 
 Also we provide basic JavaScript implementation backed by Scala.JS.
 
