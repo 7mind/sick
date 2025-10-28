@@ -207,8 +207,8 @@ Current implementation has the following limitations:
 3. Maximum amount of array elements: `2^32`
 4. Maximum amount of unique values of the same type: `2^32`
 
-These limitations may be lifted by using more bytes to store offset pointers and counts on binary level.
-Though it's hard to imagine a real application which would need that.
+These limitations may be lifted by using more bytes to store offset pointers and counts on binary level. 
+Though it's hard to imagine a real application which would need that, a large structure can always be split into smaller chunks at client side.
 
 ### Project status
 
