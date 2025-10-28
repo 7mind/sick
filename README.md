@@ -144,7 +144,7 @@ In real implementation it's more convenient to just create a separate "root" typ
 
 ## Implementation
 
-Currently we provide C# and Scala implementations of SICK indexed binary JSON storage. Currently the code in this repository has no streaming capabilities. That may change in the future. It's not a hard problem to add streaming support, your contributions are welcome.
+Currently we provide C# and Scala implementations of SICK indexed binary JSON storage. Currently the code in this repository has no streaming capabilities. That may change in the future. It's not a hard problem to add streaming support, your contributions are welcome. It's harder to create a streaming abstraction which would cover enough usecases to be useful for broad audience.
 
 | Feature 🔧 | Scala 🟣 | C# 🔵 | JS (ScalaJS) 🟡 |
 |------------|-----------|--------|----------------|
