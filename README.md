@@ -80,7 +80,9 @@ array:0[0] = object:1
 array:0[1] = remove
 ```
 
-There is an interesting observation: when a stream does not contain removal entries it can be safely reordered. Unfortunately, in some usecases the receiver still may need to accumulate the entries in a buffer until it can sort them out.
+There is an interesting observation: when a stream does not contain removal entries it can be safely reordered. 
+
+Also this representation eliminates many cases where full accumulation is required. Obviously, not all of them, the receiver still may need to accumulate the entries in a buffer until it can sort them out.
 
 ### Binary format: EBA (Efficient Binary Aggregate)
 
