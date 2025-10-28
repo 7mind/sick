@@ -206,3 +206,10 @@ Current implementation has the following limitations:
 
 These limitations may be lifted by using more bytes to store offset pointers and counts on binary level.
 Though it's hard to imagine a real application which would need that.
+
+### Project status
+
+1. SICK is battle-tested and covered by "good enough" test suite which includes cross-implementation correctness tests (C#<->Scala).
+2. SICK powers several proprietary applications running on mobile devices and in the browser, some of which have large userbases (hundreds of thousands DAU).
+3. No known open source users
+4. More implementations for various platforms are needed, 3rd party implementations are very welcome
