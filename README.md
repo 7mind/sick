@@ -145,7 +145,7 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 
 | Language | Binary Storage Encoder | Binary Storage Decoder | Stream Encoder |  Stream Decoder | Encoder AST   | Decoder AST |
 | -------- | ---------------------- | -----------------------| -------------- | --------------- | ------------  | ----------- |
-| Scala    | Yes                    | Yes                    | No             | No              | Circe         | N/A         |
+| Scala    | Yes                    | Yes                    | No             | No              | Circe         | Circe       |
 | C#       | Yes                    | Yes                    | No             | No              | JSON.Net      | Custom      |
 
 Also we provide basic JavaScript implementation backed by Scala.JS.
