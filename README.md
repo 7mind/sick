@@ -211,5 +211,5 @@ Though it's hard to imagine a real application which would need that.
 
 1. SICK is battle-tested and covered by "good enough" test suite which includes cross-implementation correctness tests (C#<->Scala).
 2. SICK powers several proprietary applications running on mobile devices and in the browser, some of which have large userbases (hundreds of thousands DAU).
-3. No known open source users
-4. More implementations for various platforms are needed, 3rd party implementations are very welcome
+3. No known open source users as of Oct/2025.
+4. More implementations for various platforms are needed, 3rd party implementations are very welcome.
