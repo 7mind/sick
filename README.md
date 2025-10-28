@@ -7,13 +7,16 @@
 
 `SICK` is an approach to handle `JSON`-like structures and various libraries implementing it.
 
-`SICK` allows you to achieve the following:
+`SICK` as a library allows you to achieve the following:
 
 1. Store `JSON`-like data in efficient indexed binary form
 2. Avoid reading and parsing whole `JSON` files and access only the data you need just in time
 3. Store multiple `JSON`-like structures in one deduplicating storage
-4. Implement perfect streaming parsers for `JSON`-like data
-5. Efficiently stream updates for `JSON`-like data
+
+`SICK` as a concept would also allow you:
+
+1. Implement perfect streaming parsers for `JSON`-like data
+2. Efficiently stream updates for `JSON`-like data
 
 The tradeoff for these benefits is somehow more complicated and less efficient encoder.
 
