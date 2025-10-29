@@ -23,6 +23,8 @@
             git
 
             openssl
+
+            scala-cli
           ];
         in
         {
