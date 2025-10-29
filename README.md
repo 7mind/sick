@@ -267,8 +267,13 @@ dotnet add package SickSharp
 **Basic encoding and decoding:**
 
 ```csharp
+#r "nuget: Izumi.SICK, *"
+#r "nuget: Newtonsoft.Json, 13.0.3"
+
 using Newtonsoft.Json.Linq;
+using SickSharp;
 using SickSharp.Encoder;
+using SickSharp.Format;
 using SickSharp.IO;
 
 // Parse JSON
@@ -308,9 +313,21 @@ using (var reader = SickReader.OpenFile(
 }
 ```
 
+The example above can be saved to a file (e.g., `example.csx`) and run directly with:
+```bash
+dotnet script example.csx
+```
+
 **Query-based access (C# only):**
 
 ```csharp
+#r "nuget: Izumi.SICK, *"
+#r "nuget: Newtonsoft.Json, 13.0.3"
+
+using SickSharp;
+using SickSharp.Format;
+using SickSharp.IO;
+
 using (var reader = SickReader.OpenFile("user.sick",
     ISickCacheManager.NoCache,
     ISickProfiler.Noop(),
