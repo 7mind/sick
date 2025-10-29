@@ -148,8 +148,8 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 
 | Feature 🔧 | Scala 🟣 | C# 🔵 | JS (ScalaJS) 🟡 |
 |------------|-----------|--------|----------------|
-| Binary Storage Encoder 💾 | ✅ | ✅ | ✅ |
-| Binary Storage Decoder 📥 | ✅ | ✅ | ✅ |
+| EBA Encoder 💾 | ✅ | ✅ | ✅ |
+| EBA Decoder 📥 | ✅ | ✅ | ✅ |
 | Cursors 🧭 | ✅ | ✅ | ❌ |
 | Stream Encoder 🌊 | ❌ | ❌ | ❌ |
 | Stream Decoder 🌀 | ❌ | ❌ | ❌ |
