@@ -150,11 +150,12 @@ Currently we provide C# and Scala implementations of SICK indexed binary JSON st
 |------------|-----------|--------|----------------|
 | EBA Encoder 💾 | ✅ | ✅ | ✅ |
 | EBA Decoder 📥 | ✅ | ✅ | ✅ |
+| EBA Encoder AST 🌳 | Circe | JSON.Net | JS Objects/Json |
+| EBA Decoder AST 🌿 | Circe | Custom | JS Objects/Json |
 | Cursors 🧭 | ✅ | ✅ | ❌ |
 | Stream Encoder 🌊 | ❌ | ❌ | ❌ |
 | Stream Decoder 🌀 | ❌ | ❌ | ❌ |
-| Encoder AST 🌳 | Circe | JSON.Net | JS Objects/Json |
-| Decoder AST 🌿 | Circe | Custom | JS Objects/Json |
+
 
 #### Supported types
 
