@@ -25,7 +25,6 @@
             openssl
 
             scala-cli
-            csharprepl
           ];
         in
         {
