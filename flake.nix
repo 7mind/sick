@@ -17,6 +17,7 @@
             ncurses
             graalvm-ce
             sbt
+            scala-cli
             dotnet-sdk_9
             nodejs
 

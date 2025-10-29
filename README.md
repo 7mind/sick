@@ -169,69 +169,89 @@ libraryDependencies += "io.7mind.izumi" %% "json-sick" % "0.0.1" // Check for la
 **Basic encoding and decoding:**
 
 ```scala
+//> using scala "2.13"
+//> using dep "io.circe::circe-core:0.14.13"
+//> using dep "io.circe::circe-jawn:0.14.13"
+//> using dep "io.7mind.izumi::json-sick:latest.integration"
+
 import io.circe._
 import io.circe.jawn.parse
 import izumi.sick.SICK
 import izumi.sick.eba.writer.EBAWriter
-import izumi.sick.eba.reader.EagerEBAReader
-import izumi.sick.model.SICKWriterParameters
-
-// Parse JSON string
-val jsonString = """{"name": "Alice", "age": 30, "city": "NYC"}"""
-val json = parse(jsonString).toTry.get
-
-// Encode to SICK binary format
-val eba = SICK.packJson(
-  json = json,
-  name = "user.json",
-  dedup = true,                // Enable deduplication
-  dedupPrimitives = true,      // Deduplicate primitive values too
-  avoidBigDecimals = false     // Use BigDecimals for precision
-)
-
-// Write to bytes
-val (bytes, info) = EBAWriter.writeBytes(
-  eba.index,
-  SICKWriterParameters.default
-)
-
-// Save to file
+import izumi.sick.eba.reader.{EagerEBAReader, IncrementalEBAReader}
+import izumi.sick.eba.reader.incremental.IncrementalJValue._
+import izumi.sick.model.{SICKWriterParameters, TableWriteStrategy}
+import izumi.sick.sickcirce.CirceTraverser._
 import java.nio.file.{Files, Paths}
-Files.write(Paths.get("user.sick"), bytes.toArrayUnsafe())
 
-// Read back from bytes
-val structure = EagerEBAReader.readEBABytes(bytes.toArrayUnsafe())
+object SickExample {
+  def main(args: Array[String]): Unit = {
+    // Parse JSON string
+    val jsonString = """{"name": "Alice", "age": 30, "city": "NYC"}"""
+    val json = parse(jsonString).toTry.get
 
-// Find and reconstruct the root
-val rootEntry = structure.findRoot("user.json").get
-val reconstructed = structure.reconstruct(rootEntry.ref)
+    // Encode to SICK binary format
+    val eba = SICK.packJson(
+      json = json,
+      name = "user.json",
+      dedup = true,                // Enable deduplication
+      dedupPrimitives = true,      // Deduplicate primitive values too
+      avoidBigDecimals = false     // Use BigDecimals for precision
+    )
 
-println(reconstructed)  // Back to original JSON
+    // Write to bytes
+    val (bytes, info) = EBAWriter.writeBytes(
+      eba.index,
+      SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
+    )
+
+    // Save to file
+    val bytesArray = bytes.toArrayUnsafe()
+    Files.write(Paths.get("user.sick"), bytesArray)
+
+    // Read back from bytes (eager loading)
+    val structure = EagerEBAReader.readEBABytes(bytesArray)
+
+    // Find and reconstruct the root
+    val rootEntry = structure.findRoot("user.json").get
+    val reconstructed = structure.reconstruct(rootEntry.ref)
+
+    println(reconstructed)  // Back to original JSON
+
+    // Or use incremental reader for efficient field access
+    val reader = IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
+    try {
+      val rootRef = reader.getRoot("user.json").get
+
+      // Read specific fields without full deserialization
+      val nameRef = reader.readObjectFieldRef(rootRef, "name")
+      val nameValue = reader.resolve(nameRef)
+      val name = nameValue match {
+        case JString(s) => s
+        case _ => throw new IllegalStateException("Expected string")
+      }
+      println(s"Name: $name")  // "Alice"
+
+      val ageRef = reader.readObjectFieldRef(rootRef, "age")
+      val ageValue = reader.resolve(ageRef)
+      val age = ageValue match {
+        case JByte(b) => b.toInt
+        case JShort(s) => s.toInt
+        case JInt(i) => i
+        case JLong(l) => l.toInt
+        case _ => throw new IllegalStateException(s"Expected numeric type, got: $ageValue")
+      }
+      println(s"Age: $age")  // 30
+    } finally {
+      reader.close()
+    }
+  }
+}
 ```
 
-**Incremental (lazy) reading:**
-
-```scala
-import izumi.sick.eba.reader.IncrementalEBAReader
-import java.nio.file.{Files, Paths}
-
-// Open file for incremental reading
-val stream = Files.newInputStream(Paths.get("user.sick"))
-val reader = IncrementalEBAReader.open(stream, eagerOffsets = false)
-
-try {
-  // Get root reference without loading entire structure
-  val rootRef = reader.getRoot("user.json").get
-
-  // Resolve values on-demand
-  val json = reader.resolveFull(rootRef)
-  println(json)
-
-  // Or traverse manually for fine-grained control
-  // val value = reader.resolve(rootRef)
-} finally {
-  reader.close()
-}
+The example above can be saved to a file (e.g., `example.scala`) and run directly with:
+```bash
+scala-cli example.scala
 ```
 
 ### C#
@@ -271,7 +291,16 @@ using (var reader = SickReader.OpenFile(
     var root = reader.ReadRoot("user.json");
     Console.WriteLine(root);  // Cursor to the root object
 
-    // Convert to JSON
+    // Read specific fields using cursor API (without full deserialization)
+    var nameCursor = root.Read("name");
+    var name = nameCursor.AsString();
+    Console.WriteLine($"Name: {name}");  // "Alice"
+
+    var ageCursor = root.Read("age");
+    var age = ageCursor.AsInt();
+    Console.WriteLine($"Age: {age}");  // 30
+
+    // Or convert entire structure back to JSON
     var jsonResult = reader.ToJson(root.Ref);
     Console.WriteLine(jsonResult);
 }
