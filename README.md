@@ -35,10 +35,12 @@ Encoding is more complex than traditional JSON serialization, but reading become
 | EBA Decoder 📥            | ✅       | ✅    | ✅              |
 | EBA Encoder AST 🌳        | Circe    | JSON.Net | JS Objects  |
 | EBA Decoder AST 🌿        | Circe    | Custom | JS Objects     |
-| Cursors 🧭                | ✅       | ✅    | ❌              |
+| Cursors 🧭                | ⚠️       | ✅    | ❌              |
 | Path Queries 🔍           | ❌       | ✅    | ❌              |
 | Stream Encoder 🌊         | ❌       | ❌    | ❌              |
 | Stream Decoder 🌀         | ❌       | ❌    | ❌              |
+
+Current Scala API for reading SICK structures is less mature than C# one: only basic abstractions are provided. Contributions are welcome.
 
 ## Limitations
 
@@ -163,7 +165,7 @@ Not all accumulation can be eliminated, though - the receiver may still need to 
 Add to your `build.sbt`:
 
 ```scala
-libraryDependencies += "io.7mind.izumi" %% "json-sick" % "0.0.1" // Check for latest version
+libraryDependencies += "io.7mind.izumi" %% "json-sick" % "<Check for latest version>"
 ```
 
 **Basic encoding and decoding:**

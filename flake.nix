@@ -17,13 +17,15 @@
             ncurses
             graalvm-ce
             sbt
-            scala-cli
             dotnet-sdk_9
             nodejs
 
             git
 
             openssl
+
+            scala-cli
+            csharprepl
           ];
         in
         {
