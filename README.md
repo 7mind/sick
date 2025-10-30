@@ -49,7 +49,7 @@ Current Scala API for reading SICK structures is less mature than C# one: only b
 Current implementation constraints:
 
 1. **Maximum object size:** 65,534 keys per object
-2. **Key order:** Object key order is not preserved
+2. **Key order:** Object key order is not preserved (as per [JSON RFC](https://www.rfc-editor.org/rfc/rfc4627#section-1))
 3. **Maximum array elements:** 2³² (4,294,967,296) elements
 4. **Maximum unique values per type:** 2³² (4,294,967,296) unique values
 
