@@ -2,6 +2,7 @@
 [![Latest Release](https://img.shields.io/github/tag/7mind/sick.svg)](https://github.com/7mind/sick/releases)
 [![Maven Central](https://img.shields.io/maven-central/v/io.7mind.izumi/json-sick_2.13.svg)](https://central.sonatype.com/search?q=g:io.7mind.izumi+a:json-sick*)
 [![NuGet](https://img.shields.io/nuget/v/Izumi.SICK.svg)](https://www.nuget.org/packages/Izumi.SICK/)
+[![npm](https://img.shields.io/npm/v/@izumi-framework/json-sick.svg)](https://www.npmjs.com/package/@izumi-framework/json-sick)
 [![Latest version](https://index.scala-lang.org/7mind/sick/latest.svg?color=orange)](https://index.scala-lang.org/7mind/sick)
 [![License](https://img.shields.io/badge/License-BSD--2--Clause-blue.svg)](LICENSE)
 
