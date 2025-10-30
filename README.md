@@ -542,7 +542,7 @@ The name index points into the strings table, and the value reference points to 
 | 6      | TBigInt | Arbitrary precision integer  | Variable, prefixed  | BigInteger   | BigInt     |
 | 7      | TDbl    | Double-precision float       | 8                   | double       | Double     |
 | 8      | TFlt    | Single-precision float       | 4                   | float        | Float      |
-| 9      | TBigDec | Arbitrary precision decimal  | Variable, prefixed  | BigDecimal   | BigDecimal |
+| 9      | TBigDec | Arbitrary precision decimal  | Variable, prefixed  | Custom       | BigDecimal |
 | 10     | TStr    | UTF-8 String                 | Variable, prefixed  | string       | String     |
 | 11     | TArr    | List of array entries        | Variable, prefixed  | Array        | Array      |
 | 12     | TObj    | List of object entries       | Variable, prefixed  | Object       | Object     |
