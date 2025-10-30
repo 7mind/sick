@@ -1,6 +1,8 @@
 # @7mind/json-sick
 
-SICK (Structured Interchange and Compression Kit) - High-performance binary JSON encoding format.
+SICK - High-performance binary storage for JSON-like data structures.
+
+Visit the [SICK GitHub repository](https://github.com/7mind/sick) for more information.
 
 ## Installation
 
@@ -59,6 +61,3 @@ Accepts dictionary where keys are root names and values are Uint8Arrays containi
 
 BSD-2-Clause
 
-## More Information
-
-Visit the [SICK GitHub repository](https://github.com/7mind/sick) for more information.
