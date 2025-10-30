@@ -37,7 +37,7 @@ console.log(decoded); // { data: { a: 2, b: { c: 3 } } }
 
 One-liner:
 
-```
+```bash
 npm install @izumi-framework/json-sick && node -e "
   const { encodeObjToSickUint8Array, decodeSickUint8Array } = require('@izumi-framework/json-sick');
   const encoded = encodeObjToSickUint8Array('data', { a: 2, b: { c: 3 } });
