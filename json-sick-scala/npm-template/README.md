@@ -19,7 +19,7 @@ const {
   encodeObjsToSickUint8Array,
   encodeJSONStringsToSickUint8Array,
   encodeJSONBytesToSickUint8Array
-} = require('@7mind/json-sick');
+} = require('@izumi-framework/json-sick');
 
 // Encode a single object
 const encoded = encodeObjToSickUint8Array("data", { a: 2, b: { c: 3 } });
@@ -33,6 +33,16 @@ const multiEncoded = encodeObjsToSickUint8Array({
 // Decode
 const decoded = decodeSickUint8Array(encoded);
 console.log(decoded); // { data: { a: 2, b: { c: 3 } } }
+```
+
+One-liner:
+
+```
+npm install @izumi-framework/json-sick && node -e "
+  const { encodeObjToSickUint8Array, decodeSickUint8Array } = require('@izumi-framework/json-sick');
+  const encoded = encodeObjToSickUint8Array('data', { a: 2, b: { c: 3 } });
+  console.log(decodeSickUint8Array(encoded));
+  "
 ```
 
 ## API

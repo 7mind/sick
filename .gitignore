@@ -11,4 +11,8 @@ target
 .bsp
 metals.sbt
 .direnv
+
 npm-publish
+node_modules/
+package-lock.json
+package.json
