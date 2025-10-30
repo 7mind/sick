@@ -11,3 +11,4 @@ target
 .bsp
 metals.sbt
 .direnv
+npm-publish

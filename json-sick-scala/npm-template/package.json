@@ -1,0 +1,34 @@
+{
+  "name": "@izumi-framework/json-sick",
+  "version": "VERSION_PLACEHOLDER",
+  "description": "SICK (Structured Interchange and Compression Kit) - High-performance binary JSON encoding format",
+  "main": "json-sick-2.13-fullOpt.js",
+  "types": "index.d.ts",
+  "files": [
+    "json-sick-2.13-fullOpt.js",
+    "json-sick-2.13-fullOpt.js.map",
+    "index.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/7mind/sick.git"
+  },
+  "keywords": [
+    "json",
+    "binary",
+    "encoding",
+    "compression",
+    "serialization",
+    "sick"
+  ],
+  "author": "Septimal Mind <team@7mind.io>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/7mind/sick/issues"
+  },
+  "homepage": "https://github.com/7mind/sick#readme"
+}
