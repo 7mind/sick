@@ -66,9 +66,8 @@ These limits can be lifted by using more bytes for offsets and counts, though re
 
 SICK excels in scenarios with:
 
-- **Large JSON files** - Reading specific fields is 10-100x faster than full JSON parse
-- **Repeated field access** - Indexed lookup beats linear search
-- **Multiple similar documents** - Deduplication significantly reduces storage
+- **Large JSON files** - Direct indexed reads are much faster than full JSON parse
+- **Repetitive structure** - Deduplication significantly reduces storage
 - **Memory constraints** - Incremental reading uses constant memory
 - **File size** - usually much more compact than JSON
 
