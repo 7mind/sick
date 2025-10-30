@@ -1,7 +1,7 @@
 {
   description = "SICK build environment";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
@@ -18,7 +18,7 @@
             graalvm-ce
             sbt
             dotnet-sdk_9
-            nodejs
+            nodejs_24
 
             git
 
