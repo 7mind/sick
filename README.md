@@ -133,6 +133,7 @@ Notice how duplicate values are stored once and referenced multiple times, and h
 
 This representation enables many capabilities. For example, we can stream the table:
 
+```
 string:0 = "some key"
 string:1 = "some value"
 
@@ -147,11 +148,14 @@ array:0[1] = object:1
 string:2 = "file.json"
 
 root:0=array:0,string:2
+```
 
 While this particular encoding is inefficient, it's streamable. Moreover, we can add removal messages to support arbitrary updates:
 
+```
 array:0[0] = object:1
 array:0[1] = remove
+```
 
 **Important property:** When a stream does not contain removal entries, it can be safely reordered. This eliminates many cases where full accumulation is required.
 
