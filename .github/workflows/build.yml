@@ -59,6 +59,12 @@ jobs:
             994f97a2-97a4-4fe1-806a-b1930104435f > SONATYPE_CREDENTIALS_FILE
             749f4227-9f11-4ceb-9121-b1930110c3a9 > OPENSSL_KEY
             a2fe5b5b-5f3f-47f8-961c-b1930110cea7 > OPENSSL_IV
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
       - name: Build and Test
         run: |
           if [[ "$CI_PULL_REQUEST" == "false"  ]] ; then
@@ -78,27 +84,9 @@ jobs:
         with:
           files: |
             ./json-sick-scala/target/dist/**
-      - name: Prepare npm package
+      - name: Prepare and Publish to npm
         if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          VERSION=$(cat version.txt | tr -d '\n')
-          mkdir -p npm-publish
-          cp ./json-sick-scala/target/dist/* npm-publish/
-          cp ./json-sick-scala/npm-template/* npm-publish/
-          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" npm-publish/package.json
-          ls -la npm-publish/
-          cat npm-publish/package.json
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-      - name: Publish to npm
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          cd npm-publish
-          nix develop --command npm publish --provenance --access public
+        run: ./run --nix :publish-npm
 
   publish-cs:
     runs-on: ubuntu-latest
