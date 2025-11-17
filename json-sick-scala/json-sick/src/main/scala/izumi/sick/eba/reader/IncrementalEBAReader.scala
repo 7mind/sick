@@ -1,5 +1,6 @@
 package izumi.sick.eba.reader
 
+import izumi.sick.eba.cursor.{SickCursor, TopCursor}
 import izumi.sick.eba.reader.incremental.{IncrementalJValue, IncrementalTableFixed, IncrementalTableVar, OneObjTable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, IntCodec, RefCodec, ShortCodec}
 import izumi.sick.eba.{EBAStructure, SICKSettings}
@@ -114,6 +115,17 @@ class IncrementalEBAReader(
   val rootTable: IncrementalTableFixed[Root],
   val roots: collection.Map[String, Ref],
 ) extends AutoCloseable {
+
+  def getCursor(ref: Ref): SickCursor = {
+    new TopCursor(ref, this)
+  }
+
+  def getCursor(rootId: String): SickCursor = {
+    getRoot(rootId) match {
+      case Some(ref) => new TopCursor(ref, this)
+      case None => throw new NoSuchElementException(s"Root with id $rootId was not found")
+    }
+  }
 
   def getRoot(id: String): Option[Ref] = {
     roots.get(id)
