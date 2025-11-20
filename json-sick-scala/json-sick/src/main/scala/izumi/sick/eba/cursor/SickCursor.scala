@@ -1,15 +1,14 @@
 package izumi.sick.eba.cursor
 
 import izumi.sick.eba.reader.IncrementalEBAReader
-import izumi.sick.eba.reader.incremental.IncrementalJValue.*
-import izumi.sick.model.Ref
+import izumi.sick.model.{Arr, Obj, Ref, RefKind, Root}
 import izumi.sick.model.RefKind.*
 
 abstract class SickCursor {
   def ref: Ref
   def ebaReader: IncrementalEBAReader
 
-  def downField(field: String): SickCursor = {
+  def downField(field: String): ObjectCursor = {
     if (ref.kind != TArr) {
       val newRef = ebaReader.readObjectFieldRef(ref, field)
       new ObjectCursor(newRef, ebaReader)
@@ -22,73 +21,118 @@ abstract class SickCursor {
     } else throw new IllegalArgumentException("Ref is not an array kind")
   }
 
-  def asNul: JNul.type = {
-    if (ref.kind == TNul) JNul
+  def asNul: Null = {
+    if (ref.kind == TNul) null
     else throw new RuntimeException("Ref kind was not TNul")
   }
 
-  def asBit: JBit = {
-    if (ref.kind == TBit) JBit(ref.ref == 1)
+  def asBool: Boolean = {
+    if (ref.kind == TBit) ref.ref == 1
     else throw new RuntimeException("Ref kind was not TBit")
   }
 
-  def asByte: JByte = {
-    if (ref.kind == TByte) JByte(ref.ref.toByte)
+  def asByte: Byte = {
+    if (ref.kind == TByte) ref.ref.toByte
     else throw new RuntimeException("Ref kind was not TByte")
   }
 
-  def asShort: JShort = {
-    if (ref.kind == TShort) JShort(ref.ref.toShort)
-    else throw new RuntimeException("Ref kind was not TShort")
+  def asShort: Short = {
+    ref.kind match {
+      case RefKind.TByte  => ref.ref.toShort
+      case RefKind.TShort => ref.ref.toShort
+      case _ => throw new RuntimeException("Can not cast ref value to Short")
+    }
   }
 
-  def asInt: JInt = {
-    if (ref.kind == TInt) JInt(ebaReader.intTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TInt")
+  def asInt: Int = {
+    ref.kind match {
+      case RefKind.TByte  => ref.ref.toInt
+      case RefKind.TShort => ref.ref.toInt
+      case RefKind.TInt   => ebaReader.intTable.readElem(ref.ref)
+      case _ => throw new RuntimeException("Can not cast ref value to Int")
+    }
   }
 
-  def asLong: JLong = {
-    if (ref.kind == TLng) JLong(ebaReader.longTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TLng")
+  def asLong: Long = {
+    ref.kind match {
+      case RefKind.TByte  => ref.ref.toLong
+      case RefKind.TShort => ref.ref.toLong
+      case RefKind.TInt   => ebaReader.intTable.readElem(ref.ref).toLong
+      case RefKind.TLng   => ebaReader.longTable.readElem(ref.ref)
+      case _ => throw new RuntimeException("Can not cast ref value to Long")
+    }
   }
 
-  def asBigInt: JBigInt = {
-    if (ref.kind == TBigInt) JBigInt(ebaReader.bigIntTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TBigInt")
+  def asBigInt: BigInt = {
+    ref.kind match {
+      case RefKind.TByte  => BigInt.apply(ref.ref.toLong)
+      case RefKind.TShort => BigInt.apply(ref.ref.toLong)
+      case RefKind.TInt =>
+        BigInt.apply(ebaReader.intTable.readElem(ref.ref).toLong)
+      case RefKind.TLng => BigInt.apply(ebaReader.longTable.readElem(ref.ref))
+      case RefKind.TBigInt => ebaReader.bigIntTable.readElem(ref.ref)
+      case kind => throw new RuntimeException(s"Can not cast ref value of kind $kind to BigInt")
+    }
   }
 
-  def asFloat: JFloat = {
-    if (ref.kind == TFlt) JFloat(ebaReader.floatTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TFlt")
+  def asFloat: Float = {
+    ref.kind match {
+      case RefKind.TByte  => ref.ref.toFloat
+      case RefKind.TShort => ref.ref.toFloat
+      case RefKind.TInt   => ebaReader.intTable.readElem(ref.ref).toFloat
+      case RefKind.TLng   => ebaReader.longTable.readElem(ref.ref).toFloat
+      case RefKind.TFlt   => ebaReader.floatTable.readElem(ref.ref)
+      case kind => throw new RuntimeException(s"Can not cast ref value of kind $kind to Float")
+    }
   }
 
-  def asDouble: JDouble = {
-    if (ref.kind == TDbl) JDouble(ebaReader.doubleTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TDbl")
+  def asDouble: Double = {
+    ref.kind match {
+      case RefKind.TByte  => ref.ref.toDouble
+      case RefKind.TShort => ref.ref.toDouble
+      case RefKind.TInt   => ebaReader.intTable.readElem(ref.ref).toDouble
+      case RefKind.TLng   => ebaReader.longTable.readElem(ref.ref).toDouble
+      case RefKind.TFlt   => ebaReader.floatTable.readElem(ref.ref).toDouble
+      case RefKind.TDbl   => ebaReader.doubleTable.readElem(ref.ref)
+      case kind => throw new RuntimeException(s"Can not cast ref value of kind $kind to Double")
+    }
   }
 
-  def asBigDec: JBigDec = {
-    if (ref.kind == TBigDec) JBigDec(ebaReader.bigDecTable.readElem(ref.ref))
-    else throw new RuntimeException("Ref kind was not TBigDec")
+  def asBigDec: BigDecimal = {
+    ref.kind match {
+      case RefKind.TByte  => BigDecimal.apply(ref.ref.toLong)
+      case RefKind.TShort => BigDecimal.apply(ref.ref.toLong)
+      case RefKind.TInt =>
+        BigDecimal.apply(ebaReader.intTable.readElem(ref.ref).toLong)
+      case RefKind.TLng =>
+        BigDecimal.apply(ebaReader.longTable.readElem(ref.ref))
+      case RefKind.TFlt =>
+        BigDecimal.apply(ebaReader.floatTable.readElem(ref.ref).toDouble)
+      case RefKind.TDbl =>
+        BigDecimal.apply(ebaReader.doubleTable.readElem(ref.ref))
+      case RefKind.TBigDec => ebaReader.bigDecTable.readElem(ref.ref)
+      case kind => throw new RuntimeException(s"Can not cast ref value of kind $kind to BigDec")
+    }
   }
 
-  def asString: JString = {
-    if (ref.kind == TStr) JString(ebaReader.strTable.readElem(ref.ref))
+  def asString: String = {
+    if (ref.kind == TStr) ebaReader.strTable.readElem(ref.ref)
     else throw new RuntimeException("Ref kind was not TStr")
   }
 
-  def asArray: JArr = {
-    if (ref.kind == TArr) JArr(ebaReader.arrTable.readElem(ref.ref))
+  def asArray: Arr = {
+    if (ref.kind == TArr)
+      Arr(ebaReader.arrTable.readElem(ref.ref).readAll().toVector)
     else throw new RuntimeException("Ref kind was not TArr")
   }
 
-  def asObject: JObj = {
-    if (ref.kind == TObj) JObj(ebaReader.objTable.readElem(ref.ref))
+  def asObject: Obj = {
+    if (ref.kind == TObj) ebaReader.objTable.readElem(ref.ref).readAllObj()
     else throw new RuntimeException("Ref kind was not TObj")
   }
 
-  def asRoot: JRoot = {
-    if (ref.kind == TRoot) JRoot(ebaReader.rootTable.readElem(ref.ref))
+  def asRoot: Root = {
+    if (ref.kind == TRoot) ebaReader.rootTable.readElem(ref.ref)
     else throw new RuntimeException("Ref kind was not TRoot")
   }
 }
