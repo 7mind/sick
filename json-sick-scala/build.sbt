@@ -9,7 +9,7 @@ val nodeTypesVersion = "18.11.9"
 
 val scalaVersions = Seq("3.3.6", "2.13.16")
 
-val `json-sick` = (projectMatrix in file("json-sick"))
+val jsonSick = (projectMatrix in file("json-sick"))
   .jvmPlatform(scalaVersions, Seq(libraryDependencies += "com.github.luben" % "zstd-jni" % zstdVersion % Test))
   .settings(
     name := "json-sick",
@@ -193,9 +193,10 @@ ThisBuild / scmInfo := Some(
   )
 )
 
-val `json-sick-scala` = project
+val jsonSickScala = project
   .in(file("."))
   .settings(
-    publish / skip := true
+    name := "json-sick-scala",
+    publish / skip := true,
   )
   .autoAggregate
