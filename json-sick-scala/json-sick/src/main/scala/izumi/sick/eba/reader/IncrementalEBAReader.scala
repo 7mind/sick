@@ -132,7 +132,7 @@ class IncrementalEBAReader(
   }
 
   def query(ref: Ref, path: String): IncrementalJValue = {
-    query(ref, path.split(".").toList)
+    query(ref, path.split('.').toList)
   }
 
   def query(ref: Ref, parts: List[String]): IncrementalJValue = {
@@ -149,7 +149,7 @@ class IncrementalEBAReader(
   }
 
   def query(jObj: IncrementalJValue.JObj, path: String): IncrementalJValue = {
-    query(jObj, path.split(".").toList)
+    query(jObj, path.split('.').toList)
   }
 
   def query(jObj: IncrementalJValue.JObj, parts: List[String]): IncrementalJValue = {
@@ -163,7 +163,7 @@ class IncrementalEBAReader(
   }
 
   def queryRef(ref: Ref, path: String): (Ref, Seq[String]) = {
-    val parts = path.split(".").toList
+    val parts = path.split('.').toList
     (queryRef(ref, parts), parts)
   }
 

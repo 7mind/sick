@@ -4,6 +4,7 @@ import io.circe.jawn.parse
 import izumi.sick.SICK
 import izumi.sick.eba.reader.IncrementalEBAReader
 import izumi.sick.eba.writer.EBAWriter
+import izumi.sick.model.RefKind.TObj
 import izumi.sick.model.{SICKWriterParameters, TableWriteStrategy}
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -26,7 +27,8 @@ class SickCursorTest extends AnyWordSpec {
       SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
     )
     val bytesArray = bytes.toArrayUnsafe()
-    val reader = IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
+    val reader =
+      IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
 
     assert(cursor.downField("data").downField("name").asString == "Alice")
@@ -44,7 +46,7 @@ class SickCursorTest extends AnyWordSpec {
         |  "int": 2000000000,
         |  "long": 9000000000000000000,
         |  "bigint": 123456789012345678901234567890,
-        |  "float": 3.14,
+        |  "float": 1.5,
         |  "double": 42.4242424242,
         |  "bigdec": 123.45678901234567890,
         |  "string": "test",
@@ -67,7 +69,8 @@ class SickCursorTest extends AnyWordSpec {
       SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
     )
     val bytesArray = bytes.toArrayUnsafe()
-    val reader = IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
+    val reader =
+      IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
     cursor.downField("null").asNul
     assert(cursor.downField("bit").asBool)
@@ -76,13 +79,23 @@ class SickCursorTest extends AnyWordSpec {
     assert(cursor.downField("int").asInt == 2000000000)
     assert(cursor.downField("int").asLong == 2000000000L)
     assert(cursor.downField("long").asLong == 9000000000000000000L)
-    assert(cursor.downField("bigint").asBigInt == BigInt.apply("123456789012345678901234567890"))
-    assert(cursor.downField("float").asFloat == 3.14.toFloat)
-    assert(cursor.downField("float").asDouble == 3.14f.toDouble)
+    assert(
+      cursor.downField("bigint").asBigInt == BigInt.apply(
+        "123456789012345678901234567890"
+      )
+    )
+    assert(cursor.downField("float").asFloat == 1.5.toFloat)
+    assert(cursor.downField("float").asDouble == 1.5)
     assert(cursor.downField("double").asDouble == 42.4242424242d)
-    assert(cursor.downField("bigdec").asBigDec == BigDecimal.apply("123.45678901234567890"))
+    assert(
+      cursor.downField("bigdec").asBigDec == BigDecimal.apply(
+        "123.45678901234567890"
+      )
+    )
     assert(cursor.downField("string").asString == "test")
-    assert(cursor.downField("object").downField("field").asString == "test field")
+    assert(
+      cursor.downField("object").downField("field").asString == "test field"
+    )
   }
 
   "cursor support arrays" in {
@@ -113,10 +126,18 @@ class SickCursorTest extends AnyWordSpec {
       SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
     )
     val bytesArray = bytes.toArrayUnsafe()
-    val reader = IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
+    val reader =
+      IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
     assert(cursor.downField("array").downArray.downIndex(0).asString == "one")
-    assert(cursor.downField("objects").downArray.downIndex(1).downField("name").asString == "Bob")
+    assert(
+      cursor
+        .downField("objects")
+        .downArray
+        .downIndex(1)
+        .downField("name")
+        .asString == "Bob"
+    )
 
     val arrayCursor = cursor.downField("array").downArray
 
@@ -126,30 +147,43 @@ class SickCursorTest extends AnyWordSpec {
     assert(arrayCursor.right.left.value.asString == "one")
   }
 
-//  "cursor support queries" in {
-//    val jsonString =
-//      """{
-//        |  "data": {
-//        |     "person": {"name": "Alice", "age": 30, "city": "NYC"}
-//        |  }
-//        |}""".stripMargin
-//    val json = parse(jsonString).toTry.get
-//
-//    val eba = SICK.packJson(
-//      json = json,
-//      name = "user.json",
-//      dedup = true,
-//      dedupPrimitives = true,
-//      avoidBigDecimals = false
-//    )
-//
-//    val (bytes, _) = EBAWriter.writeBytes(
-//      eba.index,
-//      SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
-//    )
-//    val bytesArray = bytes.toArrayUnsafe()
-//    val reader = IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
-//    val cursor = reader.getCursor(eba.root)
-//    println(cursor.query("data.person.name").asObject)
-//  }
+  "cursor support queries" in {
+    val jsonString =
+      """{
+        |  "data": {
+        |     "person": {"name": "Alice", "age": 30, "city": "NYC"},
+        |     "numbers" : [
+        |       "one",
+        |       "two",
+        |       "three"
+        |     ]
+        |  }
+        |}""".stripMargin
+    val json = parse(jsonString).toTry.get
+
+    val eba = SICK.packJson(
+      json = json,
+      name = "user.json",
+      dedup = true,
+      dedupPrimitives = true,
+      avoidBigDecimals = false
+    )
+
+    val (bytes, _) = EBAWriter.writeBytes(
+      eba.index,
+      SICKWriterParameters(TableWriteStrategy.SinglePassInMemory)
+    )
+    val bytesArray = bytes.toArrayUnsafe()
+    val reader =
+      IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
+    val cursor = reader.getCursor(eba.root)
+    assert(cursor.query("data.person").ref.kind == TObj)
+    assert(cursor.query("data.person.name").asString == "Alice")
+    assert(cursor.query("data.numbers").asArray.values.length == 3)
+
+    assert(cursor.query("data.person").getReferences.size == 3)
+    assert(cursor.query("data.person").getValues.get("name").exists(_.asString == "Alice"))
+
+    assert(cursor.query("data.person").readKey(1).asInt == 30)
+  }
 }
