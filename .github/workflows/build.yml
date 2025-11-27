@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: 7mind/github-env@minimal
       - name: Run test build
-        run: ./run --nix :test
+        run: nix develop --command mdl --github-actions :test
 
   publish-scala:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
             popd
           fi
 
-          ./run --nix :publish-scala
+          nix develop --command mdl --github-actions :publish-scala
 
   publish-sjs:
     runs-on: ubuntu-latest
@@ -77,7 +77,7 @@ jobs:
             popd
           fi
 
-          ./run --nix :build-sjs
+          nix develop --command mdl --github-actions :build-sjs
       - uses: softprops/action-gh-release@v2
         id: create-release
         if: startsWith(github.ref, 'refs/tags/')
@@ -86,7 +86,7 @@ jobs:
             ./json-sick-scala/target/dist/**
       - name: Prepare and Publish to npm
         if: startsWith(github.ref, 'refs/tags/')
-        run: ./run --nix :publish-npm
+        run: nix develop --command mdl --github-actions :publish-npm
 
   publish-cs:
     runs-on: ubuntu-latest
@@ -101,4 +101,4 @@ jobs:
           secrets: |
             637c5cad-a680-4ea3-ac8b-b193010bee40 > TOKEN_NUGET
       - name: Build and Test
-        run: ./run --nix :publish-cs
+        run: nix develop --command mdl --github-actions :publish-cs
