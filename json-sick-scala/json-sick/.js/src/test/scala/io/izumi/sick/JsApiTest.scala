@@ -31,6 +31,14 @@ class JsApiTest extends AnyWordSpec {
       val circeJson = io.circe.scalajs.convertJsToJson(jsAny).toTry.get
       assert(circeJson == Json.obj("root1" -> Json.obj("a" -> Json.fromInt(2)), "root2" -> Json.obj("b" -> Json.fromInt(3))))
     }
+
+    locally {
+      val uint8Array = SickJsAPI.encodeObjsToSickUint8Array(js.Dictionary("data" -> js.Dynamic.literal(a = 1, b = 2, c = 3)))
+      val cursor = SickJsAPI.sickCursorFromUint8Array(uint8Array, "data")
+      assert(cursor.downField("a").asInt.toOption.contains(1))
+      assert(cursor.downField("b").asInt.toOption.contains(2))
+      assert(cursor.downField("c").asInt.toOption.contains(3))
+    }
   }
 
 }

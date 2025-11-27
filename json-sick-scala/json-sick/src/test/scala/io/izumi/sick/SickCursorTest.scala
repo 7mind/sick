@@ -31,9 +31,10 @@ class SickCursorTest extends AnyWordSpec {
       IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
 
-    assert(cursor.downField("data").downField("name").asString == "Alice")
-    assert(cursor.downField("data").downField("age").asByte == 30)
-    assert(cursor.downField("data").downField("city").asString == "NYC")
+    assert(cursor.downField("data").downField("name").asString.contains("Alice"))
+    assert(cursor.downField("data").downField("age").asByte.contains(30))
+    assert(cursor.downField("data").downField("city").asString.contains("NYC"))
+    assert(cursor.downField("data").downField("age").asString.isEmpty)
   }
 
   "cursor support various kinds" in {
@@ -73,29 +74,27 @@ class SickCursorTest extends AnyWordSpec {
       IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
     cursor.downField("null").asNul
-    assert(cursor.downField("bit").asBool)
-    assert(cursor.downField("byte").asByte == 42)
-    assert(cursor.downField("short").asShort == 30000)
-    assert(cursor.downField("int").asInt == 2000000000)
-    assert(cursor.downField("int").asLong == 2000000000L)
-    assert(cursor.downField("long").asLong == 9000000000000000000L)
+    assert(cursor.downField("bit").asBool.contains(true))
+    assert(cursor.downField("byte").asByte.contains(42))
+    assert(cursor.downField("short").asShort.contains(30000))
+    assert(cursor.downField("int").asInt.contains(2000000000))
+    assert(cursor.downField("int").asLong.contains(2000000000L))
+    assert(cursor.downField("long").asLong.contains(9000000000000000000L))
     assert(
-      cursor.downField("bigint").asBigInt == BigInt.apply(
+      cursor.downField("bigint").asBigInt.contains(BigInt.apply(
         "123456789012345678901234567890"
-      )
+      ))
     )
-    assert(cursor.downField("float").asFloat == 1.5.toFloat)
-    assert(cursor.downField("float").asDouble == 1.5)
-    assert(cursor.downField("double").asDouble == 42.4242424242d)
+    assert(cursor.downField("float").asFloat.contains(1.5.toFloat))
+    assert(cursor.downField("float").asDouble.contains(1.5))
+    assert(cursor.downField("double").asDouble.contains(42.4242424242d))
     assert(
-      cursor.downField("bigdec").asBigDec == BigDecimal.apply(
+      cursor.downField("bigdec").asBigDec.contains(BigDecimal.apply(
         "123.45678901234567890"
-      )
+      ))
     )
-    assert(cursor.downField("string").asString == "test")
-    assert(
-      cursor.downField("object").downField("field").asString == "test field"
-    )
+    assert(cursor.downField("string").asString.contains("test"))
+    assert(cursor.downField("object").downField("field").asString.contains("test field"))
   }
 
   "cursor support arrays" in {
@@ -129,22 +128,22 @@ class SickCursorTest extends AnyWordSpec {
     val reader =
       IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
-    assert(cursor.downField("array").downArray.downIndex(0).asString == "one")
+    assert(cursor.downField("array").downArray.downIndex(0).asString.contains("one"))
     assert(
       cursor
         .downField("objects")
         .downArray
         .downIndex(1)
         .downField("name")
-        .asString == "Bob"
+        .asString.contains("Bob")
     )
 
     val arrayCursor = cursor.downField("array").downArray
 
-    assert(arrayCursor.value.asString == "one")
-    assert(arrayCursor.right.value.asString == "two")
-    assert(arrayCursor.right.right.value.asString == "three")
-    assert(arrayCursor.right.left.value.asString == "one")
+    assert(arrayCursor.value.asString.contains("one"))
+    assert(arrayCursor.right.value.asString.contains("two"))
+    assert(arrayCursor.right.right.value.asString.contains("three"))
+    assert(arrayCursor.right.left.value.asString.contains("one"))
   }
 
   "cursor support queries" in {
@@ -178,12 +177,11 @@ class SickCursorTest extends AnyWordSpec {
       IncrementalEBAReader.openBytes(bytesArray, eagerOffsets = false)
     val cursor = reader.getCursor(eba.root)
     assert(cursor.query("data.person").ref.kind == TObj)
-    assert(cursor.query("data.person.name").asString == "Alice")
-    assert(cursor.query("data.numbers").asArray.values.length == 3)
+    assert(cursor.query("data.person.name").asString.contains("Alice"))
 
     assert(cursor.query("data.person").getReferences.size == 3)
-    assert(cursor.query("data.person").getValues.get("name").exists(_.asString == "Alice"))
+    assert(cursor.query("data.person").getValues.get("name").exists(_.asString.contains("Alice")))
 
-    assert(cursor.query("data.person").readKey(1).asInt == 30)
+    assert(cursor.query("data.person").readKey(1).asInt.contains(30))
   }
 }

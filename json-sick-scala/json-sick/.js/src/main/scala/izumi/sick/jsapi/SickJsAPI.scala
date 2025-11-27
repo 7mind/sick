@@ -86,8 +86,15 @@ object SickJsAPI {
     bytesToUint8Array(bytes)
   }
 
+  /**
+   * Accepts an instance of `Uint8Array` and the rootId, returns a cursor to navigate through the structure
+   *
+   * `{ data: { a: 2, b: { c: 3 } } }`
+   * `const cursor = sickCursorFromUint8Array(uint8Array, "data")`
+   * `cursor.downField("b").downField("c").asInt`
+   */
   @JSExportTopLevel("sickCursorFromUint8Array")
-  def encodeJSONBytesToSickUint8Array(uint8Array: Uint8Array, rootId: String): TopCursorJs = {
+  def sickCursorFromUint8Array(uint8Array: Uint8Array, rootId: String): TopCursorJs = {
     val ebaReader = IncrementalEBAReader.openBytes(uint8ArrayToBytes(uint8Array), eagerOffsets = false)
     new TopCursorJs(ebaReader.getCursor(rootId))
   }

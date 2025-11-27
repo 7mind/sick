@@ -2,6 +2,7 @@ package izumi.sick.eba.cursor
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
+import scala.scalajs.js.JSConverters._
 
 @JSExportTopLevel("SickCursor")
 @JSExportAll
@@ -14,30 +15,23 @@ class SickCursorJs(cursor: SickCursor) {
     new ArrayCursorJs(cursor.downArray)
   }
 
-  def asNul: Null = cursor.asNul
+  def asNul: js.UndefOr[Null] = cursor.asNul.orUndefined
 
-  def asBool: Boolean = cursor.asBool
+  def asBool: js.UndefOr[Boolean] = cursor.asBool.orUndefined
 
-  def asByte: Byte = cursor.asByte
+  def asByte: js.UndefOr[Byte] = cursor.asByte.orUndefined
 
-  def asShort: Short = cursor.asShort
+  def asShort: js.UndefOr[Short] = cursor.asShort.orUndefined
 
-  def asInt: Int = cursor.asInt
+  def asInt: js.UndefOr[Int] = cursor.asInt.orUndefined
 
-  def asLong: Long = cursor.asLong
+  def asLong: js.UndefOr[Long] = cursor.asLong.orUndefined
 
-  def asBigInt: js.BigInt = js.BigInt(cursor.asBigInt.toString)
+  def asBigInt: js.UndefOr[js.BigInt] = cursor.asBigInt.map(v => js.BigInt(v.toString)).orUndefined
 
-  def asFloat: Float = cursor.asFloat
+  def asFloat: js.UndefOr[Float] = cursor.asFloat.orUndefined
 
-  def asDouble: Double = cursor.asDouble
+  def asDouble: js.UndefOr[Double] = cursor.asDouble.orUndefined
 
-  def asString: String = cursor.asString
-
-// todo
-//  def asArray: Arr = cursor.asArray
-//
-//  def asObject: Obj = cursor.asObject
-//
-//  def asRoot: Root = cursor.asRoot
+  def asString: js.UndefOr[String] = cursor.asString.orUndefined
 }
