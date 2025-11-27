@@ -3,7 +3,8 @@ package izumi.sick.jsapi
 import io.circe.Json
 import izumi.sick.SICK
 import izumi.sick.eba.SICKSettings
-import izumi.sick.eba.reader.EagerEBAReader
+import izumi.sick.eba.cursor.TopCursorJs
+import izumi.sick.eba.reader.{EagerEBAReader, IncrementalEBAReader}
 import izumi.sick.eba.writer.EBAWriter
 import izumi.sick.model.{SICKWriterParameters, TableWriteStrategy}
 import izumi.sick.sickcirce.CirceTraverser.*
@@ -83,5 +84,11 @@ object SickJsAPI {
     val res = EBAWriter.writeBytes(roIndex, SICKWriterParameters(TableWriteStrategy.SinglePassInMemory))
     val bytes = res._1.toArrayUnsafe()
     bytesToUint8Array(bytes)
+  }
+
+  @JSExportTopLevel("sickCursorFromUint8Array")
+  def encodeJSONBytesToSickUint8Array(uint8Array: Uint8Array, rootId: String): TopCursorJs = {
+    val ebaReader = IncrementalEBAReader.openBytes(uint8ArrayToBytes(uint8Array), eagerOffsets = false)
+    new TopCursorJs(ebaReader.getCursor(rootId))
   }
 }

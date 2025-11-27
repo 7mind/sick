@@ -1,11 +1,11 @@
 package izumi.sick.eba.cursor
 
 import izumi.sick.eba.reader.IncrementalEBAReader
+import izumi.sick.model.Ref
 import izumi.sick.model.RefKind.TArr
-import izumi.sick.model.{Ref, RefKind}
 
 class ArrayCursor(val ref: Ref, val ebaReader: IncrementalEBAReader, val index: Int = 0) extends SickCursor {
-  val length = ebaReader.arrTable.readElem(ref.ref).length
+  private val length = ebaReader.arrTable.readElem(ref.ref).length
 
   def left: ArrayCursor = {
     if (index == 0) throw new ArrayIndexOutOfBoundsException("Can not move left: Index is on first element")

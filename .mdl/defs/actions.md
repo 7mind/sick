@@ -176,6 +176,7 @@ if [[ "$CI_PULL_REQUEST_VAL" != "false" ]]; then
   exit 0
 fi
 
+SYSTEM=$(uname -s | tr '[:upper:]' '[:lower:]')
 PROJECT_ROOT="${sys.project-root}"
 DIST_DIR="${action.build-sjs.dist-dir}"
 PUBLISH_DIR="${PROJECT_ROOT}/npm-publish"
@@ -193,7 +194,11 @@ mkdir -p "$PUBLISH_DIR"
 cp "${DIST_DIR}"/* "$PUBLISH_DIR"/
 cp "${PROJECT_ROOT}/json-sick-scala/npm-template/"* "$PUBLISH_DIR"/
 
-sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" "$PUBLISH_DIR/package.json"
+if [[ "${SYSTEM}" == "darwin" ]]; then
+  sed -i '' "s/VERSION_PLACEHOLDER/$VERSION/g" "$PUBLISH_DIR/package.json"
+else
+  sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" "$PUBLISH_DIR/package.json"
+fi  
 
 cd "$PUBLISH_DIR"
 
