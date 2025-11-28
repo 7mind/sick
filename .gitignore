@@ -11,6 +11,7 @@ target
 .bsp
 metals.sbt
 .direnv
+.mdl/runs
 
 npm-publish
 node_modules/

@@ -5,7 +5,10 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = { self, nixpkgs, flake-utils }:
+  inputs.mudyla.url = "github:7mind/mudyla";
+  inputs.mudyla.inputs.nixpkgs.follows = "nixpkgs";
+
+  outputs = { self, nixpkgs, flake-utils, mudyla }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -25,6 +28,8 @@
             openssl
 
             scala-cli
+          ] ++ [
+            mudyla.packages.${system}.default
           ];
         in
         {
@@ -32,8 +37,8 @@
 
           # use nix develop .#ide to enable JetBrains Rider from nixpkgs
           devShells.ide = pkgs.mkShell {
-            nativeBuildInputs = with pkgs.buildPackages; sharedPkgs ++ [
-              jetbrains.rider
+            nativeBuildInputs = sharedPkgs ++ [
+              pkgs.buildPackages.jetbrains.rider
             ];
             # LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
           };
