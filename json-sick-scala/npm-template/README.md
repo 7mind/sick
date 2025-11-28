@@ -67,6 +67,10 @@ Accepts dictionary where keys are root names and values are strings that parse i
 
 Accepts dictionary where keys are root names and values are Uint8Arrays containing valid UTF-8 text that parse into JSON, returns a SICK-encoded binary Uint8Array.
 
+### `sickCursorFromUint8Array(uint8Array: Uint8Array, rootId: string): TopCursor`
+
+Accepts an instance of `Uint8Array` and the rootId, returns a cursor to navigate through the structure.
+
 ## License
 
 BSD-2-Clause
