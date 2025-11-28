@@ -1,5 +1,9 @@
 # SICK Build Actions
 
+# properties
+
+- `sequential`
+
 # environment
 - `LANG=C.UTF-8`
 
