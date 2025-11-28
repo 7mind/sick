@@ -85,11 +85,6 @@ if [[ "$CI_PULL_REQUEST_VAL" != "false" ]]; then
   exit 0
 fi
 
-if [[ -z "$CI_BRANCH_TAG_VAL" ]]; then
-  echo "CI_BRANCH_TAG is required to publish Scala artifacts." >&2
-  exit 1
-fi
-
 cd "$SCALA_DIR"
 
 if [[ "$CI_BRANCH_TAG_VAL" =~ ^v.*$ ]]; then
