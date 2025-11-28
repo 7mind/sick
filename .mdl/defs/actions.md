@@ -103,15 +103,16 @@ ret success:bool=true
 ```bash
 set -euo pipefail
 
+SCALA_DIR="${sys.project-root}/json-sick-scala"
+DIST_DIR="${SCALA_DIR}/target/dist"
+
 CI_PULL_REQUEST_VAL="${CI_PULL_REQUEST:-true}"
 if [[ "$CI_PULL_REQUEST_VAL" != "false" ]]; then
   echo "Skipping Scala.js build because this is a pull request."
   ret skipped:bool=true
+  ret dist-dir:directory="$DIST_DIR"
   exit 0
 fi
-
-SCALA_DIR="${sys.project-root}/json-sick-scala"
-DIST_DIR="${SCALA_DIR}/target/dist"
 
 cd "$SCALA_DIR"
 sbt '++2.13 json-sickJS/fullOptJS'
