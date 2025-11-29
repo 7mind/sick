@@ -12,6 +12,8 @@
 
 This repository provides **Efficient Binary Aggregate (EBA)** - a deduplicated binary storage format for JSON based on the `SICK` representation. We provide implementations for Scala, C# and JavaScript.
 
+Sister project: [UEBA](https://github.com/7mind/baboon/blob/main/docs/ueba-format.md), a tagless binary encoding.
+
 ## What EBA enables
 
 **Current implementation:**
