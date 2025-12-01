@@ -1,5 +1,6 @@
 package izumi.sick.eba.reader
 
+import izumi.sick.eba.cursor.TopCursor
 import izumi.sick.eba.reader.incremental.{IncrementalJValue, IncrementalTableFixed, IncrementalTableVar, OneObjTable}
 import izumi.sick.eba.writer.codecs.EBACodecs.{DebugTableName, IntCodec, RefCodec, ShortCodec}
 import izumi.sick.eba.{EBAStructure, SICKSettings}
@@ -115,12 +116,23 @@ class IncrementalEBAReader(
   val roots: collection.Map[String, Ref],
 ) extends AutoCloseable {
 
+  def getCursor(ref: Ref): TopCursor = {
+    new TopCursor(ref, this)
+  }
+
+  def getCursor(rootId: String): TopCursor = {
+    getRoot(rootId) match {
+      case Some(ref) => new TopCursor(ref, this)
+      case None => throw new NoSuchElementException(s"Root with id $rootId was not found")
+    }
+  }
+
   def getRoot(id: String): Option[Ref] = {
     roots.get(id)
   }
 
   def query(ref: Ref, path: String): IncrementalJValue = {
-    query(ref, path.split(".").toList)
+    query(ref, path.split('.').toList)
   }
 
   def query(ref: Ref, parts: List[String]): IncrementalJValue = {
@@ -137,7 +149,7 @@ class IncrementalEBAReader(
   }
 
   def query(jObj: IncrementalJValue.JObj, path: String): IncrementalJValue = {
-    query(jObj, path.split(".").toList)
+    query(jObj, path.split('.').toList)
   }
 
   def query(jObj: IncrementalJValue.JObj, parts: List[String]): IncrementalJValue = {
@@ -151,7 +163,7 @@ class IncrementalEBAReader(
   }
 
   def queryRef(ref: Ref, path: String): (Ref, Seq[String]) = {
-    val parts = path.split(".").toList
+    val parts = path.split('.').toList
     (queryRef(ref, parts), parts)
   }
 
