@@ -1,7 +1,7 @@
 {
   description = "SICK build environment";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/25.11";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
