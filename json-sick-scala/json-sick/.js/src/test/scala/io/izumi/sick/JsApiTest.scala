@@ -39,6 +39,14 @@ class JsApiTest extends AnyWordSpec {
       assert(cursor.downField("b").asInt.toOption.contains(2))
       assert(cursor.downField("c").asInt.toOption.contains(3))
     }
+
+    locally {
+      val uint8Array = SickJsAPI.encodeJSONStringsToSickUint8Array(js.Dictionary("data" -> """{ "a": 1 , "b": { "c": 2, "d": [3, 4, 5] } }"""))
+      val reader = SickJsAPI.ebaReaderFromUint8Array(uint8Array, "data")
+      assert(reader.query("a").asInstanceOf[Int] == 1)
+      assert(reader.query("b.c").asInstanceOf[Int] == 2)
+      assert(reader.query("b.d.[1]").asInstanceOf[Int] == 4)
+    }
   }
 
 }
