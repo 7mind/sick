@@ -21,7 +21,7 @@ class EBAReaderJs(reader: IncrementalEBAReader, rootId: String) {
       case RefKind.TByte   => cursor.asByte
       case RefKind.TShort  => cursor.asShort
       case RefKind.TInt    => cursor.asInt
-      case RefKind.TLng    => cursor.asLong
+      case RefKind.TLng    => cursor.asDouble
       case RefKind.TBigInt => cursor.asBigInt
       case RefKind.TFlt    => cursor.asFloat
       case RefKind.TDbl    => cursor.asDouble
