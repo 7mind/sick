@@ -183,5 +183,7 @@ class SickCursorTest extends AnyWordSpec {
     assert(cursor.query("data.person").getValues.get("name").exists(_.asString.contains("Alice")))
 
     assert(cursor.query("data.person").readKey(1).asInt.contains(30))
+
+    assert(cursor.query("data.numbers.[1]").asString.contains("two"))
   }
 }

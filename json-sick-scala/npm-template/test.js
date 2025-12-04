@@ -6,7 +6,8 @@ import {
   encodeObjsToSickUint8Array,
   encodeJSONStringsToSickUint8Array,
   encodeJSONBytesToSickUint8Array,
-  sickCursorFromUint8Array
+  sickCursorFromUint8Array,
+  ebaReaderFromUint8Array
 } from "./json-sick-2.13-fullOpt.js";
 
 test("Encode/Decode obj test", t => {
@@ -63,4 +64,18 @@ test("Sick Cursors test", t => {
 
     t.is(cursor.downField("arr").downArray.right.value.asString, "b");
     t.is(cursor.downField("arr").downArray.downIndex(2).asString, "c");
+})
+
+test("EBAReader test", t => {
+    const encoded = encodeObjToSickUint8Array("data",
+        {
+            object: {
+                life: 42,
+                array: ["a", "b", "c", "d", "e"]
+            }
+        });
+    const reader = ebaReaderFromUint8Array(encoded, "data");
+
+    t.is(reader.query("object.life"), 42);
+    t.is(reader.query("object.array.[2]"), "c");
 })

@@ -173,7 +173,7 @@ class IncrementalEBAReader(
       case currentQuery0 :: next0 =>
         val (currentQuery, next) = handleBracketsWithoutDot(currentQuery0, next0)
         if (currentQuery.startsWith("[") && currentQuery.endsWith("]")) {
-          val index = currentQuery.substring(1, currentQuery.length - 2)
+          val index = currentQuery.substring(1, currentQuery.length - 1)
           val iindex = index.toInt
 
           val resolvedArr = readArrayElementRef(ref, iindex)

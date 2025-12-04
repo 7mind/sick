@@ -71,6 +71,10 @@ Accepts dictionary where keys are root names and values are Uint8Arrays containi
 
 Accepts an instance of `Uint8Array` and the rootId, returns a cursor to navigate through the structure.
 
+### `ebaReaderFromUint8Array(uint8Array: Uint8Array, rootId: string): EBAReader`
+
+Accepts an instance of `Uint8Array` and the rootId, returns a reader, which has query method, with jq like requests.
+
 ## License
 
 BSD-2-Clause
