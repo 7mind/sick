@@ -369,7 +369,7 @@ Install npm package with
 npm install @izumi-framework/json-sick
 ```
 
-See [npm Readme](https://github.com/7mind/sick/blob/main/json-sick-scala/npm-template/README.md) for JavaScript API documentation
+See [npm Readme](https://www.npmjs.com/package/@izumi-framework/json-sick?activeTab=readme) for JavaScript API documentation
 
 ## Binary format: EBA (Efficient Binary Aggregate)
 
