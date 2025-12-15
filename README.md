@@ -167,6 +167,10 @@ Not all accumulation can be eliminated, though - the receiver may still need to 
 
 ## Quick Start
 
+- [Scala](#scala)
+- [C#](#c)
+- [JavaScript](#javascript)
+
 ### Scala
 
 Add to your `build.sbt`:
@@ -356,6 +360,16 @@ using (var reader = SickReader.OpenFile("user.sick",
     var lastItem = root.Query("items[-1]").AsString();
 }
 ```
+
+### JavaScript
+
+Install npm package with
+
+```
+npm install @izumi-framework/json-sick
+```
+
+See [npm Readme](https://github.com/7mind/sick/blob/main/json-sick-scala/npm-template/README.md) for JavaScript API documentation
 
 ## Binary format: EBA (Efficient Binary Aggregate)
 
