@@ -1,4 +1,4 @@
-# @7mind/json-sick
+# @izumi-framework/json-sick
 
 SICK - High-performance binary storage for JSON-like data structures.
 
@@ -7,7 +7,7 @@ Visit the [SICK GitHub repository](https://github.com/7mind/sick) for more infor
 ## Installation
 
 ```bash
-npm install @7mind/json-sick
+npm install @izumi-framework/json-sick
 ```
 
 ## Usage
