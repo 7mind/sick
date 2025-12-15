@@ -23,7 +23,7 @@
             dotnet-sdk_9
             nodejs_24
 
-            git
+            gitMinimal
 
             openssl
 
