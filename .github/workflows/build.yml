@@ -81,10 +81,11 @@ jobs:
           fi
 
           nix develop --command mdl --github-actions :build-sjs
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2.5.0
         id: create-release
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          generate_release_notes: true
           files: |
             ./json-sick-scala/target/dist/**
       - name: Prepare and Publish to npm
