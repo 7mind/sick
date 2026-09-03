@@ -387,7 +387,7 @@ A list of variable-size values (e.g. a list of strings) can be represented the f
   {strings count}{list of string offsets}{all the strings concatenated}
 ```
 
-So, `["a", "bb", "ccc"]` would become something like `3 0 2 3 a b bb ccc` without spaces.
+So, `["a", "bb", "ccc"]` would become something like `3 0 1 3 a bb ccc` without spaces.
 
 An important fact is that this encoding is indexed too and it can be reused to store any lists of variable-length data.
 
