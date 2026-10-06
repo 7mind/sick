@@ -101,7 +101,7 @@ jobs:
           cache-scala: false
       - name: NuGet login (OIDC trusted publishing)
         id: nuget-login
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         uses: NuGet/login@v1
         with:
           user: ${{ vars.NUGET_USER }}
