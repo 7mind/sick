@@ -17,7 +17,7 @@ object IncrementalEBAReader {
 
   /** @param eagerOffsets `false` is significantly faster when the structure is not queried extensively */
   def openFile(path: Path, inMemoryThreshold: Long = 65536, eagerOffsets: Boolean): IncrementalEBAReader = {
-    if (Files.size(path) <= inMemoryThreshold) {
+    if (IncrementalInputStreamPlatformSpecific.readsFileIntoMemory(Files.size(path), inMemoryThreshold)) {
       openBytes(Files.readAllBytes(path), eagerOffsets)
     } else {
       val is = new BufferedInputStream(Files.newInputStream(path))
