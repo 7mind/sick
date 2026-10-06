@@ -32,7 +32,7 @@ object IncrementalEBAReader {
   }
 
   /**
-    * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`; on Scala Native only `ByteArrayInputStream`)
+    * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`; on Scala Native only `ByteArrayInputStream` is accepted)
     * @param eagerOffsets `false` is significantly faster when the structure is not queried extensively
     */
   def open(inputStream: InputStream, eagerOffsets: Boolean): IncrementalEBAReader = {
