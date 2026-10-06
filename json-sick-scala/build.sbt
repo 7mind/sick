@@ -67,6 +67,7 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .jvmSettings(sharedSourceDirs("jvm-native"))
   .nativeSettings(sharedSourceDirs("jvm-native"))
   .nativeSettings(
+    nativeConfig ~= (_.withMultithreading(false)),
     libraryDependencySchemes += "org.scala-native" % s"test-interface_native${scalanative.sbtplugin.ScalaNativeCrossVersion.currentBinaryVersion}_${scalaBinaryVersion.value}" % VersionScheme.Always
   )
   .jvmSettings(sharedSourceDirs("jvm-js"))
