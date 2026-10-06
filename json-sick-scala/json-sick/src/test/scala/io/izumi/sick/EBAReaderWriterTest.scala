@@ -209,7 +209,8 @@ class EBAReaderWriterTest extends AnyWordSpec {
       val fname = fpath.name
       println(s"Processing $fname (${fpath.length} bytes) ...")
 
-      val reader = IncrementalEBAReader.open(FileOps.newInputStream(fpath.path, buffered = true), eagerOffsets = false)
+      val bytes = FileOps.readAllBytes(fpath.path)
+      val reader = IncrementalEBAReader.openBytes(bytes, eagerOffsets = false)
       try {
         val rootRef = reader.getRoot(rootname).get
         println(s"$fname: found $rootname, ref=$rootRef")
@@ -234,7 +235,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
         }
         println()
 
-        val eba = EagerEBAReader.readEBABytes(FileOps.readAllBytes(fpath.path))
+        val eba = EagerEBAReader.readEBABytes(bytes)
         assert(reader.readAll() == eba)
 
         println("Succeeded comparison with eager reader")
