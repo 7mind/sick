@@ -1,7 +1,7 @@
 package io.izumi.sick
 
 import java.io.{BufferedInputStream, InputStream}
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 
 abstract class NioFileOps extends FileOps {
@@ -31,6 +31,10 @@ abstract class NioFileOps extends FileOps {
 
   override def writeAllBytes(path: String, bytes: Array[Byte]): Unit = {
     val _ = Files.write(Paths.get(path), bytes)
+  }
+
+  override def move(source: String, target: String): Unit = {
+    val _ = Files.move(Paths.get(source), Paths.get(target), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
   }
 
   override def delete(path: String): Unit = {

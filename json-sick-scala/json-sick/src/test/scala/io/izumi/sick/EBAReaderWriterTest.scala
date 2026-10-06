@@ -20,7 +20,9 @@ import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 
 class EBAReaderWriterTest extends AnyWordSpec {
   private val in: String = FileOps.join("..", "samples")
-  private val out: String = FileOps.join("..", "output", outputDirName)
+  private val outRoot: String = FileOps.join("..", "output")
+  private val out: String = FileOps.join(outRoot, outputDirName)
+  private val staging: String = FileOps.join("..", "output-staging", outputDirName)
   private val rootname: String = "sample.json"
   private val iters: Int = if (isJs) 1 else 100_000
 
@@ -32,6 +34,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
       .sortBy(_.length)
 
     FileOps.createDirectories(out)
+    FileOps.createDirectories(staging)
 
     Seq(TableWriteStrategy.DoublePass, TableWriteStrategy.SinglePassInMemory, TableWriteStrategy.StreamRepositioning).foreach {
       strategy =>
@@ -111,8 +114,11 @@ class EBAReaderWriterTest extends AnyWordSpec {
                   fileName
                 }
 
-                val outFile = FileOps.join(out, s"$basename-$outputMarker-$strategy-$dedup.bin")
-                FileOps.writeAllBytes(outFile, raw)
+                val outName = s"$basename-$outputMarker-$strategy-$dedup.bin"
+                val outFile = FileOps.join(out, outName)
+                val stagingFile = FileOps.join(staging, outName)
+                FileOps.writeAllBytes(stagingFile, raw)
+                FileOps.move(stagingFile, outFile)
                 // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
 
                 println(s"Eager reading...")
@@ -153,7 +159,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
   }
 
   "eager read test #2" in {
-    val inputs: List[FileInfo] = FileOps.walkFiles(out, _.matches(".*\\.bin")).sortBy(_.path)
+    val inputs: List[FileInfo] = FileOps.walkFiles(outRoot, _.matches(".*\\.bin")).sortBy(_.path)
 
     //    assert(inputs.exists(_.name.contains("-CS")), "No file containing '-CS' found!")
     assert(inputs.exists(_.name.contains("-SCALA")), "No file containing '-SCALA' found!")
@@ -194,7 +200,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
   }
 
   "incremental read test #2" in {
-    val inputs: List[FileInfo] = FileOps.walkFiles(out, _.matches(".*\\.bin")).sortBy(_.path)
+    val inputs: List[FileInfo] = FileOps.walkFiles(outRoot, _.matches(".*\\.bin")).sortBy(_.path)
 
     //    assert(inputs.exists(_.name.contains("-CS")), "No file containing '-CS' found!")
     assert(inputs.exists(_.name.contains("-SCALA")), "No file containing '-SCALA' found!")
