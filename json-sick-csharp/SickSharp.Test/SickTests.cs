@@ -195,6 +195,29 @@ public class SickTests
     // }
 
     [Test]
+    public void Test3_ScalaPlatformsWriteIdenticalBytes()
+    {
+        var platformDirs = new[] { "scala-jvm", "scala-js", "scala-native" };
+        var marker = new System.Text.RegularExpressions.Regex("-SCALA(-JS|-NATIVE)?-");
+        var groups = platformDirs
+            .Select(dir => Path.Combine(PathOut, dir))
+            .Where(Directory.Exists)
+            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.bin", SearchOption.TopDirectoryOnly))
+            .GroupBy(file => marker.Replace(Path.GetFileName(file), "-"))
+            .ToList();
+
+        Assert.IsTrue(groups.Any(g => g.Count() == platformDirs.Length),
+            "No input written by every Scala platform found! Run Scala tests on all platforms to generate");
+
+        foreach (var group in groups)
+        {
+            var contents = group.Select(File.ReadAllBytes).ToList();
+            Assert.IsTrue(contents.All(c => c.SequenceEqual(contents[0])),
+                $"Scala platforms wrote different bytes for {group.Key}: {string.Join(", ", group)}");
+        }
+    }
+
+    [Test]
     public void Test2_Read()
     {
         var inputs = Directory.EnumerateFiles(PathOut, "*.bin", SearchOption.AllDirectories).ToList();
