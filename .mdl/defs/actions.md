@@ -56,7 +56,7 @@ set -euo pipefail
 SCALA_DIR="${sys.project-root}/json-sick-scala"
 cd "$SCALA_DIR"
 
-sbt +clean +test:compile +test
+sbt --server -batch +clean +Test/compile +test
 
 ret success:bool=true
 ```
@@ -104,10 +104,10 @@ fi
 cd "$SCALA_DIR"
 
 if [[ "$CI_BRANCH_TAG_VAL" =~ ^v.*$ ]]; then
-  sbt +clean +compile +publishSigned sonaUpload sonaRelease
-  sbt '++2.13 json-sickJS/fullOptJS'
+  sbt --server -batch +clean +compile +publishSigned sonaUpload sonaRelease
+  sbt --server -batch '++ 2.13 json-sickJS/fullOptJS'
 else
-  sbt +clean +compile +publishSigned
+  sbt --server -batch +clean +compile +publishSigned
 fi
 
 ret success:bool=true
@@ -131,7 +131,7 @@ if [[ "$CI_PULL_REQUEST_VAL" != "false" ]]; then
 fi
 
 cd "$SCALA_DIR"
-sbt '++2.13 json-sickJS/fullOptJS'
+sbt --server -batch '++ 2.13 json-sickJS/fullOptJS'
 
 ret dist-dir:directory="$DIST_DIR"
 ```

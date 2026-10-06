@@ -9,6 +9,7 @@ namespace SickSharp.Test;
 public class SickTests
 {
     private const string PathOut = "../../../../../output";
+    private const string PathOutCs = "../../../../../output/cs";
     private const string PathInput = "../../../../../samples";
     private const string RootName = "sample.json";
     private const uint iters = 100_000;
@@ -19,21 +20,21 @@ public class SickTests
     [SetUp]
     public void Setup()
     {
-        Directory.CreateDirectory(PathOut);
+        Directory.CreateDirectory(PathOutCs);
         _files = Directory.EnumerateFiles(PathInput, "*.json", SearchOption.AllDirectories).ToList();
 
         foreach (var file in _files)
         {
             var fi = new FileInfo(file);
             var name = Path.GetFileNameWithoutExtension(fi.Name);
-            DoWrite(file, Path.Combine(PathOut, $"{name}-CS.bin"));
+            DoWrite(file, Path.Combine(PathOutCs, $"{name}-CS.bin"));
         }
     }
 
     [Test]
     public void Test1_Queries()
     {
-        var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
+        var input = Path.Join(PathOutCs, "petstore-with-external-docs-CS.bin");
 
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.NoCache, ISickProfiler.Noop(),
                    loadInMemoryThreshold: 32768))
@@ -60,7 +61,7 @@ public class SickTests
     [Test]
     public void Test_Query_Benchmark()
     {
-        var input = Path.Join(PathOut, "petstore-with-external-docs-CS.bin");
+        var input = Path.Join(PathOutCs, "petstore-with-external-docs-CS.bin");
 
         using (var reader = SickReader.OpenFile(input, ISickCacheManager.NoCache, ISickProfiler.Noop(), loadInMemoryThreshold: 0))
         {
@@ -196,7 +197,7 @@ public class SickTests
     [Test]
     public void Test2_Read()
     {
-        var inputs = Directory.EnumerateFiles(PathOut, "*.bin", SearchOption.TopDirectoryOnly).ToList();
+        var inputs = Directory.EnumerateFiles(PathOut, "*.bin", SearchOption.AllDirectories).ToList();
         inputs.Sort();
 
         Assert.IsNotNull(inputs.Find(x => x.Contains("-CS")), "No file containing `-CS` found!");

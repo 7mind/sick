@@ -32,13 +32,14 @@ object IncrementalEBAReader {
   }
 
   /**
-    * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`)
+    * @param inputStream must support `mark`/`reset` (e.g. `BufferedInputStream` or `ByteArrayInputStream`; on Scala Native only `ByteArrayInputStream`)
     * @param eagerOffsets `false` is significantly faster when the structure is not queried extensively
     */
   def open(inputStream: InputStream, eagerOffsets: Boolean): IncrementalEBAReader = {
     if (!inputStream.markSupported()) {
       throw new IllegalArgumentException(s"Cannot read EBA incrementally from a non-seekable inputStream=$inputStream")
     }
+    IncrementalInputStreamPlatformSpecific.requireSupported(inputStream)
 
     val it = new DataInputStream(inputStream)
     it.mark(Int.MaxValue)

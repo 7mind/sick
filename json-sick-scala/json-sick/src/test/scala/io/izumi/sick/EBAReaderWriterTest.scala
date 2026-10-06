@@ -20,7 +20,7 @@ import scala.concurrent.duration.{FiniteDuration, NANOSECONDS}
 
 class EBAReaderWriterTest extends AnyWordSpec {
   private val in: String = FileOps.join("..", "samples")
-  private val out: String = FileOps.join("..", "output")
+  private val out: String = FileOps.join("..", "output", outputDirName)
   private val rootname: String = "sample.json"
   private val iters: Int = if (isJs) 1 else 100_000
 
@@ -111,8 +111,7 @@ class EBAReaderWriterTest extends AnyWordSpec {
                   fileName
                 }
 
-                val SCALA_MARKER = if (isJs) "SCALA-JS" else "SCALA"
-                val outFile = FileOps.join(out, s"$basename-$SCALA_MARKER-$strategy-$dedup.bin")
+                val outFile = FileOps.join(out, s"$basename-$outputMarker-$strategy-$dedup.bin")
                 FileOps.writeAllBytes(outFile, raw)
                 // Files.write(out.resolve(s"$basename-scala.bin.zstd"), compressed)
 

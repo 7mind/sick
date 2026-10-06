@@ -4,7 +4,7 @@ import java.io.{BufferedInputStream, InputStream}
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters.*
 
-abstract class FileOpsPlatformSpecific extends FileOps {
+abstract class NioFileOps extends FileOps {
 
   override def join(first: String, next: String*): String = {
     Paths.get(first, next*).toString
