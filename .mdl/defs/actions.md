@@ -56,7 +56,7 @@ set -euo pipefail
 SCALA_DIR="${sys.project-root}/json-sick-scala"
 cd "$SCALA_DIR"
 
-sbt --server -batch +clean +Test/compile +test
+sbt --server -batch +clean +Test/compile +testFull
 
 ret success:bool=true
 ```
