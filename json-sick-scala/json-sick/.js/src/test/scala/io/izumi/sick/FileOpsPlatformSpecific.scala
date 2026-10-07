@@ -21,6 +21,7 @@ object manualNodeBindings {
     def readdirSync(path: String): js.Array[String] = js.native
     def writeFileSync(path: String, array: Uint8Array): Unit = js.native
     def unlinkSync(path: String): Unit = js.native
+    def renameSync(oldPath: String, newPath: String): Unit = js.native
     def mkdirSync(path: String, options: js.Object): js.UndefOr[String] = js.native
 
     def readFileSync(path: String): Buffer = js.native
@@ -74,6 +75,10 @@ abstract class FileOpsPlatformSpecific extends FileOps {
 
   override def writeAllBytes(path: String, bytes: Array[Byte]): Unit = {
     Fs.writeFileSync(path, bytesToUint8Array(bytes))
+  }
+
+  override def move(source: String, target: String): Unit = {
+    Fs.renameSync(source, target)
   }
 
   override def delete(path: String): Unit = {

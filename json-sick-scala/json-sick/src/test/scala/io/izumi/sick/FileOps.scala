@@ -7,6 +7,7 @@ trait FileOps {
   def walkFiles(path: String, predicate: String => Boolean): List[FileInfo]
   def readAllBytes(path: String): Array[Byte]
   def writeAllBytes(path: String, bytes: Array[Byte]): Unit
+  def move(source: String, target: String): Unit
   def delete(path: String): Unit
   def newInputStream(path: String, buffered: Boolean): InputStream
   def createDirectories(path: String): Unit
