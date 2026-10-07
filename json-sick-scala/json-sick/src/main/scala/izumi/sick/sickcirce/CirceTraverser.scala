@@ -7,7 +7,6 @@ import izumi.sick.eba.reader.IncrementalEBAReader
 import izumi.sick.model.*
 import izumi.sick.model.Ref.RefVal
 
-import java.math.{MathContext, RoundingMode}
 import scala.collection.mutable
 
 object CirceTraverser {
@@ -56,21 +55,6 @@ object CirceTraverser {
           // this shouldn't actually happen
           reconstruct(index.roots(ref.ref).ref)
       }
-    }
-  }
-
-  private final val maxFloatSignificantDigits: Int = 9
-
-  private def isShortestFloatDecimal(value: BigDecimal): Boolean = {
-    val float = value.floatValue
-    if (float.isInfinite || float.isNaN) {
-      false
-    } else {
-      val exact = new java.math.BigDecimal(float.toDouble)
-      (1 to maxFloatSignificantDigits).iterator
-        .map(digits => exact.round(new MathContext(digits, RoundingMode.HALF_EVEN)))
-        .find(_.floatValue == float)
-        .exists(_.compareTo(value.bigDecimal) == 0)
     }
   }
 
@@ -123,7 +107,7 @@ object CirceTraverser {
                   index.addLong(value.toLongExact)
                 case Some(value) if value.isWhole =>
                   index.addBigInt(value.toBigIntExact.getOrElse(throw new IllegalStateException(s"Cannot decode BigInt $n")))
-                case Some(value) if isShortestFloatDecimal(value) =>
+                case Some(value) if value.isDecimalFloat =>
                   index.addFloat(value.floatValue)
                 case Some(value) if value.isDecimalDouble =>
                   index.addDouble(value.doubleValue)
