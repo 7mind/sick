@@ -30,6 +30,7 @@
             scala-cli
 
             clang
+            which
           ] ++ [
             mudyla.packages.${system}.default
           ];
