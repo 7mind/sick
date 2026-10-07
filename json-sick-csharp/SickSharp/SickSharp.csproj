@@ -32,7 +32,6 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401" PrivateAssets="All" />
     <None Include="$(SolutionDir)/../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
