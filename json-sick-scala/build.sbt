@@ -1,34 +1,39 @@
 import com.github.sbt.git.SbtGit.GitKeys
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val circeVersion = "0.14.13"
-val scalatestVersion = "3.2.19"
-val zstdVersion = "1.5.7-4"
+def sharedSourceDirs(sharedDirName: String) = Seq(
+  Compile / unmanagedSourceDirectories += baseDirectory.value.getParentFile / sharedDirName / "src" / "main" / "scala",
+  Test / unmanagedSourceDirectories += baseDirectory.value.getParentFile / sharedDirName / "src" / "test" / "scala",
+)
+
+val circeVersion = "0.14.17"
+val scalatestVersion = "3.2.20"
+val zstdVersion = "1.5.7-21"
 val nodeTypesVersion = "18.11.9"
 // Can't convert latest node due to error: `not found: type TReturn`
 // val nodeTypesVersion = "24.3.1"
 
-lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
+lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("json-sick"))
   .settings(
     name := "json-sick",
     crossScalaVersions := Seq(
-      "3.3.6",
-      "2.13.16",
+      "3.9.0",
+      "2.13.18",
     ),
     scalaVersion := crossScalaVersions.value.head,
     libraryDependencies ++= Seq(
-      "io.circe" %%% "circe-core" % circeVersion,
-      "io.circe" %%% "circe-jawn" % circeVersion,
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-jawn" % circeVersion,
     ),
-    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVersion % Test,
+    libraryDependencies += "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     scalacOptions ++= {
       val s = scalaVersion.value
       if (s.startsWith("2")) {
         Seq(
           "-Xsource:3-cross",
-          "-release:8",
+          "-release:17",
           "-explaintypes",
           "-Wconf:cat=optimizer:warning",
           "-Wconf:cat=other-match-analysis:error",
@@ -47,7 +52,8 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
         )
       } else {
         Seq(
-          "-language:3.3",
+          "-release:17",
+          "-Ximport-suggestion-timeout:0",
           "-no-indent",
           "-explain",
           "-explain-types",
@@ -58,19 +64,29 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(
     libraryDependencies += "com.github.luben" % "zstd-jni" % zstdVersion % Test
   )
+  .jvmSettings(sharedSourceDirs("jvm-native"))
+  .nativeSettings(sharedSourceDirs("jvm-native"))
+  .nativeSettings(
+    nativeConfig ~= (_.withMultithreading(false)),
+    libraryDependencySchemes += "org.scala-native" % s"test-interface_native${scalanative.sbtplugin.ScalaNativeCrossVersion.currentBinaryVersion}_${scalaBinaryVersion.value}" % VersionScheme.Always
+  )
+  .jvmSettings(sharedSourceDirs("jvm-js"))
+  .jsSettings(sharedSourceDirs("jvm-js"))
+  .jsSettings(sharedSourceDirs("js-native"))
+  .nativeSettings(sharedSourceDirs("js-native"))
   .jsSettings(
     // sourced from https://github.com/ScalablyTyped/Demos/blob/558213f6e21e6afbc6f015e06d053038f3a4e66f/build.sbt#L325
-    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv,
+    jsEnv := Def.uncached(new org.scalajs.jsenv.nodejs.NodeJSEnv),
 //    stStdlib := List("esnext"),
 //    stUseScalaJsDom := false,
 //    Test / npmDependencies ++= Seq(
 //      // Using manual bindings to avoid CI errors caused by ScalablyTyped. Uncomment "@types/node" and sbt-converter and ScalablyTypedConverterPlugin and its options to use generated bindings.
 //      "@types/node" -> nodeTypesVersion
 //    ),
-    libraryDependencies += "io.circe" %%% "circe-scalajs" % circeVersion,
+    libraryDependencies += "io.circe" %% "circe-scalajs" % circeVersion,
     Compile / fullOptJS / artifactPath := {
-      def outerRef = ProjectRef(file("."), "json-sick-scala")
-      (outerRef / target).value / "dist" / s"${moduleName.value}-${scalaBinaryVersion.value}-fullOpt.js"
+      val output = (LocalRootProject / baseDirectory).value / "target" / "dist" / s"${moduleName.value}-${scalaBinaryVersion.value}-fullOpt.js"
+      fileConverter.value.toVirtualFile(output.toPath)
     },
     scalaJSLinkerConfig := {
       scalaJSLinkerConfig.value
@@ -121,15 +137,10 @@ lazy val `json-sick` = crossProject(JVMPlatform, JSPlatform)
 """.stripMargin)
     },
   )
-  .jsConfigure(
-    project =>
-      project
-        .enablePlugins(ScalaJSBundlerPlugin)
-//        .enablePlugins(ScalablyTypedConverterPlugin)
-  )
 
 lazy val `json-sickJVM` = `json-sick`.jvm
 lazy val `json-sickJS` = `json-sick`.js
+lazy val `json-sickNative` = `json-sick`.native
 
 ThisBuild / scalacOptions ++= Seq(
   "-encoding",
@@ -181,21 +192,21 @@ ThisBuild / credentials ++= Seq(
   .filter(_.exists())
   .map(Credentials.apply)
 
-ThisBuild / homepage := Some(url("https://github.com/7mind/sick"))
+ThisBuild / homepage := Some(uri("https://github.com/7mind/sick"))
 ThisBuild / licenses := Seq(
-  "BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php")
+  "BSD-style" -> uri("http://www.opensource.org/licenses/bsd-license.php")
 )
 ThisBuild / developers := List(
   Developer(
     id = "7mind",
     name = "Septimal Mind",
-    url = url("https://github.com/7mind"),
+    url = uri("https://github.com/7mind"),
     email = "team@7mind.io",
   )
 )
 ThisBuild / scmInfo := Some(
   ScmInfo(
-    url("https://github.com/7mind/sick"),
+    uri("https://github.com/7mind/sick"),
     "scm:git:https://github.com/7mind/sick.git",
   )
 )
@@ -209,4 +220,5 @@ lazy val `json-sick-scala` = project
   .aggregate(
     `json-sickJVM`,
     `json-sickJS`,
+    `json-sickNative`,
   )

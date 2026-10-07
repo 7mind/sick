@@ -1,5 +1,6 @@
 .idea
 output/
+output-staging/
 .DS_Store
 .metals
 .vscode

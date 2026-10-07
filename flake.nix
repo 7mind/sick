@@ -1,7 +1,7 @@
 {
   description = "SICK build environment";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/25.11";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/26.05";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
@@ -20,7 +20,7 @@
             ncurses
             graalvmPackages.graalvm-ce
             sbt
-            dotnet-sdk_9
+            dotnet-sdk_10
             nodejs_24
 
             gitMinimal
@@ -28,6 +28,9 @@
             openssl
 
             scala-cli
+
+            clang
+            which
           ] ++ [
             mudyla.packages.${system}.default
           ];

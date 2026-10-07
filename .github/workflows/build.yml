@@ -99,10 +99,13 @@ jobs:
       - uses: 7mind/github-env@minimal
         with:
           cache-scala: false
-      - uses: bitwarden/sm-action@v2
+      - name: NuGet login (OIDC trusted publishing)
+        id: nuget-login
+        if: github.event_name != 'pull_request'
+        uses: NuGet/login@v1
         with:
-          access_token: ${{ secrets.TOKEN_BITWARDEN_SM }}
-          secrets: |
-            637c5cad-a680-4ea3-ac8b-b193010bee40 > TOKEN_NUGET
+          user: ${{ vars.NUGET_USER }}
       - name: Build and Test
+        env:
+          TOKEN_NUGET: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: nix develop --command mdl --github-actions :publish-cs

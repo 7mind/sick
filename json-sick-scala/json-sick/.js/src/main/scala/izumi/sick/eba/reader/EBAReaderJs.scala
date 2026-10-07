@@ -23,7 +23,7 @@ class EBAReaderJs(reader: IncrementalEBAReader, rootId: String) {
       case RefKind.TInt    => cursor.asInt
       case RefKind.TLng    => cursor.asDouble
       case RefKind.TBigInt => cursor.asBigInt
-      case RefKind.TFlt    => cursor.asFloat
+      case RefKind.TFlt    => cursor.asDouble
       case RefKind.TDbl    => cursor.asDouble
       case RefKind.TStr    => cursor.asString
       case _               => js.undefined

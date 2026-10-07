@@ -1,7 +1,7 @@
 package izumi.sick.sickcirce
 
 import io.circe.{Json, JsonNumber, JsonObject, UnsafeAccessPrivateJsonNumberSubclasses}
-import izumi.sick.eba.EBAStructure
+import izumi.sick.eba.{EBAStructure, FloatDecimals}
 import izumi.sick.eba.builder.EBABuilder
 import izumi.sick.eba.reader.IncrementalEBAReader
 import izumi.sick.model.*
@@ -33,7 +33,7 @@ object CirceTraverser {
           Json.fromBigInt(index.bigints(ref.ref))
 
         case RefKind.TFlt =>
-          Json.fromFloat(index.floats(ref.ref)).get
+          Json.fromBigDecimal(BigDecimal(FloatDecimals.shortest(index.floats(ref.ref))))
         case RefKind.TDbl =>
           Json.fromDouble(index.doubles(ref.ref)).get
         case RefKind.TBigDec =>
@@ -107,7 +107,7 @@ object CirceTraverser {
                   index.addLong(value.toLongExact)
                 case Some(value) if value.isWhole =>
                   index.addBigInt(value.toBigIntExact.getOrElse(throw new IllegalStateException(s"Cannot decode BigInt $n")))
-                case Some(value) if value.isDecimalFloat =>
+                case Some(value) if FloatDecimals.isShortestFloatDecimal(value) =>
                   index.addFloat(value.floatValue)
                 case Some(value) if value.isDecimalDouble =>
                   index.addDouble(value.doubleValue)
@@ -207,7 +207,7 @@ object CirceTraverser {
           Json.fromBigInt(bigIntTable.readElem(ref.ref))
 
         case RefKind.TFlt =>
-          Json.fromFloat(floatTable.readElem(ref.ref)).get
+          Json.fromBigDecimal(BigDecimal(FloatDecimals.shortest(floatTable.readElem(ref.ref))))
         case RefKind.TDbl =>
           Json.fromDouble(doubleTable.readElem(ref.ref)).get
         case RefKind.TBigDec =>

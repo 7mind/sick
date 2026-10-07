@@ -1,5 +1,6 @@
 package izumi.sick.eba.cursor
 
+import izumi.sick.eba.FloatDecimals
 import izumi.sick.eba.reader.IncrementalEBAReader
 import izumi.sick.model.RefKind.*
 import izumi.sick.model.{Ref, RefKind}
@@ -96,7 +97,7 @@ abstract class SickCursor {
       case RefKind.TShort => Some(ref.ref.toDouble)
       case RefKind.TInt   => Some(ebaReader.intTable.readElem(ref.ref).toDouble)
       case RefKind.TLng   => Some(ebaReader.longTable.readElem(ref.ref).toDouble)
-      case RefKind.TFlt   => Some(ebaReader.floatTable.readElem(ref.ref).toDouble)
+      case RefKind.TFlt   => Some(FloatDecimals.shortest(ebaReader.floatTable.readElem(ref.ref)).doubleValue)
       case RefKind.TDbl   => Some(ebaReader.doubleTable.readElem(ref.ref))
       case _ => None
     }
@@ -111,7 +112,7 @@ abstract class SickCursor {
       case RefKind.TLng =>
         Some(BigDecimal.apply(ebaReader.longTable.readElem(ref.ref)))
       case RefKind.TFlt =>
-        Some(BigDecimal.apply(ebaReader.floatTable.readElem(ref.ref).toDouble))
+        Some(BigDecimal(FloatDecimals.shortest(ebaReader.floatTable.readElem(ref.ref))))
       case RefKind.TDbl =>
         Some(BigDecimal.apply(ebaReader.doubleTable.readElem(ref.ref)))
       case RefKind.TBigDec => Some(ebaReader.bigDecTable.readElem(ref.ref))
