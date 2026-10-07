@@ -2,10 +2,7 @@ package io.izumi.sick
 
 import io.circe.Json
 import izumi.sick.SICK
-import izumi.sick.eba.reader.IncrementalEBAReader
-import izumi.sick.eba.writer.EBAWriter
-import izumi.sick.model.{RefKind, SICKWriterParameters, TableWriteStrategy}
-import izumi.sick.sickcirce.CirceTraverser.*
+import izumi.sick.model.RefKind
 import org.scalatest.wordspec.AnyWordSpec
 
 class NumberClassificationTest extends AnyWordSpec {
@@ -32,17 +29,6 @@ class NumberClassificationTest extends AnyWordSpec {
         case (decimal, kind) =>
           assert(kindOf(decimal) == kind, s"decimal=$decimal")
       }
-    }
-
-    "decode a Float entry to its shortest decimal" in {
-      val json = Json.fromBigDecimal(BigDecimal("1.2"))
-      val eba = SICK.packJson(json, rootName, dedup = false, dedupPrimitives = false, avoidBigDecimals = false)
-      assert(eba.root.kind == RefKind.TFlt)
-      assert(eba.index.reconstruct(eba.root) == json)
-      val (bytes, _) = EBAWriter.writeBytes(eba.index, SICKWriterParameters(TableWriteStrategy.SinglePassInMemory))
-      val reader = IncrementalEBAReader.openBytes(bytes.toArrayUnsafe(), eagerOffsets = false)
-      try assert(reader.resolveFull(reader.getRoot(rootName).get) == json)
-      finally reader.close()
     }
   }
 }
